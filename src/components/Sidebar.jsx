@@ -25,10 +25,11 @@ export default function Sidebar({ dark, setDark }) {
           <span className="rounded-full bg-slate-200/80 dark:bg-white/10 px-2 py-0.5 text-[10px]">Próximamente</span></a>
       </nav>
       <div className="mt-auto space-y-4">
-        <div className="inline-flex rounded-full bg-slate-200/70 dark:bg-white/10 p-1">
+        <div className="relative inline-flex rounded-full bg-slate-200/70 dark:bg-white/10 p-1">
+          <span className={`absolute left-1 top-1 h-9 w-9 rounded-full bg-white shadow transition-transform duration-300 ease-out dark:bg-[#2a2a3c] ${dark ? 'translate-x-9' : ''}`} />
           {[[false, Sun], [true, Moon]].map(([v, I]) => (
             <button key={String(v)} onClick={() => setDark(v)} aria-label={v ? 'Modo oscuro' : 'Modo claro'}
-              className={`grid h-9 w-9 place-items-center rounded-full transition-all duration-300 ${dark === v ? 'bg-white dark:bg-[#2a2a3c] shadow' : ''}`}><I size={17} /></button>
+              className="relative grid h-9 w-9 place-items-center rounded-full"><I size={17} /></button>
           ))}
         </div>
         <div className="flex items-center gap-3 border-t border-slate-200 dark:border-white/10 pt-4">
