@@ -45,3 +45,11 @@ export const news = [
   { q: 'Dandadan', t: 'Dandadan revela nuevo ending en su más reciente tráiler', d: 'El anime confirma más detalles sobre su segunda temporada, que se estrenará en 2025.', s: 'Crunchyroll', h: 'hace 4 h', grad: g('#d9405a', '#1a0f1f') },
   { q: 'Haikyuu!! Final', t: 'Se revela visual oficial de la nueva película de Haikyuu!!', d: 'La esperada película adaptará el arco final del manga y se estrenará en 2025.', s: 'Anime News Network', h: 'hace 6 h', grad: g('#f08a3a', '#3a2a22') },
 ]
+
+export const slides = [
+  hero,
+  { title: 'A Silent Voice', meta: '2016 · Anime · Drama · Romance', q: 'Koe no Katachi', grad: g('#2a3a6a', '#f4a6c1'),
+    desc: 'Un joven busca redimirse con la chica sorda a la que acosó en su infancia.' },
+  { title: 'Weathering With You', meta: '2019 · Anime · Romance · Fantasía', q: 'Tenki no Ko', grad: g('#1b3a6a', '#7fb6e6'),
+    desc: 'Un chico fugitivo conoce a una joven capaz de controlar el clima en Tokio.' },
+]

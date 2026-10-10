@@ -1,28 +1,56 @@
-import { Sparkles, Star, Plus, ChevronLeft, ChevronRight, Bookmark } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Sparkles, Star, Plus, Check, ChevronLeft, ChevronRight, Bookmark, Info } from 'lucide-react'
 import Poster from './Poster'
-import { hero, trending } from '../data'
+import { slides, trending } from '../data'
 
 export default function Hero() {
+  const [i, setI] = useState(0)
+  const [pause, setPause] = useState(false)
+  const [added, setAdded] = useState({})
+  const [saved, setSaved] = useState({})
+  const [inTrend, setInTrend] = useState(false)
+  const go = (d) => setI((v) => (v + d + slides.length) % slides.length)
+  useEffect(() => {
+    if (pause) return
+    const id = setInterval(() => go(1), 7000)
+    return () => clearInterval(id)
+  }, [pause])
+
   return (
-    <section className="grid gap-4 md:grid-cols-[1fr_260px] xl:grid-cols-[1fr_260px] animate-rise">
-      <Poster {...hero} wide title={hero.title} className="group h-[247px] rounded-2xl">
-        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/30 to-transparent" />
-        <div className="absolute right-4 top-4 flex gap-2">
-          {[ChevronLeft, ChevronRight].map((I, i) => <button key={i} className="grid h-9 w-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition hover:bg-black/60 hover:scale-110"><I size={18} /></button>)}
+    <section className="grid gap-4 md:grid-cols-[1fr_260px] animate-rise">
+      <div className="relative h-[247px] overflow-hidden rounded-2xl shadow-sm" onMouseEnter={() => setPause(true)} onMouseLeave={() => setPause(false)}>
+        {slides.map((s, n) => {
+          const on = n === i
+          return (
+            <Poster key={s.title} {...s} wide title={s.title}
+              className={`absolute inset-0 transition-all duration-[900ms] ease-out ${on ? 'opacity-100 scale-100' : 'pointer-events-none opacity-0 scale-[1.04]'}`}>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
+              <div className={`relative flex h-full max-w-[430px] flex-col justify-center gap-2 p-7 text-white transition-all duration-700 delay-150 ${on ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
+                <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Recomendación para ti</span>
+                <h2 className="text-4xl font-extrabold tracking-tight">{s.title}</h2>
+                <p className="text-xs text-white/80">{s.meta}</p>
+                <p className="text-sm leading-relaxed text-white/85">{s.desc}</p>
+                <div className="mt-2 flex gap-2">
+                  <button onClick={() => setAdded((a) => ({ ...a, [n]: !a[n] }))}
+                    className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${added[n] ? 'bg-emerald-500' : 'bg-brand hover:brightness-110'}`}>
+                    {added[n] ? <Check size={16} /> : <Plus size={16} />}{added[n] ? 'En tu biblioteca' : 'Agregar a mi biblioteca'}</button>
+                  <button className="flex items-center gap-1.5 rounded-lg border border-white/40 px-4 py-2 text-sm font-medium backdrop-blur transition hover:bg-white/15 active:scale-95"><Info size={15} />Ver detalles</button>
+                  <button onClick={() => setSaved((a) => ({ ...a, [n]: !a[n] }))} aria-label="Guardar" className="grid w-10 place-items-center rounded-lg border border-white/40 transition hover:bg-white/15 active:scale-90"><Bookmark size={16} className={`transition-all ${saved[n] ? 'fill-white' : ''}`} /></button>
+                </div>
+              </div>
+            </Poster>
+          )
+        })}
+        <div className="absolute right-4 top-4 z-10 flex gap-2">
+          {[[ChevronLeft, -1], [ChevronRight, 1]].map(([I, d]) => (
+            <button key={d} onClick={() => go(d)} aria-label={d < 0 ? 'Anterior' : 'Siguiente'} className="grid h-9 w-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition hover:scale-110 hover:bg-black/60 active:scale-90"><I size={18} /></button>
+          ))}
         </div>
-        <div className="relative flex h-full max-w-[420px] flex-col justify-center gap-2 p-7 text-white">
-          <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Recomendación para ti</span>
-          <h2 className="text-4xl font-extrabold tracking-tight">{hero.title}</h2>
-          <p className="text-xs text-white/80">{hero.meta}</p>
-          <p className="text-sm leading-relaxed text-white/85">{hero.desc}</p>
-          <div className="mt-2 flex gap-2">
-            <button className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold transition hover:brightness-110 hover:-translate-y-0.5"><Plus size={16} />Agregar a mi biblioteca</button>
-            <button className="rounded-lg border border-white/40 px-4 py-2 text-sm font-medium backdrop-blur transition hover:bg-white/15">+ Ver detalles</button>
-            <button className="grid w-10 place-items-center rounded-lg border border-white/40 transition hover:bg-white/15"><Bookmark size={16} /></button>
-          </div>
+        <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
+          {slides.map((_, n) => <i key={n} className={`h-1.5 rounded-full bg-white transition-all duration-500 ${n === i ? 'w-5 opacity-100' : 'w-1.5 opacity-40'}`} />)}
         </div>
-      </Poster>
-      <Poster {...trending} className="group hidden h-[247px] rounded-2xl md:block">
+      </div>
+      <Poster {...trending} className="group hidden h-[247px] cursor-pointer rounded-2xl shadow-sm md:block">
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20" />
         <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs text-white backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
@@ -30,7 +58,7 @@ export default function Hero() {
           <p className="text-[11px] text-white/80">{trending.meta}</p>
           <p className="mt-1 flex items-center gap-1 text-sm font-semibold"><Star size={14} className="fill-yellow-400 text-yellow-400" />{trending.rating}</p>
         </div>
-        <button className="absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-full bg-white text-black transition hover:scale-110 hover:rotate-90"><Plus size={18} /></button>
+        <button onClick={() => setInTrend((v) => !v)} aria-label="Agregar" className={`absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-full transition-all duration-300 hover:scale-110 active:scale-90 ${inTrend ? 'rotate-[360deg] bg-emerald-400 text-white' : 'bg-white text-black'}`}>{inTrend ? <Check size={18} /> : <Plus size={18} />}</button>
       </Poster>
     </section>
   )
