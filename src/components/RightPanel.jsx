@@ -39,7 +39,7 @@ export default function RightPanel() {
       <div className="card p-3.5">
         <Head>Noticias destacadas</Head>
         {featured.map((f) => (
-          <div key={f.t} className="group flex cursor-pointer gap-3 py-2"><Poster {...f} title="" className="h-[62px] w-[98px] shrink-0 rounded-lg" />
+          <div key={f.t} className="group flex cursor-pointer gap-3 py-2"><Poster {...f} wide title="" className="h-[62px] w-[98px] shrink-0 rounded-lg" />
             <div className="leading-snug"><p className="text-[13px] font-bold">{f.t}</p><p className="text-[11px] text-slate-500">{f.s} · {f.h}</p></div></div>
         ))}
       </div>

@@ -46,7 +46,7 @@ export function News() {
       <div className="grid gap-3 md:grid-cols-2">
         {news.map((n) => (
           <article key={n.t} className="group card flex cursor-pointer gap-3 p-2.5 transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-            <Poster {...n} title="" className="h-[102px] w-[206px] shrink-0 rounded-xl" />
+            <Poster {...n} wide title="" className="h-[102px] w-[206px] shrink-0 rounded-xl" />
             <div className="flex flex-col justify-center"><h4 className="text-sm font-bold leading-snug">{n.t}</h4>
               <p className="mt-1 line-clamp-2 text-[11px] text-slate-500">{n.d}</p>
               <p className="mt-2 text-[11px] text-slate-500">{n.s} · {n.h}</p></div>

@@ -22,9 +22,9 @@ src/
     Poster.jsx          image with gradient fallback
 ```
 
-## Adding images
-Open `src/data.js` and paste any Google/Pinterest image URL into the `img` field of each item.
-If `img` is empty or fails to load, a gradient placeholder with the title is shown.
+## Images
+Covers and banners load automatically from the public AniList API using the `q` search term of each item in `src/data.js` (cached per session).
+To force a specific picture, set `img: "https://..."` on that item. If nothing loads, a gradient placeholder is shown.
 
 ## Features
 Dark mode (saved in localStorage), hover/lift animations, staggered entrance, responsive layout,

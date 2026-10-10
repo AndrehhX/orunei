@@ -5,7 +5,7 @@ import { hero, trending } from '../data'
 export default function Hero() {
   return (
     <section className="grid gap-4 md:grid-cols-[1fr_260px] xl:grid-cols-[1fr_260px] animate-rise">
-      <Poster {...hero} title={hero.title} className="group h-[247px] rounded-2xl">
+      <Poster {...hero} wide title={hero.title} className="group h-[247px] rounded-2xl">
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/30 to-transparent" />
         <div className="absolute right-4 top-4 flex gap-2">
           {[ChevronLeft, ChevronRight].map((I, i) => <button key={i} className="grid h-9 w-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition hover:bg-black/60 hover:scale-110"><I size={18} /></button>)}
