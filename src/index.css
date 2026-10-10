@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { scroll-behavior: smooth; }
+body { @apply bg-[#f4f4fb] text-slate-900 antialiased transition-colors duration-300; }
+.dark body { @apply bg-[#0e0e17] text-slate-100; }
+.card { @apply bg-white/90 dark:bg-[#171723] rounded-2xl border border-white dark:border-white/5 shadow-sm; }
+.scroll-hide::-webkit-scrollbar { display: none; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
