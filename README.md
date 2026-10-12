@@ -38,3 +38,13 @@ Scroll-reveal (`Reveal.jsx`), spring easings, carousel crossfade, sliding tab/th
 
 ## Live news
 `src/news.jsx` reads public RSS feeds (Anime News Network, Crunchyroll News, MyAnimeList News) through the free rss2json API (no key), merges and sorts them, and caches for 10 minutes. The dashboard row, the right panel and the **Noticias** tab all use it. If the feeds can't be reached, demo data is shown with a retry button. Add or remove sources in the `FEEDS` array. Note: rss2json's free tier is rate-limited.
+
+## Recommendation engine (`src/rec/`)
+Runs 100% in the browser, no accounts or servers needed.
+- **Candidates:** ~110 anime from AniList (popular, trending, top rated), cached 30 min.
+- **Features:** genres, weighted tags, studio, format and decade, weighted by TF-IDF so rare traits matter more than "Action".
+- **Taste profile:** every signal moves it (like +1, add to library +1.6, news like +0.6, not interested −0.6) and old taste decays with a 45-day half-life, so it follows you as your interests change.
+- **Ranking:** cosine similarity to your taste, blended with quality, trend, popularity and freshness. The weight of your taste grows with confidence (cold start = quality-based).
+- **Diversity:** MMR re-ranking avoids ten near-identical recommendations; one slot is reserved to explore outside your known taste.
+- **Explainability:** each card says why it's recommended ("Porque te gusta X"). A toast shows what the system just learned and the "Tus gustos" panel shows the profile.
+- Liked news posts that mention an anime nudge your taste towards it.
