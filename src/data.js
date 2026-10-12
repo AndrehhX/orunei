@@ -26,9 +26,9 @@ export const because = [
   { q: 'Suzume no Tojimari', t: 'Suzume', y: 2022, r: 8.4, img: '', grad: g('#7a4ad8', '#f08ac0') },
 ]
 export const similar = [
-  { n: 'mika', p: 87, c: 14, grad: g('#f4a6c1', '#7a4ad8') },
-  { n: 'ren', p: 82, c: 10, grad: g('#555', '#222') },
-  { n: 'val', p: 78, c: 9, grad: g('#3a3a42', '#111') },
+  { n: 'mika', genres: ['Romance', 'Drama', 'Slice of Life'], p: 87, c: 14, grad: g('#f4a6c1', '#7a4ad8') },
+  { n: 'ren', genres: ['Action', 'Fantasy', 'Adventure'], p: 82, c: 10, grad: g('#555', '#222') },
+  { n: 'val', genres: ['Drama', 'Psychological', 'Thriller'], p: 78, c: 9, grad: g('#3a3a42', '#111') },
 ]
 export const trends = [
   { q: 'Dandadan', t: 'Dandadan', y: 2024, v: '18.4K', grad: g('#d9405a', '#2a0f3a') },

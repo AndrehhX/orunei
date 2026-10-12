@@ -1,4 +1,7 @@
-import { ChevronRight, Star, MoreHorizontal } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronRight, Star, MoreHorizontal, X } from 'lucide-react'
+import LikeBtn from './LikeBtn'
+import { useRec } from '../rec/rec'
 import Poster from './Poster'
 import Reveal from './Reveal'
 import { library, because } from '../data'
@@ -31,19 +34,46 @@ export function Library({ query }) {
     </section>
   )
 }
+const Stat = ({ y, r }) => <div className="flex justify-between text-[11px] text-slate-500"><span>{y}</span><span className="flex items-center gap-0.5 font-semibold text-slate-700 dark:text-slate-200"><Star size={11} className="fill-yellow-400 text-yellow-400" />{r}</span></div>
+
+function RecCard({ i, idx, rec }) {
+  const [out, setOut] = useState(false)
+  const act = (fn) => { setOut(true); setTimeout(() => fn(i.id), 320) } // card shrinks away, then the engine refills the row
+  return (
+    <Reveal delay={stag(idx, 250)}>
+      <article className={`group cursor-pointer transition-all duration-300 ease-smooth hover:-translate-y-1.5 ${out ? 'scale-75 opacity-0' : ''}`}>
+        <Poster img={i.banner || i.img} grad="linear-gradient(135deg,#c9b7e6,#6f8a6b)" title={i.title} className="aspect-[3/2.1] rounded-xl shadow-sm group-hover:shadow-xl">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <div className="absolute right-1.5 top-1.5 flex translate-y-1 gap-1 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+            <LikeBtn on={false} onClick={() => act(rec.like)} />
+            <button onClick={() => act(rec.dismiss)} aria-label="No me interesa" className="grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:scale-110 hover:bg-red-500/80 active:scale-90"><X size={15} /></button>
+          </div>
+          <p className="absolute inset-x-0 bottom-0 p-2 text-[10px] font-medium leading-tight text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">{i.reason}</p>
+        </Poster>
+        <p className="mt-2 truncate text-[13px] font-semibold">{i.title}</p>
+        <Stat y={i.year} r={(i.score / 10).toFixed(1)} />
+      </article>
+    </Reveal>
+  )
+}
+
 export function Because({ query }) {
-  const list = because.filter((a) => ok(a.t, query))
+  const rec = useRec()
+  const live = rec.ready
+  const list = (live ? rec.recs.slice(0, 6) : because).filter((a) => ok(a.title || a.t, query))
+  const title = live ? (rec.anchor ? `Porque te gusta ${rec.anchor}` : 'Recomendado para ti') : 'Porque te gusta A Silent Voice'
   return (
     <section>
-      <Title>Porque te gusta A Silent Voice</Title>
+      <div key={title} className="animate-fade"><Title>{title}</Title></div>
       <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
         {!list.length && <Empty q={query} />}
-        {list.map((a, i) => (
-          <Reveal key={a.t} delay={stag(i, 250)}><article className="group cursor-pointer transition duration-500 hover:-translate-y-1.5">
-            <Poster {...a} title={a.t} className="aspect-[3/2.1] rounded-xl shadow-sm group-hover:shadow-xl"><Dots /></Poster>
-            <p className="mt-2 truncate text-[13px] font-semibold">{a.t}</p>
-            <div className="flex justify-between text-[11px] text-slate-500"><span>{a.y}</span><span className="flex items-center gap-0.5 font-semibold text-slate-700 dark:text-slate-200"><Star size={11} className="fill-yellow-400 text-yellow-400" />{a.r}</span></div>
-          </article></Reveal>
+        {list.map((a, i) => live ? <RecCard key={a.id} i={a} idx={i} rec={rec} /> : (
+          <Reveal key={a.t} delay={stag(i, 250)}>
+            <article className="group cursor-pointer transition duration-500 ease-spring hover:-translate-y-1.5">
+              <Poster {...a} title={a.t} className="aspect-[3/2.1] rounded-xl shadow-sm group-hover:shadow-xl"><Dots /></Poster>
+              <p className="mt-2 truncate text-[13px] font-semibold">{a.t}</p><Stat y={a.y} r={a.r} />
+            </article>
+          </Reveal>
         ))}
       </div>
     </section>
@@ -51,6 +81,7 @@ export function Because({ query }) {
 }
 export function News({ query, onMore }) {
   const { items, status } = useNews()
+  const rec = useRec()
   const list = items.filter((a) => ok(a.t, query)).slice(0, 2)
   return (
     <section className="pb-8">
@@ -61,7 +92,7 @@ export function News({ query, onMore }) {
         {list.map((n, i) => (
           <Reveal key={n.id} delay={stag(i, 350)}>
             <NewsLink n={n} className="group card flex cursor-pointer gap-3 p-2.5 transition duration-500 ease-spring hover:-translate-y-1 hover:shadow-xl">
-              <Poster img={n.img} q={n.q} grad={n.grad} wide title="" className="h-[102px] w-[206px] shrink-0 rounded-xl" />
+              <Poster img={n.img} q={n.q} grad={n.grad} wide title="" className="h-[102px] w-[206px] shrink-0 rounded-xl"><LikeBtn on={rec.isNewsLiked(n.id)} onClick={() => rec.likeNews(n)} className="absolute right-1.5 top-1.5" /></Poster>
               <div className="flex min-w-0 flex-col justify-center"><h4 className="line-clamp-2 text-sm font-bold leading-snug">{n.t}</h4>
                 <p className="mt-1 line-clamp-2 text-[11px] text-slate-500">{n.d}</p>
                 <p className="mt-2 text-[11px] text-slate-500">{n.s} · {n.h}</p></div>

@@ -3,9 +3,12 @@ import { RefreshCw, ExternalLink, WifiOff } from 'lucide-react'
 import Poster from './Poster'
 import Reveal from './Reveal'
 import { useNews, NewsLink } from '../news'
+import LikeBtn from './LikeBtn'
+import { useRec } from '../rec/rec'
 
 export default function NewsPage({ query }) {
   const { items, status, reload } = useNews()
+  const rec = useRec()
   const [src, setSrc] = useState('Todas')
   const sources = ['Todas', ...new Set(items.map((n) => n.s))]
   const list = items.filter((n) => (src === 'Todas' || n.s === src) && n.t.toLowerCase().includes(query.toLowerCase()))
@@ -43,7 +46,8 @@ export default function NewsPage({ query }) {
               <h3 className="text-2xl font-extrabold leading-tight">{top.t}</h3>
               <p className="line-clamp-2 text-sm text-white/80">{top.d}</p>
             </div>
-            {top.link && <ExternalLink size={18} className="absolute right-4 top-4 text-white/80 transition group-hover:scale-125" />}
+            {top.link && <ExternalLink size={18} className="absolute right-4 top-16 text-white/80 transition group-hover:scale-125" />}
+            <LikeBtn on={rec.isNewsLiked(top.id)} onClick={() => rec.likeNews(top)} className="absolute right-3 top-3 !h-10 !w-10" />
           </NewsLink>
         </Reveal>
       )}
@@ -52,7 +56,7 @@ export default function NewsPage({ query }) {
         {rest.map((n, i) => (
           <Reveal key={n.id + src} delay={(i % 6) * 70}>
             <NewsLink n={n} className="group card flex h-full cursor-pointer flex-col overflow-hidden transition duration-500 ease-spring hover:-translate-y-1.5 hover:shadow-xl">
-              <Poster img={n.img} q={n.q} grad={n.grad} wide title="" className="h-36" />
+              <Poster img={n.img} q={n.q} grad={n.grad} wide title="" className="h-36"><LikeBtn on={rec.isNewsLiked(n.id)} onClick={() => rec.likeNews(n)} className="absolute right-2 top-2" /></Poster>
               <div className="flex flex-1 flex-col gap-1.5 p-3.5">
                 <p className="text-[11px] font-semibold text-brand">{n.s} · <span className="font-normal text-slate-500">{n.h}</span></p>
                 <h4 className="line-clamp-2 text-sm font-bold leading-snug">{n.t}</h4>
