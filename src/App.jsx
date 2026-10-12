@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Search, Bell } from 'lucide-react'
 import Login from './components/Login'
+import AnimePage from './components/AnimePage'
 import NewsPage from './components/NewsPage'
 import Sidebar from './components/Sidebar'
 import Hero from './components/Hero'
@@ -14,6 +15,7 @@ export default function App() {
   const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem('orunei-user')) } catch { return null } })
   const login = (u) => { localStorage.setItem('orunei-user', JSON.stringify(u)); setUser(u) }
   const logout = () => { localStorage.removeItem('orunei-user'); setUser(null) }
+  const [page, setPage] = useState('home')
   const [tab, setTab] = useState('Todo')
   const [query, setQuery] = useState('')
   const refs = useRef({})
@@ -27,7 +29,7 @@ export default function App() {
   if (!user) return <Login onLogin={login} dark={dark} setDark={setDark} />
   return (
     <div className="mx-auto flex animate-fade min-h-screen max-w-[1536px]">
-      <Sidebar dark={dark} setDark={setDark} user={user} onLogout={logout} />
+      <Sidebar dark={dark} setDark={setDark} user={user} onLogout={logout} page={page} setPage={setPage} />
       <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
         <header className="flex items-center gap-4 animate-fade">
           <label className="flex h-11 flex-1 max-w-[540px] items-center gap-3 rounded-xl bg-slate-200/60 dark:bg-white/5 px-4 text-slate-500 transition focus-within:bg-white dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-brand/40">
@@ -36,6 +38,7 @@ export default function App() {
           <button className="relative ml-auto grid h-10 w-10 place-items-center rounded-full bg-white dark:bg-white/10 shadow-sm transition hover:scale-105" aria-label="Notificaciones"><Bell size={18} /><i className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" /></button>
           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-900" />
         </header>
+        {page === 'anime' ? <AnimePage query={query} /> : <>
         <div className="flex flex-wrap items-end justify-between gap-3 animate-rise">
           <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
             <p className="text-sm text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
@@ -45,8 +48,9 @@ export default function App() {
           </div>
         </div>
         {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero /><Library query={query} /><Because query={query} /><News query={query} onMore={() => setTab('Noticias')} /></>}
+        </>}
       </main>
-      <RightPanel onSeeNews={() => setTab('Noticias')} />
+      {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} />}
     </div>
   )
 }
