@@ -129,11 +129,11 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
   return (
     <div className={`fixed inset-0 z-40 flex justify-center bg-black/55 p-0 backdrop-blur-sm transition-opacity duration-300 sm:p-5 ${closing ? 'opacity-0' : 'animate-fade'}`} onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className={`scroll-hide relative w-full max-w-5xl overflow-y-auto bg-[#f4f4fb] shadow-2xl transition-all duration-300 ease-smooth dark:bg-[#0e0e17] sm:rounded-3xl ${closing ? 'translate-y-6 scale-95 opacity-0' : 'animate-rise'}`}>
-        <button onClick={close} aria-label="Cerrar" className="sticky left-full top-3 z-30 float-right mr-3 mt-3 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white backdrop-blur transition hover:rotate-90 hover:scale-110"><X size={18} /></button>
+        <div className="sticky top-0 z-30 h-0"><button onClick={close} aria-label="Cerrar" className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white backdrop-blur transition hover:rotate-90 hover:scale-110"><X size={18} /></button></div>
         {err && <p className="p-16 text-center text-slate-500">No pudimos cargar esta ficha. <button onClick={close} className="font-semibold text-brand underline">Volver</button></p>}
         {!m && !err && <div className="space-y-4 p-6"><div className="h-64 animate-pulse rounded-2xl bg-slate-200/70 dark:bg-white/5" /><div className="h-8 w-1/2 animate-pulse rounded bg-slate-200/70 dark:bg-white/5" /></div>}
         {m && (<>
-          <header className="relative -mt-[52px] h-[320px] overflow-hidden" style={{ background: accent }}>
+          <header className="relative h-[320px] overflow-hidden" style={{ background: accent }}>
             {(m.bannerImage || m.coverImage.extraLarge) && <img src={m.bannerImage || m.coverImage.extraLarge} alt="" className={`h-full w-full object-cover animate-fade ${m.bannerImage ? '' : 'scale-125 blur-xl'}`} />}
             <div className="absolute inset-0 bg-gradient-to-t from-[#f4f4fb] via-[#f4f4fb]/30 to-black/30 dark:from-[#0e0e17] dark:via-[#0e0e17]/40" />
           </header>
