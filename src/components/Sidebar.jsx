@@ -1,9 +1,9 @@
-import { Sparkles, Home, Search, Library, User, Heart, Tv, Film, MonitorPlay, Gamepad2, Sun, Moon, MoreVertical } from 'lucide-react'
+import { Sparkles, Home, Search, Library, User, Heart, Tv, Film, MonitorPlay, Gamepad2, Sun, Moon, LogOut } from 'lucide-react'
 
 const main = [['Para ti', Home], ['Descubrir', Search], ['Biblioteca', Library], ['Perfil', User], ['Compatibilidad', Heart]]
 const explore = [['Anime', Sparkles], ['Películas', Film], ['Series', MonitorPlay]]
 
-export default function Sidebar({ dark, setDark }) {
+export default function Sidebar({ dark, setDark, user, onLogout }) {
   return (
     <aside className="hidden lg:flex w-[216px] shrink-0 flex-col px-3 py-6 sticky top-0 h-screen">
       <div className="flex items-center gap-2 px-3 mb-8 text-2xl font-extrabold"><Sparkles className="text-brand" size={26} />Orunei</div>
@@ -34,8 +34,8 @@ export default function Sidebar({ dark, setDark }) {
         </div>
         <div className="flex items-center gap-3 border-t border-slate-200 dark:border-white/10 pt-4">
           <div className="h-11 w-11 rounded-full bg-gradient-to-br from-slate-600 to-slate-900" />
-          <div className="leading-tight"><p className="font-bold text-sm">Dereck</p><p className="text-xs text-slate-500">@dereck</p></div>
-          <MoreVertical size={18} className="ml-auto text-slate-500" />
+          <div className="leading-tight"><p className="max-w-[90px] truncate font-bold text-sm">{user.name}</p><p className="max-w-[90px] truncate text-xs text-slate-500">@{user.name.toLowerCase().replace(/\s+/g, '')}</p></div>
+          <button onClick={onLogout} title="Cerrar sesión" aria-label="Cerrar sesión" className="ml-auto grid h-8 w-8 place-items-center rounded-full text-slate-500 transition hover:bg-red-500/10 hover:text-red-500"><LogOut size={17} /></button>
         </div>
       </div>
     </aside>

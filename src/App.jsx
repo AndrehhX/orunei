@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Search, Bell } from 'lucide-react'
+import Login from './components/Login'
 import Sidebar from './components/Sidebar'
 import Hero from './components/Hero'
 import RightPanel from './components/RightPanel'
@@ -9,6 +10,9 @@ const tabs = ['Todo', 'Anime', 'Películas', 'Series', 'Noticias']
 
 export default function App() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
+  const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem('orunei-user')) } catch { return null } })
+  const login = (u) => { localStorage.setItem('orunei-user', JSON.stringify(u)); setUser(u) }
+  const logout = () => { localStorage.removeItem('orunei-user'); setUser(null) }
   const [tab, setTab] = useState('Todo')
   const [query, setQuery] = useState('')
   const refs = useRef({})
@@ -19,9 +23,10 @@ export default function App() {
     localStorage.setItem('theme', dark ? 'dark' : 'light')
   }, [dark])
 
+  if (!user) return <Login onLogin={login} dark={dark} setDark={setDark} />
   return (
-    <div className="mx-auto flex min-h-screen max-w-[1536px]">
-      <Sidebar dark={dark} setDark={setDark} />
+    <div className="mx-auto flex animate-fade min-h-screen max-w-[1536px]">
+      <Sidebar dark={dark} setDark={setDark} user={user} onLogout={logout} />
       <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
         <header className="flex items-center gap-4 animate-fade">
           <label className="flex h-11 flex-1 max-w-[540px] items-center gap-3 rounded-xl bg-slate-200/60 dark:bg-white/5 px-4 text-slate-500 transition focus-within:bg-white dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-brand/40">

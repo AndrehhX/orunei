@@ -29,3 +29,9 @@ To force a specific picture, set `img: "https://..."` on that item. If nothing l
 ## Features
 Dark mode (saved in localStorage), hover/lift animations, staggered entrance, responsive layout,
 reduced-motion support. Only the "Para ti" page is implemented; other nav items are placeholders.
+
+## Login
+Any valid email + password (4+ chars) signs you in (demo auth, stored in localStorage). The mascots follow your cursor, look down while you type your email, shut their eyes when you type the password and peek when you press the eye icon. Log out with the icon next to your name in the sidebar.
+
+## Animations
+Scroll-reveal (`Reveal.jsx`), spring easings, carousel crossfade, sliding tab/theme indicators. All disabled with `prefers-reduced-motion`.
