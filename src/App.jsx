@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Search, Bell } from 'lucide-react'
 import Login from './components/Login'
+import NewsPage from './components/NewsPage'
 import Sidebar from './components/Sidebar'
 import Hero from './components/Hero'
 import RightPanel from './components/RightPanel'
@@ -43,10 +44,9 @@ export default function App() {
             {tabs.map((t) => <button key={t} ref={(el) => (refs.current[t] = el)} onClick={() => setTab(t)} className={`relative rounded-full px-4 py-1.5 transition-colors duration-300 ${tab === t ? 'text-white' : 'text-slate-600 dark:text-slate-300 hover:text-brand'}`}>{t}</button>)}
           </div>
         </div>
-        {tab !== 'Noticias' && <><Hero /><Library query={query} /><Because query={query} /></>}
-        <News query={query} />
+        {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero /><Library query={query} /><Because query={query} /><News query={query} onMore={() => setTab('Noticias')} /></>}
       </main>
-      <RightPanel />
+      <RightPanel onSeeNews={() => setTab('Noticias')} />
     </div>
   )
 }

@@ -35,3 +35,6 @@ Any valid email + password (4+ chars) signs you in (demo auth, stored in localSt
 
 ## Animations
 Scroll-reveal (`Reveal.jsx`), spring easings, carousel crossfade, sliding tab/theme indicators. All disabled with `prefers-reduced-motion`.
+
+## Live news
+`src/news.jsx` reads public RSS feeds (Anime News Network, Crunchyroll News, MyAnimeList News) through the free rss2json API (no key), merges and sorts them, and caches for 10 minutes. The dashboard row, the right panel and the **Noticias** tab all use it. If the feeds can't be reached, demo data is shown with a retry button. Add or remove sources in the `FEEDS` array. Note: rss2json's free tier is rate-limited.
