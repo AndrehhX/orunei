@@ -7,4 +7,6 @@ body { @apply bg-[#f4f4fb] text-slate-900 antialiased transition-colors duration
 .dark body { @apply bg-[#0e0e17] text-slate-100; }
 .card { @apply bg-white/90 dark:bg-[#171723] rounded-2xl border border-white dark:border-white/5 shadow-sm; }
 .scroll-hide::-webkit-scrollbar { display: none; }
+button, a { -webkit-tap-highlight-color: transparent; }
+@media (prefers-reduced-motion: no-preference) { * { transition-timing-function: cubic-bezier(.22,1,.36,1); } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
