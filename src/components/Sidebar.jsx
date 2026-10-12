@@ -1,4 +1,4 @@
-import { Sparkles, Home, Search, Library, User, Heart, Tv, Film, MonitorPlay, Gamepad2, Sun, Moon, LogOut } from 'lucide-react'
+import { Sparkles, Home, Search, Library, User, Heart, Film, MonitorPlay, Gamepad2, Sun, Moon, LogOut } from 'lucide-react'
 
 const main = [['Para ti', Home], ['Descubrir', Search], ['Biblioteca', Library], ['Perfil', User], ['Compatibilidad', Heart]]
 const explore = [['Anime', Sparkles], ['Películas', Film], ['Series', MonitorPlay]]
