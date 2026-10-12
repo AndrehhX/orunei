@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { Sparkles, Mail, Lock, User, Eye, EyeOff, Check, Sun, Moon } from 'lucide-react'
 import Mascots from './Mascots'
 
-function Field({ icon: I, label, ...p }) {
+function Field({ icon: I, label, children, ...p }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium text-slate-500">{label}</span>
       <span className="group flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white/70 px-3.5 transition-all duration-300 focus-within:border-brand focus-within:bg-white focus-within:shadow-[0_0_0_4px_rgba(109,92,255,.15)] dark:border-white/10 dark:bg-white/5 dark:focus-within:bg-white/10">
         <I size={17} className="text-slate-400 transition-colors group-focus-within:text-brand" />
         <input {...p} className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-slate-400" />
-        {p.children}
+        {children}
       </span>
     </label>
   )
