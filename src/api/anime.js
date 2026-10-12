@@ -1,4 +1,7 @@
 import { timeAgo } from '../news'
+import { FORMATS, STATUS, SORTS, buildCatalogRequest } from './catalogQuery'
+
+export { FORMATS, STATUS, SORTS } from './catalogQuery'
 // All sources are public + CORS-friendly: AniList (GraphQL), Jikan (MyAnimeList), Kitsu, Reddit, and OMDb (IMDb, optional key).
 const gql = async (query, variables) => {
   const r = await fetch('https://graphql.anilist.co', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables }) })
@@ -10,21 +13,15 @@ const json = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error
 
 export const GENRES = [['Acción', 'Action'], ['Aventura', 'Adventure'], ['Comedia', 'Comedy'], ['Drama', 'Drama'], ['Fantasía', 'Fantasy'], ['Romance', 'Romance'],
   ['Sci-Fi', 'Sci-Fi'], ['Slice of Life', 'Slice of Life'], ['Sobrenatural', 'Supernatural'], ['Misterio', 'Mystery'], ['Terror', 'Horror'], ['Deportes', 'Sports']]
-export const FORMATS = { '': null, Serie: ['TV', 'TV_SHORT'], Película: ['MOVIE'], 'OVA / ONA': ['OVA', 'ONA', 'SPECIAL'] }
-export const STATUS = { '': null, 'En emisión': 'RELEASING', Finalizado: 'FINISHED', Próximamente: 'NOT_YET_RELEASED' }
-export const SORTS = { Popular: 'POPULARITY_DESC', Tendencia: 'TRENDING_DESC', 'Mejor valorado': 'SCORE_DESC', Recientes: 'START_DATE_DESC' }
 export const T = { TV: 'Serie', TV_SHORT: 'Corto', MOVIE: 'Película', OVA: 'OVA', ONA: 'ONA', SPECIAL: 'Especial', MUSIC: 'Música', RELEASING: 'En emisión', FINISHED: 'Finalizado', NOT_YET_RELEASED: 'Próximamente', CANCELLED: 'Cancelado', HIATUS: 'En pausa', WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño' }
 export const title = (m) => m.title.english || m.title.romaji
 export const crunchy = (m) => m.externalLinks?.find((l) => l.site === 'Crunchyroll')?.url || `https://www.crunchyroll.com/search?q=${encodeURIComponent(title(m))}`
 
 export const clean = (t = '') => t.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/~!|!~/g, '').replace(/img\d*\([^)]*\)/gi, '').replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_`#>]+/g, '').replace(/\n{3,}/g, '\n\n').trim()
 
-const LIST = `query($page:Int,$search:String,$genres:[String],$format:[MediaFormat],$status:MediaStatus,$year:Int,$sort:[MediaSort]){
-  Page(page:$page,perPage:24){ pageInfo{hasNextPage} media(type:ANIME,isAdult:false,search:$search,genre_in:$genres,format_in:$format,status:$status,seasonYear:$year,sort:$sort){
-    id title{romaji english} coverImage{extraLarge color} bannerImage genres averageScore seasonYear format status episodes } } }`
 export async function searchAnime(f, page = 1) {
-  const d = await gql(LIST, { page, search: f.search || null, genres: f.genres.length ? f.genres : null, format: FORMATS[f.format] || null,
-    status: STATUS[f.status] || null, year: f.year ? +f.year : null, sort: f.search && f.sort === 'Popular' ? ['SEARCH_MATCH'] : [SORTS[f.sort]] })
+  const request = buildCatalogRequest(f, page)
+  const d = await gql(request.query, request.variables)
   return { items: d.Page.media, more: d.Page.pageInfo.hasNextPage }
 }
 
