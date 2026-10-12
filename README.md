@@ -48,3 +48,11 @@ Runs 100% in the browser, no accounts or servers needed.
 - **Diversity:** MMR re-ranking avoids ten near-identical recommendations; one slot is reserved to explore outside your known taste.
 - **Explainability:** each card says why it's recommended ("Porque te gusta X"). A toast shows what the system just learned and the "Tus gustos" panel shows the profile.
 - Liked news posts that mention an anime nudge your taste towards it.
+
+## Anime catalogue
+Sidebar → **Anime**. Curated filters (12 genres, format, year, status, sort), the header search box searches AniList, "load more" pagination, and a full detail view:
+- **Hero** with banner, cover, genres, next-episode countdown, **Watch on Crunchyroll**, trailer and Like (which trains your taste profile).
+- **Ratings** side by side: AniList, MyAnimeList (Jikan), Kitsu and IMDb. IMDb has no free keyless API, so it needs a free OMDb key: copy `.env.example` to `.env` and fill `VITE_OMDB_KEY`.
+- **Overview:** synopsis, weighted tags (spoiler tags hidden by default), info table and "if you liked it" recommendations.
+- **Episodes:** real Crunchyroll episode links when AniList has them, otherwise numbered buttons that open Crunchyroll.
+- **Community:** reviews and discussions merged from AniList reviews, AniList forum, MyAnimeList reviews and Reddit, sorted by likes, with source filters, spoiler blur and links to the originals. Sources load independently, so one failing doesn't block the rest.
