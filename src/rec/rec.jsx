@@ -7,7 +7,7 @@ const pg = (a, page, sort) => `${a}: Page(page:${page}, perPage:30){ media(type:
 const QUERY = `query { ${pg('a', 1, 'POPULARITY_DESC')} ${pg('b', 1, 'TRENDING_DESC')} ${pg('c', 1, 'SCORE_DESC')} ${pg('d', 2, 'POPULARITY_DESC')} }`
 const SEEDS = ['kimi no na wa', 'sen to chihiro', 'koe no katachi'] // what the user already finished (matches the library row)
 
-const Ctx = createContext({ ready: false, recs: [], topGenres: [], count: 0, anchor: '', isNewsLiked: () => false, like() {}, dismiss() {}, likeNews() {}, addByQuery() {}, affinity: () => null })
+const Ctx = createContext({ ready: false, recs: [], topGenres: [], count: 0, anchor: '', isNewsLiked: () => false, like() {}, dismiss() {}, likeMedia() {}, isLiked: () => false, likeNews() {}, addByQuery() {}, affinity: () => null })
 export const useRec = () => useContext(Ctx)
 
 async function loadPool() {
@@ -71,6 +71,14 @@ export function RecProvider({ children }) {
     if (on && !has) apply(it, 'add', { liked: [...cur.liked, it.id] })
     if (!on && has) apply(it, 'unadd', { liked: cur.liked.filter((x) => x !== it.id) })
   }
+  // Like any anime from the catalogue (even outside the candidate pool): build its vector on the fly.
+  const likeMedia = (m) => {
+    const cur = ref.current, has = cur.liked.includes(m.id)
+    const base = toItem({ ...m, tags: (m.tags || []).filter((t) => !t.isMediaSpoiler) })
+    const n = norm(base.f) || 1, v = {}
+    for (const k in base.f) v[k] = base.f[k] / n
+    apply({ ...base, v }, has ? 'unlike' : 'like', { liked: has ? cur.liked.filter((x) => x !== m.id) : [...cur.liked, m.id] })
+  }
   const likeNews = (n) => { // a liked post nudges the taste toward any anime it mentions
     const cur = ref.current, on = !cur.news.includes(n.id)
     const text = n.t.toLowerCase()
@@ -93,7 +101,7 @@ export function RecProvider({ children }) {
     return Math.max(0, Math.min(1, dot(st.p.w, v) / wn))
   }
 
-  const value = { ready: pool.length > 0, recs, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', like, dismiss, likeNews, addByQuery, affinity, isNewsLiked: (id) => st.news.includes(id) }
+  const value = { ready: pool.length > 0, recs, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.includes(id), addByQuery, affinity, isNewsLiked: (id) => st.news.includes(id) }
   return (
     <Ctx.Provider value={value}>
       {children}
