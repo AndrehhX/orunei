@@ -2,14 +2,16 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createProfileRepository, normalizeRemoteProfile } from '../src/profile/profileRepository.js'
 
-function makeClient({ profile, privacy = [], uploadError = null }) {
+function makeClient({ profile, privacy = [], anime = [], uploadError = null }) {
   const calls = []
   const builder = {
     select() { return builder },
     eq() { return builder },
     upsert(payload) { calls.push({ type: 'upsert', payload }); return builder },
+    delete() { calls.push({ type: 'delete' }); return builder },
     maybeSingle() { return Promise.resolve({ data: profile, error: null }) },
     single() { return Promise.resolve({ data: profile, error: null }) },
+    then(resolve) { return Promise.resolve({ data: anime, error: null }).then(resolve) },
   }
   return {
     calls,
@@ -78,4 +80,15 @@ test('does not resolve a private profile for an unrelated viewer', async () => {
   const result = await createProfileRepository(client).getPublicProfile('mika', 'viewer-1')
   assert.equal(result.data, null)
   assert.equal(result.error, '')
+})
+
+test('loads and persists the account AnimeList through the remote repository', async () => {
+  const client = makeClient({ profile: { id: 'user-1', display_name: 'Andreh', username: 'andreh' }, anime: [{ anime_id: '101', title: 'Frieren', status: 'watching', favorite: true }] })
+  const repository = createProfileRepository(client)
+  const own = await repository.getOwnProfile('user-1')
+  assert.equal(own.data.animeList[0].id, '101')
+  const saved = await repository.saveAnimeList('user-1', own.data.animeList)
+  assert.equal(saved.error, '')
+  assert.equal(client.calls.some((call) => call.type === 'delete'), true)
+  assert.equal(client.calls.some((call) => call.type === 'upsert'), true)
 })

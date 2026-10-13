@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Activity, ArrowDown, ArrowUp, BookOpen, Check, ChevronRight, Eye, Heart, List, LockKeyhole, Pencil, PlayCircle, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import Poster from './Poster'
 import PublicProfilePage from './PublicProfilePage'
+import ProfileAnimeListManager from './ProfileAnimeListManager'
 import { library } from '../data'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
@@ -33,11 +34,11 @@ function Banner({ src, className = '' }) {
   return <div className={`relative overflow-hidden bg-gradient-to-r from-[#3a2a6a] via-brand to-[#f08ab8] ${className}`}>{src && <img src={src} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="absolute inset-0 h-full w-full object-cover" />}</div>
 }
 
-function AnimeCard({ item }) {
+function AnimeCard({ item, onStatusChange, onToggleFavorite }) {
   return <article className="group min-w-0">
     <Poster {...item} title={item.t} className="aspect-[3/3.7] rounded-2xl shadow-sm transition duration-500 ease-spring group-hover:-translate-y-1 group-hover:shadow-xl" />
     <p className="mt-2 truncate text-sm font-bold">{item.t}</p>
-    <p className="truncate text-[11px] text-slate-500">{item.s}</p>
+    <div className="mt-1 flex items-center gap-2"><select value={item.status || 'planned'} onChange={(event) => onStatusChange?.(item.id, event.target.value)} className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-transparent px-1.5 py-1 text-[10px] text-slate-500 outline-none dark:border-white/10"><option value="watching">Viendo</option><option value="planned">Planeo ver</option><option value="paused">En pausa</option><option value="completed">Terminado</option></select><button onClick={() => onToggleFavorite?.(item.id)} aria-label={item.favorite ? 'Quitar de favoritos' : 'Marcar como favorito'} className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg transition ${item.favorite ? 'bg-pink-500 text-white' : 'bg-slate-100 text-slate-400 dark:bg-white/10'}`}><Heart size={13} className={item.favorite ? 'fill-white' : ''} /></button></div>
   </article>
 }
 
@@ -53,7 +54,7 @@ function ActivityList({ activity }) {
 }
 
 export default function ProfilePage({ onEdit }) {
-  const { profile, updateCustomLists, recordActivity } = useProfile()
+  const { profile, updateCustomLists, updateAnimeList, recordActivity } = useProfile()
   const rec = useRec()
   const [active, setActive] = useState(profile.landingSection || 'overview')
   const [publicView, setPublicView] = useState(false)
@@ -61,10 +62,12 @@ export default function ProfilePage({ onEdit }) {
   const [newListDescription, setNewListDescription] = useState('')
   const [listAnimeDraft, setListAnimeDraft] = useState({})
   const [deletePending, setDeletePending] = useState(null)
-  const sections = useMemo(() => selectAnimeSections(library), [])
-  const stats = selectProfileStats(library, rec.count, profile)
-  const activity = selectRecentActivity(profile, library)
-  const featured = library.find((item) => item.q === profile.featuredAnimeId) || library.find((item) => item.s.startsWith('Favorito')) || library[0]
+  const profileLibrary = profile.animeList || []
+  const sections = useMemo(() => selectAnimeSections(profileLibrary), [profileLibrary])
+  const stats = selectProfileStats(profileLibrary, rec.count, profile)
+  const activity = selectRecentActivity(profile, profileLibrary)
+  const featured = profileLibrary.find((item) => item.q === profile.featuredAnimeId) || profileLibrary.find((item) => item.favorite) || profileLibrary[0]
+  const changeAnime = (id, patch) => updateAnimeList((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item))
   const createList = () => {
     const list = createCustomList(newListTitle, newListDescription)
     if (!list.title) return
@@ -87,6 +90,7 @@ export default function ProfilePage({ onEdit }) {
   if (publicView) return <PublicProfilePage profile={profile} viewer={{ id: 'public-preview', profileId: 'profile-owner', relationship: 'none' }} onBack={() => setPublicView(false)} />
 
   return <div className="space-y-5 pb-10 animate-fade">
+    <ProfileAnimeListManager visible={active === 'animelist'} />
     <section className="overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
       <Banner src={profile.banner} className="h-36 bg-cover bg-center md:h-48" />
       <div className="px-5 pb-5 md:px-8">
@@ -111,7 +115,7 @@ export default function ProfilePage({ onEdit }) {
 
     {active === 'overview' && <div className="grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
       <section className="card p-5"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-bold">Tu espacio</h2><p className="text-xs text-slate-500">Una vista privada de lo que estás viendo.</p></div><button onClick={() => setActive('animelist')} className="text-xs font-semibold text-brand">Ver AnimeList <ChevronRight className="inline" size={14} /></button></div><div className="grid grid-cols-2 gap-4 sm:grid-cols-4">{groups.map(([id, label, Icon, color]) => <button key={id} onClick={() => setActive('animelist')} className="rounded-2xl border border-slate-200/80 p-3 text-left transition hover:-translate-y-0.5 hover:border-brand/40 dark:border-white/10"><Icon size={17} className={color} /><p className="mt-4 text-2xl font-extrabold">{sections[id].length}</p><p className="text-xs text-slate-500">{label}</p></button>)}</div></section>
-      <section className="card p-5"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-bold">Destacado</h2><p className="text-xs text-slate-500">Tu historia elegida.</p></div><Heart size={17} className="text-pink-500" /></div><div className="flex items-center gap-3"><Poster {...featured} title={featured.t} className="h-28 w-20 shrink-0 rounded-xl" /><div className="min-w-0"><p className="truncate font-bold">{featured.t}</p><p className="mt-1 text-xs text-slate-500">{featured.s}</p><p className="mt-3 text-xs leading-5 text-slate-500">Puedes cambiar este destacado desde Editar perfil.</p></div></div></section>
+      <section className="card p-5"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-bold">Destacado</h2><p className="text-xs text-slate-500">Tu historia elegida.</p></div><Heart size={17} className="text-pink-500" /></div>{featured ? <div className="flex items-center gap-3"><Poster {...featured} title={featured.t} className="h-28 w-20 shrink-0 rounded-xl" /><div className="min-w-0"><p className="truncate font-bold">{featured.t}</p><p className="mt-1 text-xs text-slate-500">{featured.s}</p><p className="mt-3 text-xs leading-5 text-slate-500">Puedes cambiar este destacado desde Editar perfil.</p></div></div> : <EmptyState title="Aún no tienes una obra destacada" detail="Añade una obra a tu AnimeList para verla aquí." />}</section>
       <section className="card p-5"><div className="mb-4"><h2 className="text-lg font-bold">Tus gustos</h2><p className="text-xs text-slate-500">Según tus interacciones con Orunei.</p></div>{rec.topGenres.length ? <div className="space-y-2.5">{rec.topGenres.slice(0, 5).map((genre) => <div key={genre.name}><div className="mb-1 flex justify-between text-xs"><span className="font-medium">{genre.name}</span><span className="text-slate-500">{genre.pct}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-brand to-pink-400" style={{ width: `${genre.pct}%` }} /></div></div>)}</div> : <p className="text-sm text-slate-500">Aún estamos aprendiendo tus gustos.</p>}</section>
       <section className="card p-5 xl:col-span-2"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-bold">Actividad reciente</h2><button onClick={() => setActive('activity')} className="text-xs font-semibold text-brand">Ver todo <ChevronRight className="inline" size={14} /></button></div><ActivityList activity={activity.slice(0, 3)} /></section>
     </div>}

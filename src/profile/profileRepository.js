@@ -1,4 +1,4 @@
-import { normalizeProfile } from './model.js'
+import { normalizeAnimeList, normalizeProfile, toRemoteAnimeEntry } from './model.js'
 import { supabase } from '../auth/supabaseClient.js'
 
 const PROFILE_FIELDS = ['username', 'displayName', 'bio', 'status', 'visibility', 'accent', 'featuredAnimeId', 'pinnedSections', 'landingSection']
@@ -52,13 +52,21 @@ function resultError(error) {
   return error?.message || ''
 }
 
+async function readAnimeList(client, profileId) {
+  const { data, error } = await client.from('profile_anime').select('*').eq('profile_id', profileId)
+  return { data: error ? [] : normalizeAnimeList(data), error: resultError(error) }
+}
+
 export function createProfileRepository(client = supabase) {
   const unavailable = () => ({ data: null, error: 'Las cuentas remotas no están configuradas.' })
   return {
     async getOwnProfile(userId) {
       if (!client || !userId) return unavailable()
       const { data, error } = await client.from('profiles').select('*').eq('id', userId).maybeSingle()
-      return { data: error ? null : normalizeRemoteProfile(data, { id: userId }), error: resultError(error) }
+      if (error) return { data: null, error: resultError(error) }
+      if (!data) return { data: null, error: '' }
+      const anime = await readAnimeList(client, userId)
+      return { data: normalizeRemoteProfile({ ...data, animeList: anime.data }, { id: userId }), error: anime.error }
     },
 
     async getPublicProfile(username, viewerId = null) {
@@ -67,8 +75,9 @@ export function createProfileRepository(client = supabase) {
       if (profileResult.error || !profileResult.data) return { data: null, error: resultError(profileResult.error) }
       if (profileResult.data.id !== viewerId && profileResult.data.profile_visibility === 'private') return { data: null, error: '' }
       const privacyResult = await client.from('profile_privacy').select('section, visibility').eq('profile_id', profileResult.data.id)
-      const row = { ...profileResult.data, privacy: privacyResult.data || [] }
-      return { data: normalizeRemoteProfile(row, { id: viewerId || '' }), error: resultError(privacyResult.error) }
+      const anime = await readAnimeList(client, profileResult.data.id)
+      const row = { ...profileResult.data, privacy: privacyResult.data || [], animeList: anime.data }
+      return { data: normalizeRemoteProfile(row, { id: viewerId || '' }), error: resultError(privacyResult.error) || anime.error }
     },
 
     async saveProfile(userId, patch) {
@@ -82,6 +91,18 @@ export function createProfileRepository(client = supabase) {
         if (privacyResult.error) return { data: null, error: resultError(privacyResult.error) }
       }
       return { data: normalizeRemoteProfile({ ...data, privacy: rows }, { id: userId }), error: '' }
+    },
+
+    async saveAnimeList(userId, entries) {
+      if (!client || !userId) return unavailable()
+      const rows = normalizeAnimeList(entries).map((entry) => toRemoteAnimeEntry(userId, entry))
+      const { error: deleteError } = await client.from('profile_anime').delete().eq('profile_id', userId)
+      if (deleteError) return { data: null, error: resultError(deleteError) }
+      if (rows.length) {
+        const { error } = await client.from('profile_anime').upsert(rows, { onConflict: 'profile_id,anime_id' })
+        if (error) return { data: null, error: resultError(error) }
+      }
+      return { data: normalizeAnimeList(entries), error: '' }
     },
 
     async uploadProfileImage(userId, kind, file) {

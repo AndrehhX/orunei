@@ -15,6 +15,7 @@ export function selectAnimeSections(library = []) {
   for (const item of Array.isArray(library) ? library : []) {
     const section = sectionForStatus(item?.s)
     if (section) sections[section].push(item)
+    if (item?.favorite && !sections.favorites.includes(item)) sections.favorites.push(item)
   }
   return sections
 }

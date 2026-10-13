@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { DEFAULT_PROFILE, MAX_ACTIVITY, createProfile, makeActivity, normalizeProfile, readImageAsDataUrl } from './model.js'
+import { DEFAULT_PROFILE, MAX_ACTIVITY, createProfile, makeActivity, normalizeAnimeList, normalizeProfile, readImageAsDataUrl } from './model.js'
 import { readProfileStorage, writeProfileStorage } from './profileStorage.js'
 import { clearProfileState, persistRemoteProfile, resolveLoadedProfile } from './profileProviderModel.js'
 
@@ -48,7 +48,7 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
         setStorageError(result.error)
         return { ok: false, error: result.error }
       }
-      const persisted = normalizeProfile(result.data, user)
+      const persisted = normalizeProfile({ ...result.data, animeList: result.data?.animeList ?? profileRef.current.animeList }, user)
       profileRef.current = persisted
       setProfile(persisted)
       setStorageError('')
@@ -84,8 +84,24 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
     ...current,
     customLists: typeof nextOrUpdater === 'function' ? nextOrUpdater(current.customLists) : nextOrUpdater,
   })), [saveProfile])
+  const updateAnimeList = useCallback(async (nextOrUpdater) => {
+    const next = normalizeAnimeList(typeof nextOrUpdater === 'function' ? nextOrUpdater(profileRef.current.animeList) : nextOrUpdater)
+    if (remote) {
+      const result = await repository.saveAnimeList(user.id, next)
+      if (!result.ok && result.error) {
+        setStorageError(result.error)
+        return { ok: false, error: result.error }
+      }
+      const persisted = normalizeAnimeList(result.data || next)
+      profileRef.current = { ...profileRef.current, animeList: persisted }
+      setProfile(profileRef.current)
+      setStorageError('')
+      return { ok: true, error: '' }
+    }
+    return saveProfile((current) => ({ ...current, animeList: next }))
+  }, [remote, repository, saveProfile, user?.id])
 
-  const value = useMemo(() => ({ profile, profileStatus, saveProfile, updateProfile, resetVisuals, recordActivity, updateCustomLists, uploadProfileImage, storageError, clearProfileState }), [profile, profileStatus, saveProfile, updateProfile, resetVisuals, recordActivity, updateCustomLists, uploadProfileImage, storageError])
+  const value = useMemo(() => ({ profile, profileStatus, saveProfile, updateProfile, resetVisuals, recordActivity, updateCustomLists, updateAnimeList, uploadProfileImage, storageError, clearProfileState }), [profile, profileStatus, saveProfile, updateProfile, resetVisuals, recordActivity, updateCustomLists, updateAnimeList, uploadProfileImage, storageError])
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>
 }
 

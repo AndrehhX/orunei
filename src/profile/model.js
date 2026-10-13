@@ -7,6 +7,9 @@ const IMAGE_CONSTRAINTS = {
   avatar: { maxWidth: 512, maxHeight: 512, crop: 'square' },
   banner: { maxWidth: 1600, maxHeight: 900, crop: 'cover' },
 }
+const ANIME_STATUSES = ['watching', 'planned', 'paused', 'completed']
+const ANIME_STATUS_LABELS = { watching: 'Viendo', planned: 'Planeo ver', paused: 'En pausa', completed: 'Terminado' }
+const ANIME_STATUS_DOTS = { watching: 'bg-green-400', planned: 'bg-blue-500', paused: 'bg-yellow-400', completed: 'bg-emerald-500' }
 
 export const DEFAULT_PROFILE = {
   version: 1,
@@ -30,6 +33,7 @@ export const DEFAULT_PROFILE = {
     lists: 'private',
   },
   customLists: [],
+  animeList: [],
   activity: [],
   updatedAt: '',
 }
@@ -104,6 +108,51 @@ function normalizeActivity(raw) {
   }).filter(Boolean).slice(-MAX_ACTIVITY)
 }
 
+export function normalizeAnimeEntry(raw = {}, index = 0) {
+  const identity = raw.id ?? raw.animeId ?? raw.anime_id ?? raw.q ?? raw.title
+  const id = text(identity) || (Number.isFinite(identity) ? String(identity) : '') || `anime-${index + 1}`
+  const title = text(raw.t ?? raw.title ?? raw.name) || 'Anime sin título'
+  const rawStatus = text(raw.status).toLowerCase() || (text(raw.s).startsWith('Viendo') ? 'watching' : text(raw.s).startsWith('En pausa') ? 'paused' : text(raw.s).startsWith('Terminado') ? 'completed' : 'planned')
+  const status = ANIME_STATUSES.includes(rawStatus) ? rawStatus : 'planned'
+  return {
+    id,
+    animeId: id,
+    q: text(raw.q) || title,
+    t: title,
+    s: ANIME_STATUS_LABELS[status],
+    status,
+    favorite: Boolean(raw.favorite) || text(raw.s).startsWith('Favorito'),
+    dot: ANIME_STATUS_DOTS[status],
+    img: text(raw.img ?? raw.posterUrl ?? raw.poster_url),
+    banner: text(raw.banner ?? raw.bannerUrl ?? raw.banner_url),
+    grad: text(raw.grad) || 'linear-gradient(135deg,#c9b7e6,#6f8a6b)',
+    year: Number.isFinite(raw.year) ? raw.year : null,
+  }
+}
+
+export function normalizeAnimeList(raw) {
+  if (!Array.isArray(raw)) return []
+  const unique = new Map()
+  raw.forEach((entry, index) => { const normalized = normalizeAnimeEntry(entry, index); unique.set(normalized.id, normalized) })
+  return [...unique.values()]
+}
+
+export function toRemoteAnimeEntry(profileId, entry) {
+  const normalized = normalizeAnimeEntry(entry)
+  return {
+    profile_id: profileId,
+    anime_id: normalized.id,
+    title: normalized.t,
+    search_title: normalized.q,
+    status: normalized.status,
+    favorite: normalized.favorite,
+    poster_url: normalized.img,
+    banner_url: normalized.banner,
+    year: normalized.year,
+    updated_at: new Date().toISOString(),
+  }
+}
+
 export function normalizeProfile(raw, user = {}) {
   const base = createProfile(user)
   const source = raw && typeof raw === 'object' ? raw : {}
@@ -128,6 +177,7 @@ export function normalizeProfile(raw, user = {}) {
     landingSection: PROFILE_SECTIONS.includes(source.landingSection) ? source.landingSection : base.landingSection,
     privacy: normalizePrivacy(source.privacy),
     customLists: normalizeLists(source.customLists),
+    animeList: normalizeAnimeList(source.animeList),
     activity: normalizeActivity(source.activity),
     updatedAt: text(source.updatedAt) || base.updatedAt,
   }
@@ -189,7 +239,7 @@ export function getProfileStats(library = [], tasteCount = 0, profile = DEFAULT_
   const rows = Array.isArray(library) ? library : []
   return {
     works: rows.length,
-    favorites: rows.filter((item) => text(item?.s).startsWith('Favorito')).length,
+    favorites: rows.filter((item) => item?.favorite || text(item?.s).startsWith('Favorito')).length,
     lists: Array.isArray(profile?.customLists) ? profile.customLists.length : 0,
     tastes: Number.isFinite(tasteCount) ? tasteCount : 0,
   }

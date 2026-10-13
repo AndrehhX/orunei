@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Activity, ArrowLeft, BookOpen, Check, Eye, Heart, List, LockKeyhole, Sparkles } from 'lucide-react'
 import Poster from './Poster'
 import ProfileComments from './ProfileComments'
-import { library as defaultLibrary } from '../data'
 import { selectAnimeSections } from '../profile/profileData'
 import { selectVisibleProfile } from '../profile/publicProfile'
 
@@ -47,7 +46,7 @@ function Restricted({ section }) {
   return <div className="card grid min-h-44 place-items-center border-dashed p-6 text-center"><div><LockKeyhole className="mx-auto text-slate-400" size={22} /><p className="mt-2 font-semibold">Este apartado es privado</p><p className="mt-1 text-sm text-slate-500">La persona propietaria no comparte {section} con este tipo de visitante.</p></div></div>
 }
 
-export default function PublicProfilePage({ profile, viewer = {}, library = defaultLibrary, tasteCount = 0, onBack, onFriendRequest }) {
+export default function PublicProfilePage({ profile, viewer = {}, library = profile.animeList || [], tasteCount = 0, onBack, onFriendRequest }) {
   const visibility = selectVisibleProfile(profile, viewer)
   const sections = useMemo(() => selectAnimeSections(library), [library])
   const visibleSectionKey = visibility.visibleSections.join('|')

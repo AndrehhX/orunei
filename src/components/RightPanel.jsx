@@ -1,6 +1,6 @@
 import { ArrowRight, Flame, Users, UserRound } from 'lucide-react'
 import Poster from './Poster'
-import { library, trends } from '../data'
+import { trends } from '../data'
 import { useNews, NewsLink } from '../news'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
@@ -22,7 +22,7 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
         <div className="-mt-7 flex items-end gap-2 px-2"><div className="h-[68px] w-[68px] overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 dark:border-[#171723]">{profile.avatar && <img src={profile.avatar} alt="" className="h-full w-full object-cover" />}</div>
           <div className="pb-1 leading-tight"><p className="font-bold text-sm">{profile.displayName}</p><p className="text-xs text-slate-500">@{profile.username}</p></div></div>
         <div className="mt-3 grid grid-cols-3 divide-x divide-slate-200 dark:divide-white/10 text-center">
-          {[[String(library.length), 'Obras'], [String(profile.customLists.length), 'Listas'], [String(rec.count), 'Gustos']].map(([a, b]) => <div key={b}><p className="font-bold">{a}</p><p className="text-[11px] text-slate-500">{b}</p></div>)}
+          {[[String(profile.animeList?.length || 0), 'Obras'], [String(profile.customLists.length), 'Listas'], [String(rec.count), 'Gustos']].map(([a, b]) => <div key={b}><p className="font-bold">{a}</p><p className="text-[11px] text-slate-500">{b}</p></div>)}
         </div>
       </div>
       <div className="card p-3.5">
