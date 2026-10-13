@@ -1,96 +1,136 @@
 # Orunei
 
-Anime / movies / series discovery dashboard ("Para ti" view) built with **React + Vite + Tailwind CSS**.
+Orunei es una plataforma social para descubrir anime, organizar un AnimeList y compartir una identidad visual propia. La experiencia principal combina recomendaciones personalizadas, catálogo de AniList, noticias reales y perfiles con privacidad configurable.
 
-## Run it
+## Qué incluye
+
+- Recomendaciones personalizadas basadas en gustos, biblioteca, favoritos y noticias marcadas.
+- Catálogo de anime conectado a AniList con búsqueda, filtros por géneros, tags, formato, año, estado y orden.
+- Ranking de tendencias live usando los contadores `trending` de AniList.
+- Hero y recomendaciones que se renuevan con contenido actual del catálogo.
+- AnimeList privado con estados, favoritos, listas personalizadas y actividad.
+- Perfil privado editable con avatar, banner, biografía, identidad visual y privacidad por sección.
+- Vista pública de perfil con permisos para contenido público y amigos.
+- Sistema social con búsqueda de perfiles, solicitudes de amistad, bloqueo y comentarios moderables.
+- Noticias de Anime News Network, Crunchyroll News y MyAnimeList News mediante RSS.
+- Modo claro/oscuro, diseño responsive y soporte para `prefers-reduced-motion`.
+- Descripciones en español por defecto, con opción de ver el texto original/inglés cuando AniList lo permite.
+
+## Stack
+
+- React 18
+- Vite
+- Tailwind CSS
+- Supabase Auth, Database y Storage
+- AniList GraphQL API
+- RSS2JSON para noticias públicas
+- Node.js y pruebas nativas con `node:test`
+
+## Ejecutar localmente
+
+Requisitos: Node.js 18 o superior y npm.
+
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # production build in /dist
-  npm test         # full domain, interaction, and performance test suite
+Copy-Item .env.example .env
+npm run dev
 ```
 
-## Structure
+La aplicación se abre normalmente en `http://localhost:5173`.
+
+### Variables de entorno
+
+Completa `.env` con las variables necesarias:
+
+```env
+VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
+VITE_SUPABASE_ANON_KEY=TU_CLAVE_ANON_PUBLICA
+VITE_OMDB_KEY=
 ```
+
+`VITE_OMDB_KEY` es opcional. IMDb se muestra como no disponible mientras esa integración no esté configurada. Nunca pongas una clave `service_role` en el frontend.
+
+Para preparar Auth, perfiles, AnimeList, listas, privacidad y funciones sociales, sigue [`docs/SUPABASE_SETUP.md`](docs/SUPABASE_SETUP.md).
+
+## Scripts
+
+```bash
+npm run dev       # servidor de desarrollo
+npm test          # suite completa de pruebas
+npm run build     # compilación de producción en dist/
+npm run preview   # previsualización de la compilación
+```
+
+## Cómo llegan los datos
+
+### AniList
+
+El catálogo y el motor de recomendaciones consultan AniList GraphQL desde el navegador. El pool reúne anime popular, en tendencia, mejor valorado y recientemente actualizado. Se guarda temporalmente en `sessionStorage` y se renueva cada 10 minutos.
+
+El panel **Tendencias hoy** no usa nombres ni números inventados: ordena el campo `trending` recibido de AniList y muestra la portada, el año y el contador de cada anime.
+
+### Recomendaciones
+
+El motor de `src/rec/` funciona en el navegador:
+
+- extrae géneros, tags, estudio, formato y década;
+- construye un perfil de gustos con señales de biblioteca, favoritos, clics y noticias;
+- combina similitud, calidad, tendencia, popularidad y frescura;
+- aplica diversidad para no mostrar siempre el mismo tipo de anime;
+- conserva la privacidad del perfil porque no necesita enviar el historial de gustos a un servidor.
+
+### Noticias
+
+`src/news.jsx` consulta fuentes RSS públicas a través de RSS2JSON, combina los resultados y los guarda durante 10 minutos. Si una fuente falla, la interfaz lo comunica y no inventa artículos.
+
+## Estructura principal
+
+```text
 src/
-  App.jsx               page layout, search, tabs, theme state
-  data.js               curated homepage seeds and visual fallbacks
-  components/
-    Sidebar.jsx         navigation + light/dark toggle
-    Hero.jsx            recommendation + trending banners
-    Rows.jsx            library, "because you like", news
-    RightPanel.jsx      profile, friends, trends, featured news
-    ProfilePage.jsx     private profile, AnimeList, favorites, lists, activity
-    ProfileEditor.jsx   private profile editor and profile image uploads
-    Poster.jsx          image with gradient fallback
-  profile/
-    model.js            normalized profile contract and image constraints
-    ProfileProvider.jsx authenticated profile state and persistence
-    profileData.js      AnimeList and profile selectors
-    profileLists.js     custom-list CRUD helpers
+├── App.jsx                    # shell, navegación, búsqueda y páginas
+├── data.js                    # fallbacks visuales y contenido inicial
+├── api/anime.js               # detalles, ratings y fuentes externas
+├── components/
+│   ├── Hero.jsx               # recomendación principal live
+│   ├── RightPanel.jsx         # perfil, gustos, tendencias y noticias
+│   ├── AnimePage.jsx          # catálogo y filtros
+│   ├── AnimeDetail.jsx        # ficha, episodios y comunidad
+│   ├── ProfilePage.jsx        # perfil privado y AnimeList
+│   ├── PublicProfileRoute.jsx # perfil público compartible
+│   └── Poster.jsx             # imagen, caché y fallback visual
+├── profile/                   # identidad, privacidad, listas y actividad
+├── rec/                       # pool AniList y motor de recomendaciones
+├── social/                    # amistades y comentarios
+└── ui/                        # navegación, textos y layout responsive
 ```
 
-## Images
-Covers and banners load automatically from the public AniList API using the `q` search term of each item in `src/data.js` (cached per session).
-To force a specific picture, set `img: "https://..."` on that item. If nothing loads, a gradient placeholder is shown.
+## Pruebas y calidad
 
-## Features
-Dark mode (saved in localStorage), lightweight hover/lift animations, responsive layout,
-reduced-motion support. The authenticated private profile and read-only public preview are available
-from **Perfil**.
+Antes de publicar un cambio importante:
 
-## Profile and accounts
-Orunei uses Supabase Auth for real sessions and the profile repository for identity, privacy,
-profile activity, and custom lists. The owner can edit every section; public visitors only receive
-sections allowed by `private`, `friends`, or `public` visibility. The read-only public preview is
-available from **Perfil / Vista publica**.
+```bash
+npm test
+npm run build
+```
 
-From **Perfil → Editar perfil** you can change the display name, username, bio, status, accent,
-featured anime, pinned sections, privacy preferences, avatar, and banner. Images are validated as
-image files under 5 MB, resized in the browser for local fallback, or uploaded to the `profile-media`
-Supabase Storage bucket when remote accounts are configured.
+La suite cubre contratos de interacción, perfiles, privacidad, AnimeList, catálogo, recomendaciones, textos del hero y el ranking live.
 
-The private profile exposes each account's remote AnimeList grouped by status, Favorites,
-private custom lists with create/edit/delete and add/remove anime actions, and remote activity
-history. Malformed stored data is normalized back to safe defaults and persistence failures are
-shown as recoverable UI errors.
+## Despliegue en Vercel
 
-The social area uses real Supabase data: search public profiles, send/accept/cancel friendship
-requests, open friend profiles, and read, publish, edit, or delete profile comments. Public
-profiles can be shared with a `#perfil/<username>` link; profile visibility and section privacy
-are enforced again by database RLS, not only by the interface.
+1. Importa el repositorio de GitHub en Vercel.
+2. Selecciona **Vite** como framework si Vercel no lo detecta automáticamente.
+3. Usa `npm run build` como comando de build y `dist` como directorio de salida.
+4. Agrega en Vercel las mismas variables de entorno de `.env` para los entornos que vayas a usar.
+5. Despliega y revisa el registro, inicio de sesión, AnimeList, catálogo, tendencias y noticias.
 
-## Login
-Sign up and sign in use Supabase Auth. Copy `.env.example` to `.env` and provide
-`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before running the app; when either value is
-missing, Orunei shows an explicit setup state instead of creating a fake local account. The
-mascots follow your cursor, look down while you type your email, shut their eyes when you type the
-password and peek when you press the eye icon. Log out with the icon next to your name in the
-sidebar.
+Orunei usa navegación interna del shell y hashes para perfiles públicos, por lo que no necesita una configuración adicional de rutas para el despliegue base.
 
-The complete Supabase migration and two-account verification checklist is in
-`docs/SUPABASE_SETUP.md`.
+## Dominio de Hostinger
 
-## Animations
-Scroll-reveal (`Reveal.jsx`), spring easings, carousel crossfade, sliding tab/theme indicators. All disabled with `prefers-reduced-motion`.
+El dominio se agrega desde **Vercel → Project Settings → Domains**. Después, en el DNS de Hostinger se crean exactamente los registros que Vercel indique para ese dominio. Para el dominio raíz suele solicitarse un registro `A` y para `www` un `CNAME`; los valores pueden variar, así que se debe priorizar la instrucción que muestre Vercel en la pantalla de configuración.
 
-## Live news
-`src/news.jsx` reads public RSS feeds (Anime News Network, Crunchyroll News, MyAnimeList News) through the free rss2json API (no key), merges and sorts them, and caches for 10 minutes. The dashboard row, the right panel and the **Noticias** tab all use it. If the feeds can't be reached, the UI reports the unavailable sources and offers a retry instead of inventing articles. Add or remove sources in the `FEEDS` array. Note: rss2json's free tier is rate-limited.
+Cuando Vercel valide los registros, activa HTTPS automáticamente. La propagación DNS puede tardar algunos minutos y, en ciertos casos, hasta 24 horas.
 
-## Recommendation engine (`src/rec/`)
-Runs 100% in the browser, no accounts or servers needed.
-- **Candidates:** ~110 anime from AniList (popular, trending, top rated), cached 30 min.
-- **Features:** genres, weighted tags, studio, format and decade, weighted by TF-IDF so rare traits matter more than "Action".
-- **Taste profile:** every signal moves it (like +1, add to library +1.6, news like +0.6, not interested −0.6) and old taste decays with a 45-day half-life, so it follows you as your interests change.
-- **Ranking:** cosine similarity to your taste, blended with quality, trend, popularity and freshness. The weight of your taste grows with confidence (cold start = quality-based).
-- **Diversity:** MMR re-ranking avoids ten near-identical recommendations; one slot is reserved to explore outside your known taste.
-- **Explainability:** each card says why it's recommended ("Porque te gusta X"). A toast shows what the system just learned and the "Tus gustos" panel shows the profile.
-- Liked news posts that mention an anime nudge your taste towards it.
+## Estado del proyecto
 
-## Anime catalogue
-Sidebar → **Anime**. Curated filters (12 genres plus expandable AniList tags such as Isekai, Seinen, Shounen and Mecha, format, year, status and sort), the header search box searches AniList, "load more" pagination, and a full detail view:
-- **Hero** with banner, cover, genres, next-episode countdown, **Watch on Crunchyroll**, trailer and Like (which trains your taste profile).
-- **Ratings** side by side: AniList, MyAnimeList (Jikan), Kitsu and IMDb. IMDb is intentionally shown as **No disponible** until its integration is finalized; no token/setup message is shown in the product UI.
-- **Overview:** synopsis in Spanish by default with an English/original toggle, weighted tags (spoiler tags hidden by default), info table and "if you liked it" recommendations.
-- **Episodes:** real Crunchyroll episode links when AniList has them, otherwise numbered buttons that open Crunchyroll.
-- **Community:** reviews and discussions merged from AniList reviews, AniList forum, MyAnimeList reviews and Reddit, sorted by likes, with source filters, spoiler blur and links to the originals. Sources load independently, so one failing doesn't block the rest.
+Orunei está en desarrollo activo. Anime y Noticias son las secciones operativas; Películas, Series y Juegos muestran una notificación de desarrollo hasta que sus fuentes y modelos estén listas.
