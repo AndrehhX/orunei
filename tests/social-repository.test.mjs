@@ -14,6 +14,7 @@ function makeClient({ profiles = [], friendships = [], comments = [], error = nu
         select() { return builder },
         ilike() { return builder },
         eq() { return builder },
+        is() { return builder },
         or() { return builder },
         order() { return builder },
         limit() { return builder },

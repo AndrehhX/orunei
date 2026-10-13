@@ -52,7 +52,7 @@ export function createSocialRepository(client = supabase, userId = '') {
 
     async listComments(profileId) {
       if (!client || !profileId) return unavailable()
-      const { data, error } = await client.from('profile_comments').select('*').eq('profile_id', profileId).eq('deleted_at', null).order('created_at', { ascending: true })
+      const { data, error } = await client.from('profile_comments').select('*').eq('profile_id', profileId).is('deleted_at', null).order('created_at', { ascending: true })
       return { data: error ? [] : (data || []).map((row) => normalizeComment(row, userId, profileId)), error: resultError(error) }
     },
 
