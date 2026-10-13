@@ -14,6 +14,7 @@ export function buildCatalogRequest(f, page = 1) {
 
   if (f.search) { definitions.push('$search:String'); variables.search = f.search; filters.push('search:$search') }
   if (f.genres?.length) { definitions.push('$genres:[String]'); variables.genres = f.genres; filters.push('genre_in:$genres') }
+  if (f.tags?.length) { definitions.push('$tags:[String]'); variables.tags = f.tags; filters.push('tag_in:$tags') }
   if (f.format) { definitions.push('$format:[MediaFormat]'); variables.format = FORMATS[f.format]; filters.push('format_in:$format') }
   if (f.status) { definitions.push('$status:MediaStatus'); variables.status = STATUS[f.status]; filters.push('status:$status') }
   if (f.year) { definitions.push('$year:Int'); variables.year = +f.year; filters.push('seasonYear:$year') }

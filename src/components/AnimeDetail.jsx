@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Star, Play, ExternalLink, Heart, ChevronDown, MessageSquare, ThumbsUp, Clock, BookOpen, Check } from 'lucide-react'
-import { getAnime, ratingJobs, commentJobs, title, crunchy, clean, T, ago } from '../api/anime'
+import { getAnime, ratingJobs, commentJobs, title, crunchy, clean, T, ago, translateDescription } from '../api/anime'
 import { AnimeCard } from './AnimePage'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
@@ -9,6 +9,11 @@ import { createLibraryEntry } from '../profile/model.js'
 const TABS = ['Resumen', 'Episodios', 'Comunidad']
 const SRC = { 'AniList': 'bg-sky-500', 'Foro AniList': 'bg-indigo-500', 'MyAnimeList': 'bg-blue-700', 'Reddit': 'bg-orange-500' }
 const RATE = { anilist: ['AniList', 'bg-sky-500'], mal: ['MyAnimeList', 'bg-blue-700'], kitsu: ['Kitsu', 'bg-orange-500'], imdb: ['IMDb', 'bg-yellow-500'] }
+const DESCRIPTION_LANGUAGE_KEY = 'orunei-description-language'
+
+const savedDescriptionLanguage = () => {
+  try { return localStorage.getItem(DESCRIPTION_LANGUAGE_KEY) === 'en' ? 'en' : 'es' } catch { return 'es' }
+}
 
 function Ratings({ m }) {
   const [r, setR] = useState({})
@@ -110,11 +115,49 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
   const [err, setErr] = useState(false)
   const [tab, setTab] = useState(0)
   const [spoil, setSpoil] = useState(false)
+  const [descriptionLanguage, setDescriptionLanguage] = useState(savedDescriptionLanguage)
+  const [localizedDescription, setLocalizedDescription] = useState('')
+  const [descriptionState, setDescriptionState] = useState('idle')
   const rec = useRec()
   const { profile, updateAnimeList, recordActivity } = useProfile()
   const close = () => onClose()
 
   useEffect(() => { setM(null); setErr(false); setTab(0); getAnime(id).then(setM).catch(() => setErr(true)) }, [id])
+  useEffect(() => {
+    if (!m) return undefined
+    const original = clean(m.description)
+    if (descriptionLanguage === 'en' || !original) {
+      setLocalizedDescription(original)
+      setDescriptionState('ready')
+      return undefined
+    }
+    const cacheKey = `orunei-description-es-${m.id}`
+    try {
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached) {
+        setLocalizedDescription(cached)
+        setDescriptionState('ready')
+        return undefined
+      }
+    } catch {}
+    const controller = new AbortController()
+    setLocalizedDescription('')
+    setDescriptionState('loading')
+    translateDescription(original, 'es', controller.signal).then((translated) => {
+      setLocalizedDescription(translated)
+      setDescriptionState('ready')
+      try { sessionStorage.setItem(cacheKey, translated) } catch {}
+    }).catch((error) => {
+      if (error.name !== 'AbortError') {
+        setLocalizedDescription(original)
+        setDescriptionState('fallback')
+      }
+    })
+    return () => controller.abort()
+  }, [m?.id, m?.description, descriptionLanguage])
+  useEffect(() => {
+    try { localStorage.setItem(DESCRIPTION_LANGUAGE_KEY, descriptionLanguage) } catch {}
+  }, [descriptionLanguage])
   useEffect(() => {
     const k = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', k)
@@ -176,7 +219,17 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
               {tab === 0 && (
                 <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
                   <div className="space-y-6">
-                    <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-700 dark:text-slate-300">{clean(m.description) || 'Sin sinopsis disponible.'}</p>
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Idioma de la sinopsis</span>
+                        <div className="flex rounded-full bg-white p-1 text-[11px] shadow-sm dark:bg-white/5" role="group" aria-label="Idioma de la sinopsis">
+                          <button type="button" aria-pressed={descriptionLanguage === 'es'} onClick={() => setDescriptionLanguage('es')} className={`rounded-full px-3 py-1 font-semibold transition ${descriptionLanguage === 'es' ? 'bg-brand text-white' : 'text-slate-500 hover:text-brand'}`}>Español</button>
+                          <button type="button" aria-pressed={descriptionLanguage === 'en'} onClick={() => setDescriptionLanguage('en')} className={`rounded-full px-3 py-1 font-semibold transition ${descriptionLanguage === 'en' ? 'bg-brand text-white' : 'text-slate-500 hover:text-brand'}`}>English</button>
+                        </div>
+                      </div>
+                      <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-700 dark:text-slate-300">{descriptionState === 'loading' ? 'Traduciendo sinopsis…' : localizedDescription || 'Sin sinopsis disponible.'}</p>
+                      {descriptionState === 'fallback' && <p className="text-[11px] text-slate-400">No se pudo traducir ahora; mostramos la descripción original.</p>}
+                    </div>
                     <div><div className="mb-2 flex items-center justify-between"><h3 className="font-bold">Etiquetas</h3><button onClick={() => setSpoil(!spoil)} className="text-[11px] font-semibold text-brand">{spoil ? 'Ocultar spoilers' : 'Mostrar spoilers'}</button></div>
                       <div className="flex flex-wrap gap-2">{tags.map((t, i) => <span key={t.name} className="animate-rise rounded-lg bg-white px-2.5 py-1 text-xs shadow-sm dark:bg-white/5" style={{ animationDelay: `${i * 30}ms` }}>{t.name} <b className="text-brand">{t.rank}%</b></span>)}</div></div>
                     {m.recommendations.nodes.length > 0 && <div><h3 className="mb-3 font-bold">Si te gustó, prueba</h3>

@@ -16,3 +16,10 @@ test('includes the AniList format filter only when it is selected', () => {
   assert.match(request.query, /format_in:\$format/)
 })
 
+test('includes AniList tag categories when extra filters are selected', () => {
+  const request = buildCatalogRequest({ genres: [], tags: ['Isekai', 'Mecha'], format: '', status: '', year: '', sort: 'Popular', search: '' }, 1)
+
+  assert.deepEqual(request.variables.tags, ['Isekai', 'Mecha'])
+  assert.match(request.query, /tag_in:\$tags/)
+})
+

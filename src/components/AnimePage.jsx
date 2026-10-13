@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Star, X, SlidersHorizontal, Play } from 'lucide-react'
+import { Star, X, SlidersHorizontal, Play, ChevronDown } from 'lucide-react'
 import AnimeDetail from './AnimeDetail'
-import { GENRES, FORMATS, STATUS, SORTS, T, title, searchAnime } from '../api/anime'
+import { GENRES, EXTRA_CATEGORIES, FORMATS, STATUS, SORTS, T, title, searchAnime } from '../api/anime'
 
 const years = Array.from({ length: 14 }, (_, i) => String(new Date().getFullYear() + 1 - i))
-const init = { genres: [], format: '', status: '', year: '', sort: 'Popular' }
+const init = { genres: [], tags: [], format: '', status: '', year: '', sort: 'Popular' }
 
 const Select = ({ label, value, onChange, options }) => (
   <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs shadow-sm transition focus-within:ring-2 focus-within:ring-brand/40 dark:bg-white/5">
@@ -36,6 +36,7 @@ export function AnimeCard({ m, onOpen }) {
 
 export default function AnimePage({ query, initialOpenId = null, onCloseDetail }) {
   const [f, setF] = useState(init)
+  const [showExtra, setShowExtra] = useState(false)
   const [items, setItems] = useState([])
   const [more, setMore] = useState(false)
   const [page, setPage] = useState(1)
@@ -44,7 +45,7 @@ export default function AnimePage({ query, initialOpenId = null, onCloseDetail }
   const req = useRef(0)
   const abort = useRef(null)
   const set = (k) => (v) => setF((x) => ({ ...x, [k]: v }))
-  const active = f.genres.length + (f.format ? 1 : 0) + (f.status ? 1 : 0) + (f.year ? 1 : 0) + (f.sort !== 'Popular' ? 1 : 0)
+  const active = f.genres.length + f.tags.length + (f.format ? 1 : 0) + (f.status ? 1 : 0) + (f.year ? 1 : 0) + (f.sort !== 'Popular' ? 1 : 0)
   useEffect(() => { if (initialOpenId) setOpen(initialOpenId) }, [initialOpenId])
 
   const run = (p, append) => {
@@ -73,6 +74,17 @@ export default function AnimePage({ query, initialOpenId = null, onCloseDetail }
             <button key={en} onClick={() => set('genres')(on ? f.genres.filter((g) => g !== en) : [...f.genres, en])}
               className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all duration-300 ease-spring active:scale-90 ${on ? 'scale-105 bg-brand text-white shadow-md shadow-brand/30' : 'bg-white text-slate-600 hover:text-brand dark:bg-white/5 dark:text-slate-300'}`}>{es}</button>) })}
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" aria-expanded={showExtra} onClick={() => setShowExtra((value) => !value)} className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 shadow-sm transition hover:text-brand dark:bg-white/5 dark:text-slate-300">
+            Más categorías <ChevronDown size={13} className={`transition-transform ${showExtra ? 'rotate-180' : ''}`} />
+          </button>
+          {f.tags.length > 0 && <span className="text-[11px] font-semibold text-brand">{f.tags.length} seleccionada{f.tags.length === 1 ? '' : 's'}</span>}
+        </div>
+        {showExtra && <div className="flex flex-wrap gap-2 rounded-2xl bg-white/60 p-3 dark:bg-white/[0.03]">
+          {EXTRA_CATEGORIES.map(([es, en]) => { const on = f.tags.includes(en); return (
+            <button key={en} type="button" onClick={() => set('tags')(on ? f.tags.filter((tag) => tag !== en) : [...f.tags, en])}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 active:scale-95 ${on ? 'bg-brand text-white shadow-md shadow-brand/30' : 'bg-white text-slate-600 hover:text-brand dark:bg-white/5 dark:text-slate-300'}`}>{es}</button>) })}
+        </div>}
         <div className="flex flex-wrap items-center gap-2">
           <SlidersHorizontal size={16} className="text-slate-400" />
           <Select label="Formato" value={f.format} onChange={set('format')} options={Object.keys(FORMATS).map((k) => [k, k || 'Todos'])} />

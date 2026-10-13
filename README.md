@@ -88,9 +88,9 @@ Runs 100% in the browser, no accounts or servers needed.
 - Liked news posts that mention an anime nudge your taste towards it.
 
 ## Anime catalogue
-Sidebar → **Anime**. Curated filters (12 genres, format, year, status, sort), the header search box searches AniList, "load more" pagination, and a full detail view:
+Sidebar → **Anime**. Curated filters (12 genres plus expandable AniList tags such as Isekai, Seinen, Shounen and Mecha, format, year, status and sort), the header search box searches AniList, "load more" pagination, and a full detail view:
 - **Hero** with banner, cover, genres, next-episode countdown, **Watch on Crunchyroll**, trailer and Like (which trains your taste profile).
 - **Ratings** side by side: AniList, MyAnimeList (Jikan), Kitsu and IMDb. IMDb is intentionally shown as **No disponible** until its integration is finalized; no token/setup message is shown in the product UI.
-- **Overview:** synopsis, weighted tags (spoiler tags hidden by default), info table and "if you liked it" recommendations.
+- **Overview:** synopsis in Spanish by default with an English/original toggle, weighted tags (spoiler tags hidden by default), info table and "if you liked it" recommendations.
 - **Episodes:** real Crunchyroll episode links when AniList has them, otherwise numbered buttons that open Crunchyroll.
 - **Community:** reviews and discussions merged from AniList reviews, AniList forum, MyAnimeList reviews and Reddit, sorted by likes, with source filters, spoiler blur and links to the originals. Sources load independently, so one failing doesn't block the rest.

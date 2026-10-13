@@ -13,11 +13,45 @@ const json = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error
 
 export const GENRES = [['Acción', 'Action'], ['Aventura', 'Adventure'], ['Comedia', 'Comedy'], ['Drama', 'Drama'], ['Fantasía', 'Fantasy'], ['Romance', 'Romance'],
   ['Sci-Fi', 'Sci-Fi'], ['Slice of Life', 'Slice of Life'], ['Sobrenatural', 'Supernatural'], ['Misterio', 'Mystery'], ['Terror', 'Horror'], ['Deportes', 'Sports']]
+export const EXTRA_CATEGORIES = [
+  ['Isekai', 'Isekai'], ['Reencarnación', 'Reincarnation'], ['Seinen', 'Seinen'], ['Shounen', 'Shounen'], ['Shoujo', 'Shoujo'], ['Josei', 'Josei'],
+  ['Mecha', 'Mecha'], ['Harem', 'Harem'], ['Ecchi', 'Ecchi'], ['Psicológico', 'Psychological'], ['Escuela', 'School'], ['Histórico', 'Historical'],
+  ['Militar', 'Military'], ['Artes marciales', 'Martial Arts'], ['Magia', 'Magic'], ['Superpoderes', 'Super Power'], ['Samurái', 'Samurai'], ['Viajes en el tiempo', 'Time Travel']
+]
 export const T = { TV: 'Serie', TV_SHORT: 'Corto', MOVIE: 'Película', OVA: 'OVA', ONA: 'ONA', SPECIAL: 'Especial', MUSIC: 'Música', RELEASING: 'En emisión', FINISHED: 'Finalizado', NOT_YET_RELEASED: 'Próximamente', CANCELLED: 'Cancelado', HIATUS: 'En pausa', WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño' }
 export const title = (m) => m.title.english || m.title.romaji
 export const crunchy = (m) => m.externalLinks?.find((l) => l.site === 'Crunchyroll')?.url || `https://www.crunchyroll.com/search?q=${encodeURIComponent(title(m))}`
 
 export const clean = (t = '') => t.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/~!|!~/g, '').replace(/img\d*\([^)]*\)/gi, '').replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_`#>]+/g, '').replace(/\n{3,}/g, '\n\n').trim()
+
+const translationChunks = (text, size = 450) => {
+  const chunks = []
+  let current = ''
+  for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+    if (current && `${current} ${sentence}`.length > size) {
+      chunks.push(current)
+      current = sentence
+    } else current = current ? `${current} ${sentence}` : sentence
+  }
+  if (current) chunks.push(current)
+  return chunks
+}
+
+export async function translateDescription(text, target = 'es', signal) {
+  const source = clean(text)
+  if (!source || target === 'en') return source
+  const chunks = translationChunks(source)
+  const translated = await Promise.all(chunks.map(async (chunk) => {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=en|${target}`
+    const r = await fetch(url, { signal })
+    if (!r.ok) throw new Error(`Translation error: ${r.status}`)
+    const data = await r.json()
+    const value = data.responseData?.translatedText
+    if (!value) throw new Error('Translation unavailable')
+    return clean(value)
+  }))
+  return translated.join(' ')
+}
 
 export async function searchAnime(f, page = 1, signal) {
   const request = buildCatalogRequest(f, page)

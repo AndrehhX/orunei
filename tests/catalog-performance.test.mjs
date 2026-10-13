@@ -17,3 +17,14 @@ test('keeps catalog cards cheap to render and decode', () => {
   assert.match(page, /loading="lazy" decoding="async"/)
   assert.match(page, /contentVisibility: 'auto'/)
 })
+
+test('lets users choose a description language with a Spanish default', () => {
+  const api = fs.readFileSync(new URL('../src/api/anime.js', import.meta.url), 'utf8')
+  const detail = fs.readFileSync(new URL('../src/components/AnimeDetail.jsx', import.meta.url), 'utf8')
+
+  assert.match(api, /export async function translateDescription/)
+  assert.match(detail, /descriptionLanguage.*es/)
+  assert.match(detail, /Espa/)
+  assert.match(detail, /English/)
+  assert.match(detail, /translateDescription/)
+})
