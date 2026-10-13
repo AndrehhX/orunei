@@ -78,6 +78,7 @@ test('renders the right-panel trends from the live recommendation pool', () => {
 test('renders distinct recommendation sections from live selectors', () => {
   const rows = fs.readFileSync(new URL('../src/components/Rows.jsx', import.meta.url), 'utf8')
   const hero = fs.readFileSync(new URL('../src/components/Hero.jsx', import.meta.url), 'utf8')
+  const provider = fs.readFileSync(new URL('../src/rec/rec.jsx', import.meta.url), 'utf8')
 
   assert.match(rows, /affinityRecs/)
   assert.match(rows, /trendingRecs/)
@@ -87,6 +88,11 @@ test('renders distinct recommendation sections from live selectors', () => {
   assert.match(rows, /i\.reason/)
   assert.match(rows, /coldStart/)
   assert.match(hero, /rec\.personalized/)
+  assert.match(provider, /affinityRecs: \[\]/)
+  assert.match(provider, /trendingRecs: \[\]/)
+  assert.match(provider, /exploreRecs: \[\]/)
+  assert.match(provider, /personalized: false/)
+  assert.match(provider, /coldStart: true/)
 })
 
 test('keeps only Anime and Noticias in the home filters', () => {

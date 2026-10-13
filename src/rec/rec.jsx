@@ -4,7 +4,7 @@ import { buildRecommendationState, migrateTasteState } from './providerModel.js'
 import { loadRecommendationPool } from './pool.js'
 
 const KEY = 'orunei-taste-v3', LEGACY_KEY = 'orunei-taste-v2'
-const Ctx = createContext({ ready: false, recs: [], latest: [], trends: [], topGenres: [], count: 0, anchor: '', isNewsLiked: () => false, like() {}, dismiss() {}, likeMedia() {}, isLiked: () => false, likeNews() {}, addByQuery() {}, syncLibrary() {}, affinity: () => null })
+const Ctx = createContext({ ready: false, recs: [], affinityRecs: [], trendingRecs: [], exploreRecs: [], latest: [], trends: [], topGenres: [], count: 0, anchor: '', personalized: false, coldStart: true, isNewsLiked: () => false, like() {}, dismiss() {}, likeMedia() {}, isLiked: () => false, likeNews() {}, addByQuery() {}, syncLibrary() {}, affinity: () => null })
 export const useRec = () => useContext(Ctx)
 
 const empty = { version: 3, p: { w: {}, t: 0, n: 0 }, liked: [], hidden: [], news: [], library: [], librarySignature: '' }
