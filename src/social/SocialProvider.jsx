@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { supabase } from '../auth/supabaseClient.js'
 import { createSocialRepository } from './socialRepository.js'
@@ -14,6 +14,7 @@ export function SocialProvider({ children }) {
   const [commentsProfileId, setCommentsProfileId] = useState('')
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
+  const commentsRequest = useRef(0)
 
   const refreshFriendships = useCallback(async () => {
     if (!repository || !user?.id) {
@@ -28,7 +29,14 @@ export function SocialProvider({ children }) {
     return result
   }, [repository, user?.id])
 
-  useEffect(() => { refreshFriendships() }, [refreshFriendships])
+  useEffect(() => {
+    setSearchResults([])
+    setComments([])
+    setCommentsProfileId('')
+    setError('')
+    commentsRequest.current += 1
+    refreshFriendships()
+  }, [refreshFriendships])
 
   const search = useCallback(async (query) => {
     if (!repository || !query.trim()) { setSearchResults([]); return { data: [], error: '' } }
@@ -39,10 +47,13 @@ export function SocialProvider({ children }) {
   }, [repository])
 
   const loadComments = useCallback(async (profileId) => {
+    const requestId = ++commentsRequest.current
     if (!repository || !profileId) { setComments([]); setCommentsProfileId(''); return { data: [], error: '' } }
+    setComments([])
     setCommentsProfileId(profileId)
     setStatus('loading')
     const result = await repository.listComments(profileId)
+    if (requestId !== commentsRequest.current) return result
     setComments(result.data || [])
     setError(result.error || '')
     setStatus('ready')
