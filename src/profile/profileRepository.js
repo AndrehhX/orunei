@@ -42,6 +42,10 @@ function profilePayload(userId, patch) {
   }
 }
 
+function privacyPayload(profileId, privacy = {}) {
+  return Object.entries(privacy).map(([section, visibility]) => ({ profile_id: profileId, section, visibility }))
+}
+
 function resultError(error) {
   return error?.message || ''
 }
@@ -68,7 +72,13 @@ export function createProfileRepository(client = supabase) {
       if (!client || !userId) return unavailable()
       const payload = profilePayload(userId, patch)
       const { data, error } = await client.from('profiles').upsert(payload).select('*').single()
-      return { data: error ? null : normalizeRemoteProfile(data, { id: userId }), error: resultError(error) }
+      if (error) return { data: null, error: resultError(error) }
+      const rows = privacyPayload(userId, patch.privacy)
+      if (rows.length) {
+        const privacyResult = await client.from('profile_privacy').upsert(rows, { onConflict: 'profile_id,section' })
+        if (privacyResult.error) return { data: null, error: resultError(privacyResult.error) }
+      }
+      return { data: normalizeRemoteProfile({ ...data, privacy: rows }, { id: userId }), error: '' }
     },
 
     async uploadProfileImage(userId, kind, file) {

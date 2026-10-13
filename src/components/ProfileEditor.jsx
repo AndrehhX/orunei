@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Check, Image, LockKeyhole, Palette, Shield, Upload, X } from 'lucide-react'
 import { library } from '../data'
 import { useProfile } from '../profile/ProfileProvider'
-import { makeActivity, readImageAsDataUrl } from '../profile/model'
+import { makeActivity } from '../profile/model'
 
 const privacyLabels = { animeList: 'AnimeList', favorites: 'Favoritos', taste: 'Perfil de gustos', activity: 'Actividad', reviews: 'Reseñas (futuro)', lists: 'Listas' }
 const pinLabels = { overview: 'Resumen', animelist: 'AnimeList', favorites: 'Favoritos', lists: 'Listas', activity: 'Actividad' }
@@ -18,7 +18,7 @@ function UploadButton({ kind, onChange, current, fileName, onReset }) {
 }
 
 export default function ProfileEditor({ onClose }) {
-  const { profile, saveProfile, storageError } = useProfile()
+  const { profile, saveProfile, uploadProfileImage, storageError } = useProfile()
   const [draft, setDraft] = useState(() => clone(profile))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -29,8 +29,9 @@ export default function ProfileEditor({ onClose }) {
     if (!file) return
     setError('')
     try {
-      const dataUrl = await readImageAsDataUrl(file, kind)
-      setDraft((current) => ({ ...current, [kind]: dataUrl }))
+      const upload = await uploadProfileImage(kind, file)
+      if (!upload.ok) throw new Error(upload.error)
+      setDraft((current) => ({ ...current, [kind]: upload.data }))
       setFileNames((current) => ({ ...current, [kind]: file.name }))
     } catch (uploadError) {
       setError(uploadError.message)
@@ -39,9 +40,9 @@ export default function ProfileEditor({ onClose }) {
     }
   }
   const togglePinned = (section) => setDraft((current) => ({ ...current, pinnedSections: current.pinnedSections.includes(section) ? current.pinnedSections.filter((item) => item !== section) : [...current.pinnedSections, section] }))
-  const save = () => {
+  const save = async () => {
     setSaving(true)
-    const result = saveProfile((current) => ({ ...current, ...draft, activity: [...current.activity, makeActivity('profile', 'Actualizó su perfil')] }))
+    const result = await saveProfile((current) => ({ ...current, ...draft, activity: [...current.activity, makeActivity('profile', 'Actualizó su perfil')] }))
     if (!result.ok) {
       setSaving(false)
       setError(result.error)

@@ -20,11 +20,11 @@ src/
     Rows.jsx            library, "because you like", news
     RightPanel.jsx      profile, similar users, trends, featured news
     ProfilePage.jsx     private profile, AnimeList, favorites, lists, activity
-    ProfileEditor.jsx   private profile editor and local image uploads
+    ProfileEditor.jsx   private profile editor and profile image uploads
     Poster.jsx          image with gradient fallback
   profile/
     model.js            normalized profile contract and image constraints
-    ProfileProvider.jsx local profile state and persistence
+    ProfileProvider.jsx authenticated profile state and persistence
     profileData.js      AnimeList and profile selectors
     profileLists.js     custom-list CRUD helpers
 ```
@@ -35,17 +35,19 @@ To force a specific picture, set `img: "https://..."` on that item. If nothing l
 
 ## Features
 Dark mode (saved in localStorage), hover/lift animations, staggered entrance, responsive layout,
-reduced-motion support. The first private profile version is available from **Perfil**.
+reduced-motion support. The authenticated private profile and read-only public preview are available
+from **Perfil**.
 
-## Private profile V1
-The profile is intentionally owner-only in this version. It is not a public social profile and
-does not create followers, public counters, or cloud uploads. Profile data is stored locally under
-`orunei-profile-v1`, separately from login data and the recommendation taste profile.
+## Profile and accounts
+Orunei uses Supabase Auth for real sessions and the profile repository for identity, privacy,
+profile activity, and custom lists. The owner can edit every section; public visitors only receive
+sections allowed by `private`, `friends`, or `public` visibility. The read-only public preview is
+available from **Perfil / Vista publica**.
 
 From **Perfil → Editar perfil** you can change the display name, username, bio, status, accent,
-featured anime, pinned sections, future privacy preferences, avatar, and banner. Images are
-validated as image files under 5 MB, resized in the browser (avatar up to 512px square and banner
-up to 1600px wide), then saved as local data URLs.
+featured anime, pinned sections, privacy preferences, avatar, and banner. Images are validated as
+image files under 5 MB, resized in the browser for local fallback, or uploaded to the `profile-media`
+Supabase Storage bucket when remote accounts are configured.
 
 The private profile also exposes the existing library as AnimeList grouped by status, Favorites,
 private custom lists with create/edit/delete and add/remove anime actions, and a local activity
@@ -53,7 +55,12 @@ history. Malformed stored data is normalized back to safe defaults and storage q
 shown as recoverable UI errors.
 
 ## Login
-Any valid email + password (4+ chars) signs you in (demo auth, stored in localStorage). The mascots follow your cursor, look down while you type your email, shut their eyes when you type the password and peek when you press the eye icon. Log out with the icon next to your name in the sidebar.
+Sign up and sign in use Supabase Auth. Copy `.env.example` to `.env` and provide
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` before running the app; when either value is
+missing, Orunei shows an explicit setup state instead of creating a fake local account. The
+mascots follow your cursor, look down while you type your email, shut their eyes when you type the
+password and peek when you press the eye icon. Log out with the icon next to your name in the
+sidebar.
 
 ## Animations
 Scroll-reveal (`Reveal.jsx`), spring easings, carousel crossfade, sliding tab/theme indicators. All disabled with `prefers-reduced-motion`.

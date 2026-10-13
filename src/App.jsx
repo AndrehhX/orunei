@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Search, Bell } from 'lucide-react'
 import Login from './components/Login'
 import AnimePage from './components/AnimePage'
@@ -12,14 +12,16 @@ import ProfilePage from './components/ProfilePage'
 import ProfileEditor from './components/ProfileEditor'
 import DevelopmentNotice from './components/DevelopmentNotice'
 import { getDevelopmentNotice } from './developmentNotice'
+import { useAuth } from './auth/AuthProvider'
+import { createProfileRepository } from './profile/profileRepository'
+import { supabase } from './auth/supabaseClient'
 
 const tabs = ['Todo', 'Anime', 'Películas', 'Series', 'Noticias']
 
 export default function App() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
-  const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem('orunei-user')) } catch { return null } })
-  const login = (u) => { localStorage.setItem('orunei-user', JSON.stringify(u)); setUser(u) }
-  const logout = () => { localStorage.removeItem('orunei-user'); setUser(null) }
+  const { user, status: authStatus, error: authError, signIn, signUp, signOut } = useAuth()
+  const repository = useMemo(() => user?.id ? createProfileRepository(supabase) : null, [user?.id])
   const [page, setPage] = useState('home')
   const [tab, setTab] = useState('Todo')
   const [query, setQuery] = useState('')
@@ -46,11 +48,12 @@ export default function App() {
     setTab(nextTab)
   }
 
-  if (!user) return <Login onLogin={login} dark={dark} setDark={setDark} />
+  if (authStatus === 'loading') return <div className="grid min-h-screen place-items-center text-sm text-slate-500">Cargando tu sesión…</div>
+  if (!user) return <Login onSignIn={signIn} onSignUp={signUp} authStatus={authStatus} authError={authError} dark={dark} setDark={setDark} />
   return (
-  <ProfileProvider user={user}>
+  <ProfileProvider user={user} repository={repository}>
     <div className="mx-auto flex animate-fade min-h-screen max-w-[1536px]">
-      <Sidebar dark={dark} setDark={setDark} user={user} onLogout={logout} page={page} setPage={setPage} onDevelopmentFeature={showDevelopmentNotice} />
+      <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={setPage} onDevelopmentFeature={showDevelopmentNotice} />
       <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
         <header className="flex items-center gap-4 animate-fade">
           <label className="flex h-11 flex-1 max-w-[540px] items-center gap-3 rounded-xl bg-slate-200/60 dark:bg-white/5 px-4 text-slate-500 transition focus-within:bg-white dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-brand/40">
