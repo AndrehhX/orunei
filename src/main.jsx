@@ -6,5 +6,6 @@ import { NewsProvider } from './news.jsx'
 import { RecProvider } from './rec/rec.jsx'
 import { ImagesProvider } from './images.jsx'
 import { AuthProvider } from './auth/AuthProvider.jsx'
+import { SocialProvider } from './social/SocialProvider.jsx'
 import './index.css'
-ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><AuthProvider><ImagesProvider><NewsProvider><RecProvider><App /></RecProvider></NewsProvider></ImagesProvider></AuthProvider></ErrorBoundary>)
+ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><AuthProvider><SocialProvider><ImagesProvider><NewsProvider><RecProvider><App /></RecProvider></NewsProvider></ImagesProvider></SocialProvider></AuthProvider></ErrorBoundary>)
