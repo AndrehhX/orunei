@@ -6,7 +6,7 @@ test('routes the private profile from the main navigation without changing catal
   assert.equal(PROFILE_PAGE, 'profile')
   assert.equal(getMainDestination('Perfil'), 'profile')
   assert.equal(getMainDestination('Para ti'), 'home')
-  assert.equal(getMainDestination('Biblioteca'), null)
+  assert.equal(getMainDestination('Biblioteca'), 'library')
 })
 
 test('creates and reads shareable public profile hashes', () => {

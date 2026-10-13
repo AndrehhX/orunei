@@ -134,6 +134,25 @@ export function normalizeAnimeEntry(raw = {}, index = 0) {
   }
 }
 
+export function createLibraryEntry(media = {}) {
+  const mediaTitle = typeof media.title === 'object'
+    ? media.title?.english || media.title?.romaji || media.title?.native
+    : media.title
+  const title = text(mediaTitle ?? media.t ?? media.name ?? media.q) || 'Anime sin título'
+  const id = media.id ?? media.animeId ?? media.q ?? title
+  return normalizeAnimeEntry({
+    id,
+    q: media.q || title,
+    t: title,
+    img: media.img || media.coverImage?.extraLarge,
+    banner: media.banner || media.bannerImage,
+    year: media.year ?? media.seasonYear,
+    genres: media.genres,
+    grad: media.grad,
+    status: 'planned',
+  })
+}
+
 export function normalizeAnimeList(raw) {
   if (!Array.isArray(raw)) return []
   const unique = new Map()

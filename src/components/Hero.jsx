@@ -4,16 +4,24 @@ import Poster from './Poster'
 import { slides, trending } from '../data'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
+import { createLibraryEntry } from '../profile/model.js'
 
 export default function Hero() {
   const rec = useRec()
-  const { recordActivity } = useProfile()
+  const { profile, updateAnimeList, recordActivity } = useProfile()
   const [i, setI] = useState(0)
   const [pause, setPause] = useState(false)
-  const [added, setAdded] = useState({})
   const [saved, setSaved] = useState({})
   const [inTrend, setInTrend] = useState(false)
   const go = (d) => setI((v) => (v + d + slides.length) % slides.length)
+  const inLibrary = (slide) => profile.animeList.some((item) => item.q === slide.q || item.t === slide.title)
+  const toggleLibrary = async (slide) => {
+    const exists = inLibrary(slide)
+    const result = await updateAnimeList((items) => exists ? items.filter((item) => item.q !== slide.q && item.t !== slide.title) : [...items, createLibraryEntry(slide)])
+    if (!result?.ok) return
+    rec.addByQuery(slide.q, !exists)
+    recordActivity('library', `${exists ? 'Quitó' : 'Añadió'} “${slide.title}” ${exists ? 'de' : 'a'} su biblioteca`)
+  }
   useEffect(() => {
     if (pause) return
     const id = setInterval(() => go(1), 7000)
@@ -35,9 +43,9 @@ export default function Hero() {
                 <p className="text-xs text-white/80">{s.meta}</p>
                 <p className="text-sm leading-relaxed text-white/85">{s.desc}</p>
                 <div className="mt-2 flex gap-2">
-                  <button onClick={() => { const next = !added[n]; setAdded((a) => ({ ...a, [n]: next })); rec.addByQuery(s.q, next); recordActivity('library', `${next ? 'Añadió' : 'Quitó'} “${s.title}” ${next ? 'a' : 'de'} su biblioteca`) }}
-                    className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${added[n] ? 'bg-emerald-500' : 'bg-brand hover:brightness-110'}`}>
-                    {added[n] ? <Check size={16} /> : <Plus size={16} />}{added[n] ? 'En tu biblioteca' : 'Agregar a mi biblioteca'}</button>
+                  <button onClick={() => toggleLibrary(s)}
+                    className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${inLibrary(s) ? 'bg-emerald-500' : 'bg-brand hover:brightness-110'}`}>
+                    {inLibrary(s) ? <Check size={16} /> : <Plus size={16} />}{inLibrary(s) ? 'En tu biblioteca' : 'Agregar a mi biblioteca'}</button>
                   <button className="flex items-center gap-1.5 rounded-lg border border-white/40 px-4 py-2 text-sm font-medium backdrop-blur transition hover:bg-white/15 active:scale-95"><Info size={15} />Ver detalles</button>
                   <button onClick={() => setSaved((a) => ({ ...a, [n]: !a[n] }))} aria-label="Guardar" className="grid w-10 place-items-center rounded-lg border border-white/40 transition hover:bg-white/15 active:scale-90"><Bookmark size={16} className={`transition-all ${saved[n] ? 'fill-white' : ''}`} /></button>
                 </div>
