@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { news as mockNews, featured as mockFeatured } from './data'
+import { buildNewsImageFallback, extractFeedImage } from './newsImages'
 
 // Public RSS feeds, converted to JSON (CORS-friendly, no API key) by rss2json.
 export const FEEDS = [
@@ -12,7 +13,6 @@ const KEY = 'orunei-news-v1', TTL = 10 * 60 * 1000
 
 const ENT = { '&amp;': '&', '&quot;': '"', '&#39;': "'", '&#039;': "'", '&nbsp;': ' ', '&lt;': '<', '&gt;': '>' }
 const strip = (h = '') => h.replace(/<[^>]*>/g, ' ').replace(/&[#\w]+;/g, (m) => ENT[m] ?? ' ').replace(/\s+/g, ' ').trim()
-const firstImg = (h = '') => (h.match(/<img[^>]+src=["']([^"']+)/i) || [])[1]
 
 export function timeAgo(ts) {
   const m = Math.max(1, Math.round((Date.now() - ts) / 60000))
@@ -27,9 +27,8 @@ async function loadFeed(feed) {
   if (j.status !== 'ok') throw new Error(j.message || 'feed error')
   return j.items.map((it) => {
     const ts = new Date(String(it.pubDate).replace(' ', 'T') + 'Z').getTime() || Date.now()
-    const enc = it.enclosure?.link && (it.enclosure.type || '').startsWith('image') ? it.enclosure.link : ''
     return { id: it.link, t: strip(it.title), d: strip(it.description || it.content).slice(0, 170), s: feed.name, ts,
-      img: it.thumbnail || enc || firstImg(it.content || it.description) || '', link: it.link, grad: feed.grad }
+      img: extractFeedImage(it) || buildNewsImageFallback(it.link), link: it.link, grad: feed.grad }
   })
 }
 
@@ -39,11 +38,13 @@ const demo = [...mockNews, ...mockFeatured].map((n) => ({ ...n, id: n.t, d: n.d 
 const Ctx = createContext({ items: [], status: 'loading', reload() {} })
 export const useNews = () => useContext(Ctx)
 
+const withImageFallback = (item) => ({ ...item, img: item.img || buildNewsImageFallback(item.link) })
+
 export function NewsProvider({ children }) {
   const [state, setState] = useState({ items: [], status: 'loading' })
   const load = useCallback(async (force) => {
     if (!force) {
-      try { const c = JSON.parse(sessionStorage.getItem(KEY)); if (c && Date.now() - c.at < TTL) return setState({ items: c.items, status: 'ok' }) } catch {}
+      try { const c = JSON.parse(sessionStorage.getItem(KEY)); if (c && Date.now() - c.at < TTL) return setState({ items: c.items.map(withImageFallback), status: 'ok' }) } catch {}
     }
     setState((s) => ({ ...s, status: 'loading' }))
     const res = await Promise.allSettled(FEEDS.map(loadFeed))
@@ -51,7 +52,7 @@ export function NewsProvider({ children }) {
     const items = res.flatMap((r) => (r.status === 'fulfilled' ? r.value : [])).filter((n) => n.t && !seen.has(n.id) && seen.add(n.id)).sort((a, b) => b.ts - a.ts)
     if (!items.length) return setState({ items: demo, status: 'error' })
     try { sessionStorage.setItem(KEY, JSON.stringify({ at: Date.now(), items })) } catch {}
-    setState({ items, status: 'ok' })
+    setState({ items: items.map(withImageFallback), status: 'ok' })
   }, [])
   useEffect(() => { load() }, [load])
   const items = state.items.map((n) => ({ ...n, h: n.ts ? timeAgo(n.ts) : n.h }))
