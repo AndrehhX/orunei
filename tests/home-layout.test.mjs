@@ -54,3 +54,10 @@ test('feeds the home hero with the latest live anime when available', () => {
   assert.match(hero, /currentSlides/)
   assert.match(hero, /currentTrending/)
 })
+
+test('keeps only Anime and Noticias in the home filters', () => {
+  const app = fs.readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+
+  assert.match(app, /const tabs = \['Anime', 'Noticias'\]/)
+  assert.match(app, /useState\('Anime'\)/)
+})

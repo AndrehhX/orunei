@@ -22,7 +22,7 @@ import { createProfileRepository } from './profile/profileRepository'
 import { getPublicProfileHash, getPublicProfileUsername } from './profile/navigation'
 import { supabase } from './auth/supabaseClient'
 
-const tabs = ['Todo', 'Anime', 'Películas', 'Series', 'Noticias']
+const tabs = ['Anime', 'Noticias']
 
 function AppHeader({ query, setQuery }) {
   const { profile } = useProfile()
@@ -40,7 +40,7 @@ export default function App() {
   const repository = useMemo(() => user?.id ? createProfileRepository(supabase) : null, [user?.id])
   const initialProfileUsername = getPublicProfileUsername(typeof window === 'undefined' ? '' : window.location.hash)
   const [page, setPage] = useState(initialProfileUsername ? 'public-profile' : 'home')
-  const [tab, setTab] = useState('Todo')
+  const [tab, setTab] = useState('Anime')
   const [query, setQuery] = useState('')
   const [editingProfile, setEditingProfile] = useState(false)
   const [selectedUsername, setSelectedUsername] = useState(initialProfileUsername)
