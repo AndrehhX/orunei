@@ -1,7 +1,7 @@
 import { normalizeProfile } from './model.js'
 import { supabase } from '../auth/supabaseClient.js'
 
-const PROFILE_FIELDS = ['username', 'displayName', 'bio', 'status', 'accent', 'featuredAnimeId', 'pinnedSections', 'landingSection']
+const PROFILE_FIELDS = ['username', 'displayName', 'bio', 'status', 'visibility', 'accent', 'featuredAnimeId', 'pinnedSections', 'landingSection']
 
 const text = (value) => typeof value === 'string' ? value.trim() : ''
 
@@ -14,6 +14,7 @@ export function normalizeRemoteProfile(row, user = {}) {
   if (!row) return null
   return normalizeProfile({
     ...row,
+    visibility: row.visibility ?? row.profile_visibility,
     displayName: row.displayName ?? row.display_name,
     avatar: row.avatar ?? row.avatar_url,
     banner: row.banner ?? row.banner_url,
@@ -29,6 +30,7 @@ function profilePayload(userId, patch) {
   return {
     id: userId,
     username: text(patch.username),
+    profile_visibility: ['private', 'public'].includes(patch.visibility) ? patch.visibility : 'public',
     display_name: text(patch.displayName),
     bio: text(patch.bio),
     status: text(patch.status),
