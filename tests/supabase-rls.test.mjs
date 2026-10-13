@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 
 const migration = readFileSync(new URL('../supabase/migrations/006_private_profile_identity_rls.sql', import.meta.url), 'utf8')
 const sectionsMigration = readFileSync(new URL('../supabase/migrations/007_private_profile_sections_rls.sql', import.meta.url), 'utf8')
+const supportedSectionsMigration = readFileSync(new URL('../supabase/migrations/008_remove_unsupported_profile_sections.sql', import.meta.url), 'utf8')
 
 test('restricts profile identity reads at the database policy boundary', () => {
   assert.match(migration, /drop policy if exists "eligible viewers can read profile identity"/)
@@ -20,4 +21,9 @@ test('keeps private profile sections behind the profile visibility boundary', ()
   assert.match(sectionsMigration, /profile_lists\.profile_id/)
   assert.equal((sectionsMigration.match(/profile_visibility = 'public'/g) || []).length, 4)
   assert.doesNotMatch(sectionsMigration, /service_role/i)
+})
+
+test('keeps database privacy sections aligned with implemented profile sections', () => {
+  assert.match(supportedSectionsMigration, /section in \('taste', 'reviews'\)/)
+  assert.match(supportedSectionsMigration, /section in \('animeList', 'favorites', 'activity', 'lists'\)/)
 })

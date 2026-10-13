@@ -23,9 +23,7 @@ La privacidad se aplicará por sección, no solo por perfil completo:
 | Identidad, avatar y banner | Visible solo con una cuenta válida | Visible a amistades aceptadas | Visible a cualquier visitante autenticado |
 | AnimeList | Oculta | Visible a amistades | Visible |
 | Favoritos | Oculta | Visible a amistades | Visible |
-| Gustos | Oculta | Visible a amistades | Visible |
 | Actividad | Oculta | Visible a amistades | Visible |
-| Reseñas | Oculta | Visible a amistades | Visible |
 | Listas | Oculta | Visible a amistades | Visible |
 
 El propietario siempre puede ver y editar su propio perfil. Una visita a otro perfil nunca debe mostrar botones de edición, datos privados, contadores inventados ni la etiqueta `Solo tú`.

@@ -45,7 +45,7 @@ function Restricted({ section }) {
   return <div className="card grid min-h-44 place-items-center border-dashed p-6 text-center"><div><LockKeyhole className="mx-auto text-slate-400" size={22} /><p className="mt-2 font-semibold">Este apartado es privado</p><p className="mt-1 text-sm text-slate-500">La persona propietaria no comparte {section} con este tipo de visitante.</p></div></div>
 }
 
-export default function PublicProfilePage({ profile, viewer = {}, library = profile.animeList || [], tasteCount = null, onBack, onFriendRequest }) {
+export default function PublicProfilePage({ profile, viewer = {}, library = profile.animeList || [], onBack, onFriendRequest }) {
   const visibility = selectVisibleProfile(profile, viewer)
   const sections = useMemo(() => selectAnimeSections(library), [library])
   const visibleSectionKey = visibility.visibleSections.join('|')
@@ -63,7 +63,6 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
     [visibility.visibleSections.includes('animeList') ? sharedWorks : '—', 'Obras'],
     [visibility.visibleSections.includes('favorites') ? sections.favorites.length : '—', 'Favoritos'],
     [visibility.visibleSections.includes('lists') ? profile.customLists.length : '—', 'Listas'],
-    [visibility.visibleSections.includes('taste') && Number.isFinite(tasteCount) ? tasteCount : '—', 'Gustos'],
   ]
   const requestFriendship = async () => {
     if (!onFriendRequest) return
@@ -86,7 +85,7 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
           </div>
         </div>
         <div className="mt-4 max-w-2xl"><p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{profile.bio || 'Este perfil aún no tiene una bio pública.'}</p>{profile.status && <p className="mt-2 text-xs font-medium text-brand">{profile.status}</p>}</div>
-        <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-slate-200 rounded-2xl border border-slate-200/80 bg-slate-50/70 sm:grid-cols-4 sm:divide-y-0 dark:divide-white/10 dark:bg-white/5">{stats.map(([value, label]) => <div key={label} className="px-4 py-3 text-center"><p className="text-xl font-extrabold">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>)}</div>
+        <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-slate-200 rounded-2xl border border-slate-200/80 bg-slate-50/70 sm:grid-cols-3 sm:divide-y-0 dark:divide-white/10 dark:bg-white/5">{stats.map(([value, label]) => <div key={label} className="px-4 py-3 text-center"><p className="text-xl font-extrabold">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>)}</div>
       </div>
     </section>
 

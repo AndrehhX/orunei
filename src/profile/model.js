@@ -2,7 +2,7 @@ export const PROFILE_KEY = 'orunei-profile-v1'
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 export const MAX_ACTIVITY = 50
 export const PROFILE_SECTIONS = ['overview', 'animelist', 'favorites', 'lists', 'activity']
-export const PRIVACY_SECTIONS = ['animeList', 'favorites', 'taste', 'activity', 'reviews', 'lists']
+export const PRIVACY_SECTIONS = ['animeList', 'favorites', 'activity', 'lists']
 const IMAGE_CONSTRAINTS = {
   avatar: { maxWidth: 512, maxHeight: 512, crop: 'square' },
   banner: { maxWidth: 1600, maxHeight: 900, crop: 'cover' },
@@ -27,9 +27,7 @@ export const DEFAULT_PROFILE = {
   privacy: {
     animeList: 'private',
     favorites: 'private',
-    taste: 'private',
     activity: 'private',
-    reviews: 'private',
     lists: 'private',
   },
   customLists: [],

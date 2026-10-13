@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Check, Image, LockKeyhole, Palette, Shield, Upload, X } from 'lucide-react'
 import { useProfile } from '../profile/ProfileProvider'
 
-const privacyLabels = { animeList: 'AnimeList', favorites: 'Favoritos', taste: 'Perfil de gustos', activity: 'Actividad', reviews: 'Reseñas', lists: 'Listas' }
+const privacyLabels = { animeList: 'AnimeList', favorites: 'Favoritos', activity: 'Actividad', lists: 'Listas' }
 const pinLabels = { overview: 'Resumen', animelist: 'AnimeList', favorites: 'Favoritos', lists: 'Listas', activity: 'Actividad' }
 
 const clone = (value) => JSON.parse(JSON.stringify(value))

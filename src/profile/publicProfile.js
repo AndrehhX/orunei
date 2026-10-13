@@ -1,4 +1,4 @@
-export const PUBLIC_PROFILE_SECTIONS = ['animeList', 'favorites', 'taste', 'activity', 'reviews', 'lists']
+export const PUBLIC_PROFILE_SECTIONS = ['animeList', 'favorites', 'activity', 'lists']
 import { canComment } from '../social/model.js'
 
 const visibilityAllows = (visibility, relationship) => visibility === 'public' || (visibility === 'friends' && relationship === 'accepted')

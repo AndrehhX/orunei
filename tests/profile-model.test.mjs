@@ -21,7 +21,7 @@ test('exposes the private profile storage contract and useful defaults', () => {
   assert.equal(profile.accent, DEFAULT_PROFILE.accent)
   assert.deepEqual(profile.pinnedSections, ['overview', 'animelist', 'favorites'])
   assert.deepEqual(profile.privacy, DEFAULT_PROFILE.privacy)
-  assert.deepEqual(Object.keys(profile.privacy), ['animeList', 'favorites', 'taste', 'activity', 'reviews', 'lists'])
+  assert.deepEqual(Object.keys(profile.privacy), ['animeList', 'favorites', 'activity', 'lists'])
   assert.deepEqual(profile.customLists, [])
   assert.deepEqual(profile.activity, [])
 })
