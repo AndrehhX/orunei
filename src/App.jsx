@@ -108,11 +108,11 @@ export default function App() {
       <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
       <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
         <AppHeader query={query} setQuery={setQuery} />
-        <div key={`${page}:${tab}`} className="animate-page-enter space-y-5">
+        <div key={`${page}:${tab}`} className="animate-page-enter space-y-7">
         {page === 'anime' ? <AnimePage query={query} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
-        <div className="flex flex-wrap items-end justify-between gap-4 animate-rise">
+        <div className="flex flex-wrap items-end justify-between gap-6 animate-rise">
           <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
-            <p className="text-sm text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
           <div className="relative flex rounded-full bg-white/80 dark:bg-white/5 p-1 text-sm">
             <span className="absolute bottom-1 top-1 rounded-full bg-brand shadow-md shadow-brand/30 transition-all duration-300 ease-out" style={{ left: ind.l, width: ind.w }} />
             {tabs.map((t) => <button key={t} ref={(el) => (refs.current[t] = el)} onClick={() => handleTabChange(t)} className={`relative rounded-full px-4 py-1.5 transition-colors duration-300 ${tab === t ? 'text-white' : 'text-slate-600 dark:text-slate-300 hover:text-brand'}`}>{t}</button>)}

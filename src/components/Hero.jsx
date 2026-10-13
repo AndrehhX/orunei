@@ -30,14 +30,14 @@ export default function Hero() {
 
   return (
     <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px] animate-rise">
-      <div className="relative h-[232px] overflow-hidden rounded-2xl shadow-sm" onMouseEnter={() => setPause(true)} onMouseLeave={() => setPause(false)}>
+      <div className="relative h-[280px] overflow-hidden rounded-2xl shadow-sm md:h-[260px] xl:h-[232px]" onMouseEnter={() => setPause(true)} onMouseLeave={() => setPause(false)}>
         {slides.map((s, n) => {
           const on = n === i
           return (
             <Poster key={s.title} {...s} wide title={s.title}
               className={`absolute inset-0 transition-all duration-[900ms] ease-out ${on ? 'opacity-100 scale-100' : 'pointer-events-none opacity-0 scale-[1.04]'}`}>
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
-              <div className={`relative flex h-full max-w-[430px] flex-col justify-center gap-1.5 p-6 text-white transition-all duration-700 delay-150 ${on ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
+              <div className={`relative flex h-full max-w-[430px] flex-col justify-center gap-2 p-7 text-white transition-all duration-700 delay-150 xl:gap-1.5 xl:p-6 ${on ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
                 <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Recomendación para ti</span>
                 <h2 className="text-4xl font-extrabold tracking-tight">{s.title}</h2>
                 <p className="text-xs text-white/80">{s.meta}</p>
@@ -62,7 +62,7 @@ export default function Hero() {
           {slides.map((_, n) => <i key={n} className={`h-1.5 rounded-full bg-white transition-all duration-500 ${n === i ? 'w-5 opacity-100' : 'w-1.5 opacity-40'}`} />)}
         </div>
       </div>
-      <Poster {...trending} className="group hidden h-[232px] cursor-pointer rounded-2xl shadow-sm md:block">
+      <Poster {...trending} className="group hidden h-[280px] cursor-pointer rounded-2xl shadow-sm md:h-[260px] xl:h-[232px] md:block">
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20" />
         <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs text-white backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
