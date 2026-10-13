@@ -8,3 +8,7 @@ export function truncateWithEllipsis(value, maxLength = 180) {
   const clipped = breakAt > contentLength * 0.6 ? content.slice(0, breakAt).trimEnd() : content
   return `${clipped}...`
 }
+
+export function formatHeroTitle(value, maxLength = 46) {
+  return truncateWithEllipsis(value, maxLength)
+}

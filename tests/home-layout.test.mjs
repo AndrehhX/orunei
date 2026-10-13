@@ -55,6 +55,14 @@ test('feeds the home hero with the latest live anime when available', () => {
   assert.match(hero, /currentTrending/)
 })
 
+test('bounds every live hero title before rendering it', () => {
+  const hero = fs.readFileSync(new URL('../src/components/Hero.jsx', import.meta.url), 'utf8')
+
+  assert.match(hero, /formatHeroTitle\(s\.title/)
+  assert.match(hero, /line-clamp-2 h-\[80px\] shrink-0 overflow-hidden/)
+  assert.match(hero, /line-clamp-2 h-\[48px\] overflow-hidden/)
+})
+
 test('keeps only Anime and Noticias in the home filters', () => {
   const app = fs.readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
 

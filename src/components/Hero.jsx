@@ -5,7 +5,7 @@ import { slides, trending } from '../data'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
 import { createLibraryEntry } from '../profile/model.js'
-import { truncateWithEllipsis } from '../ui/text.js'
+import { formatHeroTitle, truncateWithEllipsis } from '../ui/text.js'
 
 export default function Hero({ onOpenDetail }) {
   const rec = useRec()
@@ -61,7 +61,7 @@ export default function Hero({ onOpenDetail }) {
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
               <div className={`relative flex h-full max-w-[430px] flex-col justify-start gap-2 px-6 pb-12 pt-6 text-white transition-all duration-700 delay-150 ${on ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
                 <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Recomendación para ti</span>
-                <h2 className="line-clamp-2 text-4xl font-extrabold leading-tight tracking-tight">{s.title}</h2>
+                <h2 className="line-clamp-2 h-[80px] shrink-0 overflow-hidden text-4xl font-extrabold leading-[1.05] tracking-tight">{formatHeroTitle(s.title)}</h2>
                 <p className="text-xs text-white/80">{s.meta}</p>
                 <p className="line-clamp-2 h-12 shrink-0 overflow-hidden text-sm leading-6 text-white/85">{s.desc}</p>
                 <div className="mt-auto flex gap-2">
@@ -88,7 +88,7 @@ export default function Hero({ onOpenDetail }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20" />
         <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs text-white backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-          <h3 className="text-xl font-bold">{currentTrending.title}</h3>
+          <h3 className="line-clamp-2 h-[48px] overflow-hidden text-lg font-bold leading-6">{formatHeroTitle(currentTrending.title, 34)}</h3>
           <p className="text-[11px] text-white/80">{currentTrending.meta}</p>
           <p className="mt-1 flex items-center gap-1 text-sm font-semibold"><Star size={14} className="fill-yellow-400 text-yellow-400" />{currentTrending.rating}</p>
         </div>

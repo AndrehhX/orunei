@@ -5,6 +5,15 @@ export const AW = { like: 1, add: 1.6, click: 0.15, dismiss: -0.6, dislike: -1.2
 
 export const librarySignal = (entry = {}) => entry.favorite ? 'like' : ['watching', 'completed'].includes(entry.status) ? 'add' : 'click'
 
+export function selectLatest(pool = [], now = Date.now(), size = 4, windowMs = 10 * 6e4) {
+  const sorted = [...pool].sort((a, b) => (b.year || 0) - (a.year || 0) || (b.trend || 0) - (a.trend || 0) || (b.pop || 0) - (a.pop || 0))
+  if (!sorted.length || size <= 0) return []
+
+  const offset = Math.floor(Math.max(0, now) / windowMs) % sorted.length
+  const visible = Math.min(size, sorted.length)
+  return Array.from({ length: visible }, (_, index) => sorted[(offset + index) % sorted.length])
+}
+
 export const dot = (a, b) => { let s = 0; for (const k in a) if (b[k]) s += a[k] * b[k]; return s }
 export const norm = (a) => Math.sqrt(dot(a, a))
 
