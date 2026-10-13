@@ -30,19 +30,19 @@ export default function Hero() {
 
   return (
     <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px] animate-rise">
-      <div className="relative h-[320px] overflow-hidden rounded-2xl shadow-sm md:h-[300px] xl:h-[280px]" onMouseEnter={() => setPause(true)} onMouseLeave={() => setPause(false)}>
+      <div className="relative h-[360px] overflow-hidden rounded-2xl shadow-sm md:h-[340px] xl:h-[320px]" onMouseEnter={() => setPause(true)} onMouseLeave={() => setPause(false)}>
         {slides.map((s, n) => {
           const on = n === i
           return (
             <Poster key={s.title} {...s} wide title={s.title}
               className={`absolute inset-0 transition-all duration-[900ms] ease-out ${on ? 'opacity-100 scale-100' : 'pointer-events-none opacity-0 scale-[1.04]'}`}>
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
-              <div className={`relative flex h-full max-w-[430px] flex-col justify-start gap-2 px-6 pb-6 pt-6 text-white transition-all duration-700 delay-150 ${on ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
+              <div className={`relative flex h-full max-w-[430px] flex-col justify-start gap-2 px-6 pb-12 pt-6 text-white transition-all duration-700 delay-150 ${on ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
                 <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Recomendación para ti</span>
                 <h2 className="text-4xl font-extrabold tracking-tight">{s.title}</h2>
                 <p className="text-xs text-white/80">{s.meta}</p>
                 <p className="text-sm leading-relaxed text-white/85">{s.desc}</p>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-auto flex gap-2">
                   <button onClick={() => toggleLibrary(s)}
                     className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${inLibrary(s) ? 'bg-emerald-500' : 'bg-brand hover:brightness-110'}`}>
                     {inLibrary(s) ? <Check size={16} /> : <Plus size={16} />}{inLibrary(s) ? 'En tu biblioteca' : 'Agregar a mi biblioteca'}</button>
@@ -58,11 +58,11 @@ export default function Hero() {
             <button key={d} onClick={() => go(d)} aria-label={d < 0 ? 'Anterior' : 'Siguiente'} className="grid h-9 w-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition hover:scale-110 hover:bg-black/60 active:scale-90"><I size={18} /></button>
           ))}
         </div>
-        <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
+        <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
           {slides.map((_, n) => <i key={n} className={`h-1.5 rounded-full bg-white transition-all duration-500 ${n === i ? 'w-5 opacity-100' : 'w-1.5 opacity-40'}`} />)}
         </div>
       </div>
-      <Poster {...trending} className="group hidden h-[320px] cursor-pointer rounded-2xl shadow-sm md:h-[300px] xl:h-[280px] md:block">
+      <Poster {...trending} className="group hidden h-[360px] cursor-pointer rounded-2xl shadow-sm md:h-[340px] xl:h-[320px] md:block">
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20" />
         <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs text-white backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">

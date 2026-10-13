@@ -14,11 +14,13 @@ test('uses a more balanced responsive proportion for the home hero', () => {
   const hero = fs.readFileSync(new URL('../src/components/Hero.jsx', import.meta.url), 'utf8')
 
   assert.match(hero, /md:grid-cols-\[minmax\(0,1fr\)_240px\]/)
-  assert.equal((hero.match(/h-\[320px\]/g) || []).length, 2)
-  assert.equal((hero.match(/md:h-\[300px\]/g) || []).length, 2)
-  assert.equal((hero.match(/xl:h-\[280px\]/g) || []).length, 2)
+  assert.equal((hero.match(/h-\[360px\]/g) || []).length, 2)
+  assert.equal((hero.match(/md:h-\[340px\]/g) || []).length, 2)
+  assert.equal((hero.match(/xl:h-\[320px\]/g) || []).length, 2)
   assert.match(hero, /flex-col justify-start gap-2/)
-  assert.match(hero, /pt-6/)
+  assert.match(hero, /pb-12 pt-6/)
+  assert.match(hero, /mt-auto flex gap-2/)
+  assert.match(hero, /absolute bottom-2 left-1\/2/)
 })
 
 test('uses the profile AnimeList for the home library and empty state', () => {
@@ -35,4 +37,12 @@ test('does not seed personalized recommendations with hardcoded anime', () => {
 
   assert.doesNotMatch(recommendations, /const SEEDS/)
   assert.doesNotMatch(recommendations, /seeded: false/)
+})
+
+test('refreshes the recommendation pool with recent AniList anime', () => {
+  const recommendations = fs.readFileSync(new URL('../src/rec/rec.jsx', import.meta.url), 'utf8')
+
+  assert.match(recommendations, /orunei-pool-v2/)
+  assert.match(recommendations, /START_DATE_DESC/)
+  assert.match(recommendations, /10 \* 6e4/)
 })
