@@ -1,5 +1,4 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { news as mockNews, featured as mockFeatured } from './data'
 import { buildNewsImageFallback, extractFeedImage } from './newsImages'
 
 // Public RSS feeds, converted to JSON (CORS-friendly, no API key) by rss2json.
@@ -32,9 +31,6 @@ async function loadFeed(feed) {
   })
 }
 
-// Demo content (shown if the live feeds can't be reached).
-const demo = [...mockNews, ...mockFeatured].map((n) => ({ ...n, id: n.t, d: n.d || '', img: '', link: '', ts: 0 }))
-
 const Ctx = createContext({ items: [], status: 'loading', reload() {} })
 export const useNews = () => useContext(Ctx)
 
@@ -50,7 +46,7 @@ export function NewsProvider({ children }) {
     const res = await Promise.allSettled(FEEDS.map(loadFeed))
     const seen = new Set()
     const items = res.flatMap((r) => (r.status === 'fulfilled' ? r.value : [])).filter((n) => n.t && !seen.has(n.id) && seen.add(n.id)).sort((a, b) => b.ts - a.ts)
-    if (!items.length) return setState({ items: demo, status: 'error' })
+    if (!items.length) return setState({ items: [], status: 'error' })
     try { sessionStorage.setItem(KEY, JSON.stringify({ at: Date.now(), items })) } catch {}
     setState({ items: items.map(withImageFallback), status: 'ok' })
   }, [])

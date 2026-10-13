@@ -13,7 +13,7 @@ npm run build    # production build in /dist
 ```
 src/
   App.jsx               page layout, search, tabs, theme state
-  data.js               all mock content (edit here)
+  data.js               curated homepage seeds and visual fallbacks
   components/
     Sidebar.jsx         navigation + light/dark toggle
     Hero.jsx            recommendation + trending banners
@@ -49,9 +49,9 @@ featured anime, pinned sections, privacy preferences, avatar, and banner. Images
 image files under 5 MB, resized in the browser for local fallback, or uploaded to the `profile-media`
 Supabase Storage bucket when remote accounts are configured.
 
-The private profile also exposes the existing library as AnimeList grouped by status, Favorites,
-private custom lists with create/edit/delete and add/remove anime actions, and a local activity
-history. Malformed stored data is normalized back to safe defaults and storage quota failures are
+The private profile exposes each account's remote AnimeList grouped by status, Favorites,
+private custom lists with create/edit/delete and add/remove anime actions, and remote activity
+history. Malformed stored data is normalized back to safe defaults and persistence failures are
 shown as recoverable UI errors.
 
 ## Login
@@ -69,7 +69,7 @@ The complete Supabase migration and two-account verification checklist is in
 Scroll-reveal (`Reveal.jsx`), spring easings, carousel crossfade, sliding tab/theme indicators. All disabled with `prefers-reduced-motion`.
 
 ## Live news
-`src/news.jsx` reads public RSS feeds (Anime News Network, Crunchyroll News, MyAnimeList News) through the free rss2json API (no key), merges and sorts them, and caches for 10 minutes. The dashboard row, the right panel and the **Noticias** tab all use it. If the feeds can't be reached, demo data is shown with a retry button. Add or remove sources in the `FEEDS` array. Note: rss2json's free tier is rate-limited.
+`src/news.jsx` reads public RSS feeds (Anime News Network, Crunchyroll News, MyAnimeList News) through the free rss2json API (no key), merges and sorts them, and caches for 10 minutes. The dashboard row, the right panel and the **Noticias** tab all use it. If the feeds can't be reached, the UI reports the unavailable sources and offers a retry instead of inventing articles. Add or remove sources in the `FEEDS` array. Note: rss2json's free tier is rate-limited.
 
 ## Recommendation engine (`src/rec/`)
 Runs 100% in the browser, no accounts or servers needed.

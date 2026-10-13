@@ -10,10 +10,11 @@ const Head = ({ children, onAll }) => <div className="mb-3 flex items-center jus
 const Avatar = ({ profile }) => <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-brand to-pink-400 text-white">{profile?.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : <UserRound size={15} />}</div>
 
 export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOpenProfile }) {
-  const { items } = useNews()
+  const { items, status: newsStatus } = useNews()
   const rec = useRec()
   const { profile } = useProfile()
   const { friends } = useSocial()
+  const newsItems = newsStatus === 'loading' && !items.length ? [0, 1] : items.slice(2, 5)
   return (
     <aside className="scroll-hide sticky top-0 hidden h-screen w-[300px] shrink-0 space-y-4 self-start overflow-y-auto py-5 pr-5 xl:block animate-fade">
       <div className="card p-3.5">
@@ -46,7 +47,8 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
       </div>
       <div className="card p-3.5">
         <Head onAll={onSeeNews}>Noticias destacadas</Head>
-        {(items.length ? items.slice(2, 5) : [0, 1]).map((f, i) => f === i ? <div key={i} className="my-2 h-[62px] animate-pulse rounded-lg bg-slate-200/60 dark:bg-white/5" /> : <NewsLink key={f.id} n={f} className="group flex cursor-pointer gap-3 rounded-lg py-2 transition-transform duration-300 hover:translate-x-1"><Poster img={f.img} q={f.q} grad={f.grad} wide title="" className="h-[62px] w-[98px] shrink-0 rounded-lg" /><div className="min-w-0 leading-snug"><p className="line-clamp-2 text-[13px] font-bold">{f.t}</p><p className="text-[11px] text-slate-500">{f.s} · {f.h}</p></div></NewsLink>)}
+        {!newsItems.length && newsStatus === 'error' && <p className="py-2 text-xs text-slate-500">Las fuentes no están disponibles ahora.</p>}
+        {newsItems.map((f, i) => f === i ? <div key={i} className="my-2 h-[62px] animate-pulse rounded-lg bg-slate-200/60 dark:bg-white/5" /> : <NewsLink key={f.id} n={f} className="group flex cursor-pointer gap-3 rounded-lg py-2 transition-transform duration-300 hover:translate-x-1"><Poster img={f.img} q={f.q} grad={f.grad} wide title="" className="h-[62px] w-[98px] shrink-0 rounded-lg" /><div className="min-w-0 leading-snug"><p className="line-clamp-2 text-[13px] font-bold">{f.t}</p><p className="text-[11px] text-slate-500">{f.s} · {f.h}</p></div></NewsLink>)}
       </div>
     </aside>
   )

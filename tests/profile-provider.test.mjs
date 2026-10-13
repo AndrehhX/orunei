@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { clearProfileState, persistRemoteProfile, resolveLoadedProfile } from '../src/profile/profileProviderModel.js'
+import { clearProfileState, loadOrCreateRemoteProfile, persistRemoteProfile, resolveLoadedProfile } from '../src/profile/profileProviderModel.js'
 
 test('keeps authenticated identity while resolving a remote profile', () => {
   const result = resolveLoadedProfile({ id: 'user-1', displayName: 'Andreh', username: 'andreh' }, '', { id: 'user-1', email: 'andreh@example.com' })
@@ -17,6 +17,16 @@ test('returns a recoverable remote save result on success and failure', async ()
   const failure = await persistRemoteProfile({ saveProfile: async () => ({ data: null, error: 'RLS denied' }) }, 'user-1', { username: 'andreh' })
   assert.equal(failure.ok, false)
   assert.equal(failure.error, 'RLS denied')
+})
+
+test('creates a remote profile when the authenticated account has no profile row yet', async () => {
+  let saveCalls = 0
+  const result = await loadOrCreateRemoteProfile({
+    getOwnProfile: async () => ({ data: null, error: '' }),
+    saveProfile: async (_userId, profile) => { saveCalls += 1; return { data: { ...profile, id: 'user-1' }, error: '' } },
+  }, { id: 'user-1', name: 'Andreh', email: 'andreh@example.com' })
+  assert.equal(saveCalls, 1)
+  assert.equal(result.data.displayName, 'Andreh')
 })
 
 test('clears profile state after sign out', () => {

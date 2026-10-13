@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_PROFILE, MAX_ACTIVITY, createProfile, makeActivity, normalizeAnimeList, normalizeProfile, readImageAsDataUrl } from './model.js'
 import { readProfileStorage, writeProfileStorage } from './profileStorage.js'
-import { clearProfileState, persistRemoteProfile, resolveLoadedProfile } from './profileProviderModel.js'
+import { clearProfileState, loadOrCreateRemoteProfile, persistRemoteProfile, resolveLoadedProfile } from './profileProviderModel.js'
 
 const ProfileContext = createContext(null)
 const browserStorage = () => {
@@ -24,7 +24,7 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
     setProfileStatus(remote ? 'loading' : 'ready')
     if (!remote) return () => { active = false }
 
-    repository.getOwnProfile(user.id).then((result) => {
+    loadOrCreateRemoteProfile(repository, user).then((result) => {
       if (!active) return
       const loaded = resolveLoadedProfile(result?.data, result?.error, user)
       profileRef.current = loaded.profile

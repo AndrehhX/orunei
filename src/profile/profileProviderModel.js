@@ -8,6 +8,14 @@ export function resolveLoadedProfile(data, error = '', user = {}) {
   }
 }
 
+export async function loadOrCreateRemoteProfile(repository, user = {}) {
+  if (!repository || !user?.id) return { data: null, error: 'No hay una cuenta remota activa.' }
+  const loaded = await repository.getOwnProfile(user.id)
+  if (loaded?.data || loaded?.error) return loaded
+  const created = await repository.saveProfile(user.id, createProfile(user))
+  return { data: created?.data || null, error: created?.error || '' }
+}
+
 export async function persistRemoteProfile(repository, userId, profile) {
   if (!repository || !userId) return { ok: false, data: null, error: 'No hay una cuenta remota activa.' }
   try {

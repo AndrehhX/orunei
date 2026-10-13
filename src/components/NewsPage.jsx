@@ -20,13 +20,13 @@ export default function NewsPage({ query }) {
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="text-2xl font-extrabold tracking-tight">Últimas noticias</h2>
         <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${status === 'error' ? 'bg-amber-500/15 text-amber-600' : 'bg-emerald-500/15 text-emerald-600'}`}>
-          <i className={`h-1.5 w-1.5 rounded-full ${status === 'error' ? 'bg-amber-500' : 'animate-pulse bg-emerald-500'}`} />{status === 'error' ? 'Datos de ejemplo' : 'En vivo'}</span>
+          <i className={`h-1.5 w-1.5 rounded-full ${status === 'error' ? 'bg-amber-500' : 'animate-pulse bg-emerald-500'}`} />{status === 'error' ? 'Fuentes no disponibles' : 'En vivo'}</span>
         <button onClick={reload} aria-label="Actualizar" className="ml-auto grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm transition hover:scale-110 active:scale-90 dark:bg-white/10"><RefreshCw size={16} className={loading ? 'animate-spin' : ''} /></button>
       </div>
 
       {status === 'error' && (
         <div className="flex items-center gap-3 rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400"><WifiOff size={17} />
-          No se pudieron cargar las noticias en vivo. Mostrando ejemplos. <button onClick={reload} className="ml-auto font-semibold underline">Reintentar</button></div>
+          No se pudieron cargar las noticias en vivo. No mostraremos contenido inventado. <button onClick={reload} className="ml-auto font-semibold underline">Reintentar</button></div>
       )}
 
       <div className="flex flex-wrap gap-2">
