@@ -80,9 +80,17 @@ test('returns privacy rows with a public profile and preserves upload errors', a
   const repository = createProfileRepository(client)
   const publicProfile = await repository.getPublicProfile('mika', 'viewer-1')
   assert.equal(publicProfile.data.privacy.animeList, 'friends')
-  const upload = await repository.uploadProfileImage('user-2', 'avatar', { name: 'avatar.jpg' })
+  const upload = await repository.uploadProfileImage('user-2', 'avatar', { name: 'avatar.jpg', type: 'image/jpeg', size: 100 })
   assert.equal(upload.data, null)
   assert.equal(upload.error, 'Storage quota')
+})
+
+test('rejects invalid remote profile images before Storage upload', async () => {
+  const client = makeClient({ profile: { id: 'user-1', display_name: 'Andreh', username: 'andreh' } })
+  const upload = await createProfileRepository(client).uploadProfileImage('user-1', 'avatar', { name: 'avatar.svg', type: 'image/svg+xml', size: 100 })
+  assert.equal(upload.data, null)
+  assert.match(upload.error, /imagen válida/i)
+  assert.equal(client.calls.some((call) => call.type === 'from' && call.table === 'profile-media'), false)
 })
 
 test('does not resolve a private profile for an unrelated viewer', async () => {

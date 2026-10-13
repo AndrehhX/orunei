@@ -1,4 +1,4 @@
-import { normalizeAnimeList, normalizeProfile, toRemoteAnimeEntry } from './model.js'
+import { normalizeAnimeList, normalizeProfile, toRemoteAnimeEntry, validateImageFile } from './model.js'
 import { supabase } from '../auth/supabaseClient.js'
 
 const PROFILE_FIELDS = ['username', 'displayName', 'bio', 'status', 'visibility', 'accent', 'featuredAnimeId', 'pinnedSections', 'landingSection']
@@ -153,6 +153,8 @@ export function createProfileRepository(client = supabase) {
 
     async uploadProfileImage(userId, kind, file) {
       if (!client || !userId || !file || !['avatar', 'banner'].includes(kind)) return unavailable()
+      const validation = validateImageFile(file, kind)
+      if (!validation.ok) return { data: null, error: validation.error }
       const extension = text(file.name).split('.').pop()?.toLowerCase() || 'jpg'
       const path = `${userId}/${kind}-${Date.now()}.${extension}`
       const bucket = client.storage.from('profile-media')
