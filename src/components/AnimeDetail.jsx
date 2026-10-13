@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { X, Star, Play, ExternalLink, Heart, ChevronDown, MessageSquare, ThumbsUp, Clock, BookOpen, Check } from 'lucide-react'
+import { ArrowLeft, Star, Play, ExternalLink, Heart, ChevronDown, MessageSquare, ThumbsUp, Clock, BookOpen, Check } from 'lucide-react'
 import { getAnime, ratingJobs, commentJobs, title, crunchy, clean, T, ago } from '../api/anime'
 import { AnimeCard } from './AnimePage'
 import { useRec } from '../rec/rec'
@@ -110,17 +110,16 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
   const [err, setErr] = useState(false)
   const [tab, setTab] = useState(0)
   const [spoil, setSpoil] = useState(false)
-  const [closing, setClosing] = useState(false)
   const rec = useRec()
   const { profile, updateAnimeList, recordActivity } = useProfile()
-  const close = () => { setClosing(true); setTimeout(onClose, 260) }
+  const close = () => onClose()
 
   useEffect(() => { setM(null); setErr(false); setTab(0); getAnime(id).then(setM).catch(() => setErr(true)) }, [id])
   useEffect(() => {
-    const k = (e) => e.key === 'Escape' && close()
-    document.body.style.overflow = 'hidden'; window.addEventListener('keydown', k)
-    return () => { document.body.style.overflow = ''; window.removeEventListener('keydown', k) }
-  }, [])
+    const k = (e) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', k)
+    return () => window.removeEventListener('keydown', k)
+  }, [onClose])
 
   const accent = m?.coverImage.color || '#6d5cff'
   const next = m?.nextAiringEpisode
@@ -136,17 +135,20 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
     ['Temporada', m.season ? `${T[m.season]} ${m.seasonYear}` : m.seasonYear || '—'], ['Estudio', m.studios.nodes[0]?.name || '—'], ['Favoritos', m.favourites?.toLocaleString('es')]]
 
   return (
-    <div className={`fixed inset-0 z-40 flex justify-center bg-black/55 p-0 backdrop-blur-sm transition-opacity duration-300 sm:p-5 ${closing ? 'opacity-0' : 'animate-fade'}`} onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className={`scroll-hide relative w-full max-w-5xl overflow-y-auto bg-[#f4f4fb] shadow-2xl transition-all duration-300 ease-smooth dark:bg-[#0e0e17] sm:rounded-3xl ${closing ? 'translate-y-6 scale-95 opacity-0' : 'animate-rise'}`}>
-        <div className="sticky top-0 z-30 h-0"><button onClick={close} aria-label="Cerrar" className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-black/50 text-white backdrop-blur transition hover:rotate-90 hover:scale-110"><X size={18} /></button></div>
+    <div className="space-y-5 pb-10 animate-fade">
+      <div className="flex items-center justify-between gap-3">
+        <button onClick={close} className="inline-flex items-center gap-2 rounded-xl bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-x-0.5 hover:text-brand dark:bg-white/10 dark:text-slate-200"><ArrowLeft size={16} />Volver al catálogo</button>
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Ficha del anime</span>
+      </div>
+      <div className="overflow-hidden rounded-3xl bg-[#f4f4fb] dark:bg-[#0e0e17]">
         {err && <p className="p-16 text-center text-slate-500">No pudimos cargar esta ficha. <button onClick={close} className="font-semibold text-brand underline">Volver</button></p>}
         {!m && !err && <div className="space-y-4 p-6"><div className="h-64 animate-pulse rounded-2xl bg-slate-200/70 dark:bg-white/5" /><div className="h-8 w-1/2 animate-pulse rounded bg-slate-200/70 dark:bg-white/5" /></div>}
         {m && (<>
-          <header className="relative h-[320px] overflow-hidden" style={{ background: accent }}>
-            {(m.bannerImage || m.coverImage.extraLarge) && <img src={m.bannerImage || m.coverImage.extraLarge} alt="" className={`h-full w-full object-cover animate-fade ${m.bannerImage ? '' : 'scale-125 blur-xl'}`} />}
+          <header className="relative h-[280px] overflow-hidden" style={{ background: accent }}>
+            {(m.bannerImage || m.coverImage.extraLarge) && <img src={m.bannerImage || m.coverImage.extraLarge} alt="" decoding="async" className="h-full w-full object-cover" />}
             <div className="absolute inset-0 bg-gradient-to-t from-[#f4f4fb] via-[#f4f4fb]/30 to-black/30 dark:from-[#0e0e17] dark:via-[#0e0e17]/40" />
           </header>
-          <div className="relative -mt-28 px-5 pb-8 sm:px-8">
+          <div className="relative -mt-24 px-5 pb-8 sm:px-8">
             <div className="flex flex-col gap-5 sm:flex-row">
               <img src={m.coverImage.extraLarge} alt={title(m)} className="h-[260px] w-[175px] shrink-0 rounded-2xl object-cover shadow-2xl ring-4 ring-[#f4f4fb] animate-rise dark:ring-[#0e0e17]" />
               <div className="flex min-w-0 flex-col justify-end gap-2 animate-rise" style={{ animationDelay: '.1s' }}>
