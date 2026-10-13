@@ -108,9 +108,9 @@ export default function App() {
       <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
       <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
         <AppHeader query={query} setQuery={setQuery} />
-        <div key={`${page}:${tab}`} className="animate-page-enter">
+        <div key={`${page}:${tab}`} className="animate-page-enter space-y-5">
         {page === 'anime' ? <AnimePage query={query} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
-        <div className="flex flex-wrap items-end justify-between gap-3 animate-rise">
+        <div className="flex flex-wrap items-end justify-between gap-4 animate-rise">
           <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
             <p className="text-sm text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
           <div className="relative flex rounded-full bg-white/80 dark:bg-white/5 p-1 text-sm">
