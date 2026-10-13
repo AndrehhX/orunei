@@ -1,18 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import Login from './components/Login'
-import AnimePage from './components/AnimePage'
-import LibraryPage from './components/LibraryPage'
-import NewsPage from './components/NewsPage'
 import Sidebar from './components/Sidebar'
 import Hero from './components/Hero'
 import RightPanel from './components/RightPanel'
 import { Library, Because, News } from './components/Rows'
 import { ProfileProvider, useProfile } from './profile/ProfileProvider'
-import ProfilePage from './components/ProfilePage'
-import ProfileEditor from './components/ProfileEditor'
-import FriendsPage from './components/FriendsPage'
-import PublicProfileRoute from './components/PublicProfileRoute'
 import DevelopmentNotice from './components/DevelopmentNotice'
 import CustomCursor from './components/CustomCursor'
 import { getPageScrollReset } from './ui/pageNavigation.js'
@@ -22,6 +15,18 @@ import { useAuth } from './auth/AuthProvider'
 import { createProfileRepository } from './profile/profileRepository'
 import { getPublicProfileHash, getPublicProfileUsername } from './profile/navigation'
 import { supabase } from './auth/supabaseClient'
+
+const AnimePage = lazy(() => import('./components/AnimePage'))
+const LibraryPage = lazy(() => import('./components/LibraryPage'))
+const NewsPage = lazy(() => import('./components/NewsPage'))
+const ProfilePage = lazy(() => import('./components/ProfilePage'))
+const ProfileEditor = lazy(() => import('./components/ProfileEditor'))
+const FriendsPage = lazy(() => import('./components/FriendsPage'))
+const PublicProfileRoute = lazy(() => import('./components/PublicProfileRoute'))
+
+function PageLoading() {
+  return <div className="grid min-h-[18rem] place-items-center text-sm text-slate-500">Cargando…</div>
+}
 
 const tabs = ['Anime', 'Noticias']
 
@@ -111,28 +116,30 @@ export default function App() {
   if (!user) return <Login onSignIn={signIn} onSignUp={signUp} authStatus={authStatus} authError={authError} dark={dark} setDark={setDark} />
   return (
   <ProfileProvider user={user} repository={repository}>
-    <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
-      <CustomCursor />
-      <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
-      <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
-        <AppHeader query={query} setQuery={setQuery} />
-            <div key={page} className="animate-page-enter space-y-7">
-        {page === 'anime' ? <AnimePage query={query} initialOpenId={selectedAnimeId} onCloseDetail={closeAnime} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
-        <div className="flex flex-wrap items-end justify-between gap-6 animate-rise">
-          <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
-            <p className="mt-2 text-sm leading-6 text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
-          <div className="flex rounded-full bg-white/80 p-1 text-sm dark:bg-white/5">
-            {tabs.map((t) => <button key={t} onClick={() => handleTabChange(t)} className={getHomeTabClass(t, tab)}>{t}</button>)}
+    <Suspense fallback={<PageLoading />}>
+      <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
+        <CustomCursor />
+        <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
+        <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
+          <AppHeader query={query} setQuery={setQuery} />
+          <div key={page} className="animate-page-enter space-y-7">
+            {page === 'anime' ? <AnimePage query={query} initialOpenId={selectedAnimeId} onCloseDetail={closeAnime} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
+            <div className="flex flex-wrap items-end justify-between gap-6 animate-rise">
+              <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
+                <p className="mt-2 text-sm leading-6 text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
+              <div className="flex rounded-full bg-white/80 p-1 text-sm dark:bg-white/5">
+                {tabs.map((t) => <button key={t} onClick={() => handleTabChange(t)} className={getHomeTabClass(t, tab)}>{t}</button>)}
+              </div>
+            </div>
+            {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero onOpenDetail={openAnime} /><Library query={query} onMore={() => navigatePage('library')} onOpenAnime={openAnime} /><Because query={query} onOpenAnime={openAnime} /><News query={query} onMore={() => setTab('Noticias')} /></>}
+            </>}
           </div>
-        </div>
-        {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero onOpenDetail={openAnime} /><Library query={query} onMore={() => navigatePage('library')} onOpenAnime={openAnime} /><Because query={query} onOpenAnime={openAnime} /><News query={query} onMore={() => setTab('Noticias')} /></>}
-        </>}
-        </div>
-      </main>
-      {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => navigatePage('profile')} onSeeFriends={() => navigatePage('friends')} onOpenProfile={openPublicProfile} onOpenAnime={openAnime} />}
-      {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}
-      <DevelopmentNotice notice={developmentNotice} onClose={() => setDevelopmentNotice(null)} />
-    </div>
+        </main>
+        {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => navigatePage('profile')} onSeeFriends={() => navigatePage('friends')} onOpenProfile={openPublicProfile} onOpenAnime={openAnime} />}
+        {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}
+        <DevelopmentNotice notice={developmentNotice} onClose={() => setDevelopmentNotice(null)} />
+      </div>
+    </Suspense>
   </ProfileProvider>
   )
 }

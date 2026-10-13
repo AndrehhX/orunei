@@ -17,38 +17,86 @@ function Field({ icon: Icon, label, children, ...props }) {
   )
 }
 
-function LoginArtwork({ pointerOffset, onPointerChange }) {
+function LoginArtwork() {
   const ref = useRef(null)
   const [parallax, setParallax] = useState(false)
+  const frameRef = useRef(0)
+  const pointerRef = useRef({ clientX: 0, clientY: 0 })
+  const rectRef = useRef(null)
 
   useEffect(() => {
     const pointerQuery = window.matchMedia('(pointer: fine)')
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const sync = () => setParallax(shouldEnableLoginParallax({ pointer: pointerQuery.matches ? 'fine' : 'coarse', reducedMotion: motionQuery.matches }))
+    const resetStyles = () => {
+      const element = ref.current
+      if (!element) return
+      element.style.setProperty('--login-x', '0px')
+      element.style.setProperty('--login-y', '0px')
+      element.style.setProperty('--login-glow-x', '50%')
+      element.style.setProperty('--login-glow-y', '44%')
+    }
+    const renderPointer = () => {
+      frameRef.current = 0
+      const element = ref.current
+      const rect = rectRef.current
+      if (!element || !rect) return
+      const offset = getLoginPointerOffset(pointerRef.current, rect)
+      element.style.setProperty('--login-x', `${offset.x * 4}px`)
+      element.style.setProperty('--login-y', `${offset.y * 3}px`)
+      element.style.setProperty('--login-glow-x', `${50 + offset.x * 6}%`)
+      element.style.setProperty('--login-glow-y', `${44 + offset.y * 5}%`)
+    }
+    const scheduleRender = () => {
+      if (!frameRef.current) frameRef.current = requestAnimationFrame(renderPointer)
+    }
+    const refreshRect = () => {
+      rectRef.current = ref.current?.getBoundingClientRect() ?? null
+    }
+    const sync = () => {
+      const enabled = shouldEnableLoginParallax({ pointer: pointerQuery.matches ? 'fine' : 'coarse', reducedMotion: motionQuery.matches })
+      setParallax(enabled)
+      if (!enabled) {
+        rectRef.current = null
+        resetStyles()
+      }
+    }
     const move = (event) => {
       if (!shouldEnableLoginParallax({ pointer: pointerQuery.matches ? 'fine' : 'coarse', reducedMotion: motionQuery.matches })) return
-      const rect = ref.current?.getBoundingClientRect()
-      if (rect) onPointerChange(getLoginPointerOffset(event, rect))
+      if (!rectRef.current) refreshRect()
+      pointerRef.current = { clientX: event.clientX, clientY: event.clientY }
+      scheduleRender()
     }
-    const leave = () => onPointerChange({ x: 0, y: 0 })
+    const enter = () => {
+      refreshRect()
+      scheduleRender()
+    }
+    const leave = () => {
+      pointerRef.current = { clientX: 0, clientY: 0 }
+      rectRef.current = null
+      resetStyles()
+    }
     sync()
     ref.current?.addEventListener('pointermove', move, { passive: true })
+    ref.current?.addEventListener('pointerenter', enter, { passive: true })
     ref.current?.addEventListener('pointerleave', leave)
+    window.addEventListener('resize', refreshRect, { passive: true })
     pointerQuery.addEventListener?.('change', sync)
     motionQuery.addEventListener?.('change', sync)
     return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current)
       ref.current?.removeEventListener('pointermove', move)
+      ref.current?.removeEventListener('pointerenter', enter)
       ref.current?.removeEventListener('pointerleave', leave)
+      window.removeEventListener('resize', refreshRect)
       pointerQuery.removeEventListener?.('change', sync)
       motionQuery.removeEventListener?.('change', sync)
     }
-  }, [onPointerChange])
+  }, [])
 
   return (
     <aside
       ref={ref}
       className={`login-art-panel ${parallax ? 'login-art-panel--interactive' : ''}`}
-      style={{ '--login-x': `${pointerOffset.x * 4}px`, '--login-y': `${pointerOffset.y * 3}px`, '--login-glow-x': `${50 + pointerOffset.x * 6}%`, '--login-glow-y': `${44 + pointerOffset.y * 5}%` }}
       aria-label="Ilustración animada de Orunei"
     >
       <div className="login-art-noise" />
@@ -82,7 +130,6 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
   const [notice, setNotice] = useState('')
   const [shake, setShake] = useState(0)
   const [state, setState] = useState('idle')
-  const [pointer, setPointer] = useState({ x: 0, y: 0 })
   const set = (key) => (event) => { setF({ ...f, [key]: event.target.value }); setErr(''); setNotice('') }
 
   const submit = async (event) => {
@@ -154,7 +201,7 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
 
             <p className="flex items-center gap-2 text-xs text-slate-400"><ShieldCheck size={15} /> Tus datos se mantienen protegidos.</p>
           </section>
-          <LoginArtwork pointerOffset={pointer} onPointerChange={setPointer} />
+          <LoginArtwork />
         </div>
       </main>
     </>

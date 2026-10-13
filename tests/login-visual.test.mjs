@@ -21,6 +21,7 @@ test('only enables the login parallax for a fine pointer with motion allowed', (
 test('keeps the login character animation almost imperceptible', () => {
   assert.match(loginStyles, /animation: login-character-float 8s ease-in-out infinite/)
   assert.match(loginStyles, /50% \{ translate: 0 -3px; \}/)
-  assert.ok(loginComponent.includes('pointerOffset.x * 4}px'))
-  assert.ok(loginComponent.includes('pointerOffset.y * 3}px'))
+  assert.ok(loginComponent.includes("element.style.setProperty('--login-x', `${offset.x * 4}px`)"))
+  assert.ok(loginComponent.includes("element.style.setProperty('--login-y', `${offset.y * 3}px`)"))
+  assert.match(loginComponent, /requestAnimationFrame\(renderPointer\)/)
 })
