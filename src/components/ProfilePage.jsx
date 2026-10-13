@@ -53,7 +53,7 @@ function ActivityList({ activity }) {
 }
 
 export default function ProfilePage({ onEdit }) {
-  const { profile, profileStatus, updateCustomLists, updateAnimeList, recordActivity } = useProfile()
+  const { profile, profileStatus, updateCustomLists, updateAnimeList, recordActivity, storageError } = useProfile()
   const rec = useRec()
   const [active, setActive] = useState(profile.landingSection || 'overview')
   const [publicView, setPublicView] = useState(false)
@@ -68,30 +68,33 @@ export default function ProfilePage({ onEdit }) {
   const activity = selectRecentActivity(profile, profileLibrary)
   const featured = profileLibrary.find((item) => item.q === profile.featuredAnimeId) || profileLibrary.find((item) => item.favorite) || profileLibrary[0]
   const changeAnime = (id, patch) => updateAnimeList((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item))
-  const createList = () => {
+  const createList = async () => {
     const list = createCustomList(newListTitle, newListDescription)
     if (!list.title) return
-    updateCustomLists((lists) => [...lists, list])
+    const result = await updateCustomLists((lists) => [...lists, list])
+    if (!result?.ok) return
     recordActivity('list', `Creó la lista “${list.title}”`)
     setNewListTitle(''); setNewListDescription('')
   }
   const editList = (id, patch) => updateCustomLists((lists) => updateCustomList(lists, id, patch))
-  const removeList = (list) => { updateCustomLists((lists) => deleteCustomList(lists, list.id)); recordActivity('list', `Eliminó la lista “${list.title}”`) }
+  const removeList = async (list) => { const result = await updateCustomLists((lists) => deleteCustomList(lists, list.id)); if (!result?.ok) return; recordActivity('list', `Eliminó la lista “${list.title}”`) }
   const moveList = (list, direction) => updateCustomLists((lists) => moveCustomList(lists, list.id, direction))
-  const addToList = (list) => {
+  const addToList = async (list) => {
     const animeId = listAnimeDraft[list.id]
     if (!animeId) return
-    updateCustomLists((lists) => addAnimeToList(lists, list.id, animeId))
+    const result = await updateCustomLists((lists) => addAnimeToList(lists, list.id, animeId))
+    if (!result?.ok) return
     recordActivity('list', `Añadió una obra a “${list.title}”`)
     setListAnimeDraft((current) => ({ ...current, [list.id]: '' }))
   }
-  const removeFromList = (list, animeId) => { updateCustomLists((lists) => removeAnimeFromList(lists, list.id, animeId)); recordActivity('list', `Quitó una obra de “${list.title}”`) }
+  const removeFromList = async (list, animeId) => { const result = await updateCustomLists((lists) => removeAnimeFromList(lists, list.id, animeId)); if (!result?.ok) return; recordActivity('list', `Quitó una obra de “${list.title}”`) }
 
   if (publicView) return <PublicProfilePage profile={profile} viewer={{ id: 'public-preview', profileId: 'profile-owner', relationship: 'none', preview: true }} onBack={() => setPublicView(false)} />
 
   if (profileStatus === 'loading') return <div className="card grid min-h-64 place-items-center p-8 text-sm text-slate-500">Cargando tu perfil…</div>
 
   return <div className="space-y-5 pb-10 animate-fade">
+    {storageError && <p role="alert" className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600">{storageError}</p>}
     <ProfileAnimeListManager visible={active === 'animelist'} />
     <section className="overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
       <Banner src={profile.banner} className="h-36 bg-cover bg-center md:h-48" />
