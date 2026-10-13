@@ -16,6 +16,7 @@ import DevelopmentNotice from './components/DevelopmentNotice'
 import { getDevelopmentNotice } from './developmentNotice'
 import { useAuth } from './auth/AuthProvider'
 import { createProfileRepository } from './profile/profileRepository'
+import { getPublicProfileHash, getPublicProfileUsername } from './profile/navigation'
 import { supabase } from './auth/supabaseClient'
 
 const tabs = ['Todo', 'Anime', 'Películas', 'Series', 'Noticias']
@@ -24,11 +25,12 @@ export default function App() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const { user, status: authStatus, error: authError, signIn, signUp, signOut } = useAuth()
   const repository = useMemo(() => user?.id ? createProfileRepository(supabase) : null, [user?.id])
-  const [page, setPage] = useState('home')
+  const initialProfileUsername = getPublicProfileUsername(typeof window === 'undefined' ? '' : window.location.hash)
+  const [page, setPage] = useState(initialProfileUsername ? 'public-profile' : 'home')
   const [tab, setTab] = useState('Todo')
   const [query, setQuery] = useState('')
   const [editingProfile, setEditingProfile] = useState(false)
-  const [selectedUsername, setSelectedUsername] = useState('')
+  const [selectedUsername, setSelectedUsername] = useState(initialProfileUsername)
   const [developmentNotice, setDevelopmentNotice] = useState(null)
   const refs = useRef({})
   const [ind, setInd] = useState({ l: 0, w: 0 })
@@ -37,6 +39,35 @@ export default function App() {
     document.documentElement.classList.toggle('dark', dark)
     localStorage.setItem('theme', dark ? 'dark' : 'light')
   }, [dark])
+
+  useEffect(() => {
+    const syncProfileHash = () => {
+      const username = getPublicProfileUsername(window.location.hash)
+      if (username) {
+        setSelectedUsername(username)
+        setPage('public-profile')
+      } else if (page === 'public-profile') {
+        setPage('friends')
+      }
+    }
+    window.addEventListener('hashchange', syncProfileHash)
+    return () => window.removeEventListener('hashchange', syncProfileHash)
+  }, [page])
+
+  const navigatePage = (nextPage) => {
+    setPage(nextPage)
+    if (nextPage !== 'public-profile') {
+      setSelectedUsername('')
+      if (typeof window !== 'undefined' && getPublicProfileUsername(window.location.hash)) window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+    }
+  }
+  const openPublicProfile = (username) => {
+    const hash = getPublicProfileHash(username)
+    if (!hash) return
+    setSelectedUsername(username)
+    setPage('public-profile')
+    if (typeof window !== 'undefined' && window.location.hash !== hash) window.location.hash = hash
+  }
 
   const showDevelopmentNotice = (section) => {
     const notice = getDevelopmentNotice(section)
@@ -56,7 +87,7 @@ export default function App() {
   return (
   <ProfileProvider user={user} repository={repository}>
     <div className="mx-auto flex animate-fade min-h-screen max-w-[1536px]">
-      <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={setPage} onDevelopmentFeature={showDevelopmentNotice} />
+      <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
       <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
         <header className="flex items-center gap-4 animate-fade">
           <label className="flex h-11 flex-1 max-w-[540px] items-center gap-3 rounded-xl bg-slate-200/60 dark:bg-white/5 px-4 text-slate-500 transition focus-within:bg-white dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-brand/40">
@@ -65,7 +96,7 @@ export default function App() {
           <button className="relative ml-auto grid h-10 w-10 place-items-center rounded-full bg-white dark:bg-white/10 shadow-sm transition hover:scale-105" aria-label="Notificaciones"><Bell size={18} /><i className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" /></button>
           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-900" />
         </header>
-        {page === 'anime' ? <AnimePage query={query} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={(username) => { setSelectedUsername(username); setPage('public-profile') }} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => setPage('friends')} /> : <>
+        {page === 'anime' ? <AnimePage query={query} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
         <div className="flex flex-wrap items-end justify-between gap-3 animate-rise">
           <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
             <p className="text-sm text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
@@ -77,7 +108,7 @@ export default function App() {
         {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero /><Library query={query} /><Because query={query} /><News query={query} onMore={() => setTab('Noticias')} /></>}
         </>}
       </main>
-      {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => setPage('profile')} onSeeFriends={() => setPage('friends')} onOpenProfile={(username) => { setSelectedUsername(username); setPage('public-profile') }} />}
+      {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => navigatePage('profile')} onSeeFriends={() => navigatePage('friends')} onOpenProfile={openPublicProfile} />}
       {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}
       <DevelopmentNotice notice={developmentNotice} onClose={() => setDevelopmentNotice(null)} />
     </div>
