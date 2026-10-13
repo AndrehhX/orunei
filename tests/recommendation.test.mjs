@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import * as engine from '../src/rec/engine.js'
 import { buildRecommendationState, migrateTasteState } from '../src/rec/providerModel.js'
+import { CANDIDATE_CACHE_KEY, loadRecommendationPool } from '../src/rec/pool.js'
 const { librarySignal, STATUS_WEIGHTS, buildTasteProfile, profileSignature, scoreCandidate, recommend } = engine
 
 const animeApi = fs.readFileSync(new URL('../src/api/anime.js', import.meta.url), 'utf8')
@@ -146,6 +147,65 @@ test('migrates explicit interactions from the previous local version', () => {
     hidden: [2],
     news: [3],
   })
+})
+
+const storageStub = () => {
+  const values = new Map()
+  return { getItem: (key) => values.get(key) || null, setItem: (key, value) => values.set(key, value) }
+}
+
+const media = (id, genres = ['Drama'], title = `Anime ${id}`) => ({
+  id,
+  title: { romaji: title, english: title },
+  genres,
+  tags: [],
+  coverImage: { extraLarge: `https://img.test/${id}.jpg` },
+  bannerImage: `https://img.test/${id}-banner.jpg`,
+  averageScore: 80,
+  popularity: 100,
+  trending: 20,
+  seasonYear: 2026,
+  format: 'TV',
+})
+
+test('builds a larger deduplicated pool with source metadata and related genres', async () => {
+  const storage = storageStub()
+  let query = ''
+  const fetchImpl = async (_url, options) => {
+    query = JSON.parse(options.body).query
+    return { ok: true, json: async () => ({ data: {
+      popular: { media: [media(1), media(2, ['Action'])] },
+      trending: { media: [media(1), media(3, ['Fantasy'])] },
+      score: { media: [media(4, [])] },
+      recent: { media: [media(5, ['Romance'])] },
+      related: { media: [media(6, ['Drama'])] },
+    } }) }
+  }
+
+  const result = await loadRecommendationPool({ force: true, library: [{ id: 99, genres: ['Drama'] }], fetchImpl, storage })
+
+  assert.ok(query.includes('related'))
+  assert.equal(result.length, 5)
+  assert.equal(result.filter((item) => item.id === 1).length, 1)
+  assert.match(result.find((item) => item.id === 1).source, /popular.*trending/)
+  assert.equal(result.some((item) => item.id === 4), false)
+  assert.ok(result.every((item) => item.v && item.img))
+  assert.ok(storage.getItem(CANDIDATE_CACHE_KEY))
+})
+
+test('reuses a fresh candidate cache and preserves it after a refresh failure', async () => {
+  const storage = storageStub()
+  const valid = { popular: { media: [media(10)] }, trending: { media: [] }, score: { media: [] }, recent: { media: [] }, related: { media: [] } }
+  let calls = 0
+  const fetchImpl = async () => { calls += 1; return { ok: true, json: async () => ({ data: valid }) } }
+
+  const first = await loadRecommendationPool({ force: true, fetchImpl, storage })
+  const cached = await loadRecommendationPool({ fetchImpl, storage })
+  assert.equal(calls, 1)
+  assert.deepEqual(cached.map((item) => item.id), first.map((item) => item.id))
+
+  const failed = await loadRecommendationPool({ force: true, fetchImpl: async () => { throw new Error('AniList down') }, storage })
+  assert.deepEqual(failed.map((item) => item.id), first.map((item) => item.id))
 })
 
 test('rotates the live hero selection through the refreshed anime pool', () => {

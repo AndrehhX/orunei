@@ -41,10 +41,12 @@ test('does not seed personalized recommendations with hardcoded anime', () => {
 
 test('refreshes the recommendation pool with recent AniList anime', () => {
   const recommendations = fs.readFileSync(new URL('../src/rec/rec.jsx', import.meta.url), 'utf8')
+  const pool = fs.readFileSync(new URL('../src/rec/pool.js', import.meta.url), 'utf8')
 
-  assert.match(recommendations, /orunei-pool-v3/)
-  assert.match(recommendations, /START_DATE_DESC/)
-  assert.match(recommendations, /10 \* 6e4/)
+  assert.match(recommendations, /loadRecommendationPool/)
+  assert.match(pool, /CANDIDATE_CACHE_KEY/)
+  assert.match(pool, /START_DATE_DESC/)
+  assert.match(pool, /10 \* 60e3/)
 })
 
 test('feeds the home hero with the latest live anime when available', () => {
