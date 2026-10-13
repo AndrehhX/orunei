@@ -24,7 +24,7 @@ const groups = [
 ]
 
 function Avatar({ profile, large = false }) {
-  return <div className={`${large ? 'h-24 w-24 md:h-28 md:w-28' : 'h-10 w-10'} overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 shadow-lg dark:border-[#171723]`}>
+  return <div className={`${large ? 'h-24 w-24 md:h-28 md:w-28' : 'h-10 w-10'} ${large ? getProfileLayoutClasses().avatar : ''} overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 shadow-lg dark:border-[#171723]`}>
     {profile.avatar ? <img src={profile.avatar} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center text-2xl font-bold text-white">{profile.displayName.slice(0, 1).toUpperCase()}</span>}
   </div>
 }
