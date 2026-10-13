@@ -55,6 +55,7 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
   const [relationship, setRelationship] = useState(viewer.relationship || 'none')
   const [friendRequesting, setFriendRequesting] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState('')
   useEffect(() => {
     if (!availableTabs.some(([id]) => id === active)) setActive('overview')
   }, [active, availableTabs])
@@ -74,13 +75,26 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
     setFriendRequesting(false)
   }
   const copyProfileLink = async () => {
-    if (typeof window === 'undefined' || !navigator.clipboard?.writeText) return
+    if (typeof window === 'undefined') return
     const link = `${window.location.origin}${window.location.pathname}${window.location.search}${getPublicProfileHash(profile.username)}`
+    setCopyError('')
     try {
-      await navigator.clipboard.writeText(link)
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(link)
+      else {
+        const input = document.createElement('textarea')
+        input.value = link
+        input.setAttribute('readonly', '')
+        input.style.position = 'fixed'
+        input.style.opacity = '0'
+        document.body.appendChild(input)
+        input.select()
+        const copiedByFallback = document.execCommand('copy')
+        input.remove()
+        if (!copiedByFallback) throw new Error('copy failed')
+      }
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2200)
-    } catch {}
+    } catch { setCopyError('No se pudo copiar el enlace. Puedes copiarlo desde la barra del navegador.') }
   }
 
   return <div className="space-y-5 pb-10 animate-fade">
@@ -92,10 +106,11 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
           <div className="min-w-[180px] flex-1 pb-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">{profile.displayName}</h1><span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-1 text-[10px] font-semibold text-brand"><Eye size={11} /> Perfil público</span></div><p className="text-sm text-slate-500">@{profile.username}</p></div>
           <div className="flex flex-wrap gap-2">
             {!visibility.canEdit && onFriendRequest && <button onClick={requestFriendship} disabled={friendRequesting || relationship !== 'none'} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{friendRequesting ? 'Enviando…' : relationship === 'pending' ? 'Solicitud enviada' : relationship === 'accepted' ? 'Amigos' : 'Agregar amigo'}</button>}
-            <button onClick={copyProfileLink} disabled={!getPublicProfileHash(profile.username)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand disabled:opacity-50 dark:border-white/10 dark:text-slate-200" aria-label="Copiar enlace del perfil"><>{copied ? <Check size={15} /> : <Copy size={15} />}</>{copied ? 'Enlace copiado' : 'Compartir perfil'}</button>
+            <button onClick={copyProfileLink} disabled={!getPublicProfileHash(profile.username)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand disabled:opacity-50 dark:border-white/10 dark:text-slate-200" aria-label="Copiar enlace del perfil">{copied ? <Check size={15} /> : <Copy size={15} />}{copied ? 'Enlace copiado' : 'Compartir perfil'}</button>
             {onBack && <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200"><ArrowLeft size={15} /> Volver</button>}
           </div>
         </div>
+        {copyError && <p role="alert" className="mt-3 text-xs font-medium text-amber-600">{copyError}</p>}
         <div className="mt-4 max-w-2xl"><p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{profile.bio || 'Este perfil aún no tiene una bio pública.'}</p>{profile.status && <p className="mt-2 text-xs font-medium text-brand">{profile.status}</p>}</div>
         <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-slate-200 rounded-2xl border border-slate-200/80 bg-slate-50/70 sm:grid-cols-3 sm:divide-y-0 dark:divide-white/10 dark:bg-white/5">{stats.map(([value, label]) => <div key={label} className="px-4 py-3 text-center"><p className="text-xl font-extrabold">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>)}</div>
       </div>
