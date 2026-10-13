@@ -5,6 +5,7 @@ import { slides, trending } from '../data'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
 import { createLibraryEntry } from '../profile/model.js'
+import { truncateWithEllipsis } from '../ui/text.js'
 
 export default function Hero() {
   const rec = useRec()
@@ -16,9 +17,9 @@ export default function Hero() {
     img: item.img,
     banner: item.banner,
     meta: `${item.year || '—'} · Anime${item.genres?.length ? ` · ${item.genres.slice(0, 2).join(' · ')}` : ''}`,
-    desc: item.description || 'Descubre una nueva historia que acaba de llegar a Orunei.',
+    desc: truncateWithEllipsis(item.description || 'Descubre una nueva historia que acaba de llegar a Orunei.'),
     grad: 'linear-gradient(135deg,#1b1f4d,#c0627a)',
-  })) : slides, [latest])
+  })) : slides.map((slide) => ({ ...slide, desc: truncateWithEllipsis(slide.desc) })), [latest])
   const currentTrending = useMemo(() => latest[0] ? {
     title: latest[0].title,
     q: latest[0].title,
@@ -58,9 +59,9 @@ export default function Hero() {
               <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/35 to-transparent" />
               <div className={`relative flex h-full max-w-[430px] flex-col justify-start gap-2 px-6 pb-12 pt-6 text-white transition-all duration-700 delay-150 ${on ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'}`}>
                 <span className="flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Recomendación para ti</span>
-                <h2 className="text-4xl font-extrabold tracking-tight">{s.title}</h2>
+                <h2 className="line-clamp-2 text-4xl font-extrabold leading-tight tracking-tight">{s.title}</h2>
                 <p className="text-xs text-white/80">{s.meta}</p>
-                <p className="text-sm leading-relaxed text-white/85">{s.desc}</p>
+                <p className="line-clamp-2 h-12 shrink-0 overflow-hidden text-sm leading-6 text-white/85">{s.desc}</p>
                 <div className="mt-auto flex gap-2">
                   <button onClick={() => toggleLibrary(s)}
                     className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${inLibrary(s) ? 'bg-emerald-500' : 'bg-brand hover:brightness-110'}`}>
