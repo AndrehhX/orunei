@@ -48,7 +48,7 @@ function LoginArtwork({ pointerOffset, onPointerChange }) {
     <aside
       ref={ref}
       className={`login-art-panel ${parallax ? 'login-art-panel--interactive' : ''}`}
-      style={{ '--login-x': `${pointerOffset.x * 18}px`, '--login-y': `${pointerOffset.y * 12}px`, '--login-glow-x': `${50 + pointerOffset.x * 18}%`, '--login-glow-y': `${44 + pointerOffset.y * 16}%` }}
+      style={{ '--login-x': `${pointerOffset.x * 4}px`, '--login-y': `${pointerOffset.y * 3}px`, '--login-glow-x': `${50 + pointerOffset.x * 6}%`, '--login-glow-y': `${44 + pointerOffset.y * 5}%` }}
       aria-label="Ilustración animada de Orunei"
     >
       <div className="login-art-noise" />

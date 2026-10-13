@@ -45,9 +45,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .login-art-copy h2 { margin-top: 1.25rem; font-size: clamp(2rem, 3.5vw, 3.4rem); font-weight: 800; letter-spacing: -.055em; line-height: .98; }
 .login-art-copy p { margin-top: 1.1rem; max-width: 19rem; color: rgb(255 255 255 / .7); font-size: .94rem; line-height: 1.65; }
 .login-art-stage { position: absolute; z-index: 1; inset: 10rem 1.5rem 0; display: flex; align-items: flex-end; justify-content: center; }
-.login-character { position: relative; z-index: 2; height: min(72vh, 40rem); width: auto; max-width: 94%; object-fit: contain; filter: drop-shadow(0 2rem 1.8rem rgb(13 10 39 / .35)); transform: translate3d(var(--login-x, 0), var(--login-y, 0), 0) rotate(calc(var(--login-x, 0) * .08)); transform-origin: 50% 100%; animation: login-character-float 5.5s ease-in-out infinite; transition: transform 700ms cubic-bezier(.22,1,.36,1); will-change: transform; }
+.login-character { position: relative; z-index: 2; height: min(72vh, 40rem); width: auto; max-width: 94%; object-fit: contain; filter: drop-shadow(0 2rem 1.8rem rgb(13 10 39 / .35)); transform: translate3d(var(--login-x, 0), var(--login-y, 0), 0) rotate(calc(var(--login-x, 0) * .08)); transform-origin: 50% 100%; animation: login-character-float 8s ease-in-out infinite; transition: transform 700ms cubic-bezier(.22,1,.36,1); will-change: transform; }
 .login-art-panel--interactive .login-character { transition-duration: 260ms; }
-.login-art-shadow { position: absolute; bottom: 1.5rem; left: 50%; width: min(22rem, 70%); height: 2.5rem; border-radius: 50%; background: rgb(13 10 39 / .36); filter: blur(1.1rem); transform: translateX(-50%); animation: login-shadow-breathe 5.5s ease-in-out infinite; }
+.login-art-shadow { position: absolute; bottom: 1.5rem; left: 50%; width: min(22rem, 70%); height: 2.5rem; border-radius: 50%; background: rgb(13 10 39 / .36); filter: blur(1.1rem); transform: translateX(-50%); animation: login-shadow-breathe 8s ease-in-out infinite; }
 .login-art-orbit { position: absolute; z-index: 0; border: 1px solid rgb(255 255 255 / .16); border-radius: 50%; transform: translate3d(var(--login-x, 0), var(--login-y, 0), 0); transition: transform 800ms ease; pointer-events: none; }
 .login-art-orbit--one { top: 21%; right: -10%; width: 29rem; height: 29rem; }
 .login-art-orbit--two { top: 31%; left: -24%; width: 20rem; height: 20rem; border-color: rgb(240 138 184 / .22); }
@@ -58,8 +58,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .login-art-footer { position: absolute; z-index: 4; right: 3.5rem; bottom: 2.5rem; left: 3.5rem; display: flex; align-items: center; justify-content: space-between; color: rgb(255 255 255 / .68); font-size: .75rem; }
 .login-art-footer span { display: inline-flex; align-items: center; gap: .45rem; }
 .login-art-cursor-hint { color: #fff; }
-@keyframes login-character-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
-@keyframes login-shadow-breathe { 0%, 100% { transform: translateX(-50%) scaleX(1); opacity: .7; } 50% { transform: translateX(-50%) scaleX(.82); opacity: .45; } }
+@keyframes login-character-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -3px; } }
+@keyframes login-shadow-breathe { 0%, 100% { transform: translateX(-50%) scaleX(1); opacity: .62; } 50% { transform: translateX(-50%) scaleX(.94); opacity: .54; } }
 @keyframes login-spark-pulse { 0%, 100% { opacity: .45; transform: scale(.82) rotate(0deg); } 50% { opacity: 1; transform: scale(1.1) rotate(12deg); } }
 @media (max-width: 1023px) {
   .login-frame { min-height: 0; }
