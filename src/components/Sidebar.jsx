@@ -4,7 +4,7 @@ import { getMainDestination } from '../profile/navigation'
 const main = [['Para ti', Home], ['Descubrir', Search], ['Biblioteca', Library], ['Perfil', User], ['Compatibilidad', Heart]]
 const explore = [['Anime', Sparkles], ['Películas', Film], ['Series', MonitorPlay]]
 
-export default function Sidebar({ dark, setDark, user, onLogout, page, setPage }) {
+export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, onDevelopmentFeature }) {
   return (
     <aside className="hidden lg:flex w-[216px] shrink-0 flex-col px-3 py-6 sticky top-0 h-screen">
       <div className="flex items-center gap-2 px-3 mb-8 text-2xl font-extrabold"><Sparkles className="text-brand" size={26} />Orunei</div>
@@ -20,9 +20,9 @@ export default function Sidebar({ dark, setDark, user, onLogout, page, setPage }
       <p className="px-4 mb-2 text-[15px] text-slate-500">Explorar</p>
       <nav className="space-y-1 text-slate-600 dark:text-slate-300">
         {explore.map(([n, I]) => (
-          <a key={n} href="#" onClick={(e) => { e.preventDefault(); if (n === 'Anime') setPage('anime') }} className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition hover:bg-white/70 dark:hover:bg-white/5 ${n === 'Anime' && page === 'anime' ? 'bg-brand-soft font-semibold text-brand dark:bg-brand/20' : ''}`}><I size={19} />{n}</a>
+          <a key={n} href="#" onClick={(e) => { e.preventDefault(); if (n === 'Anime') setPage('anime'); else onDevelopmentFeature(n) }} className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition hover:bg-white/70 dark:hover:bg-white/5 ${n === 'Anime' && page === 'anime' ? 'bg-brand-soft font-semibold text-brand dark:bg-brand/20' : ''}`}><I size={19} />{n}{n !== 'Anime' && <span className="ml-auto rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] dark:bg-white/10">Próximamente</span>}</a>
         ))}
-        <a href="#" className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm"><Gamepad2 size={19} />Juegos
+        <a href="#" onClick={(e) => { e.preventDefault(); onDevelopmentFeature('Juegos') }} className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm"><Gamepad2 size={19} />Juegos
           <span className="rounded-full bg-slate-200/80 dark:bg-white/10 px-2 py-0.5 text-[10px]">Próximamente</span></a>
       </nav>
       <div className="mt-auto space-y-4">
