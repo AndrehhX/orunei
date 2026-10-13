@@ -4,7 +4,7 @@ import { normalizeComment, normalizeFriendship, STATUSES } from './model.js'
 
 const text = (value) => typeof value === 'string' ? value.trim() : ''
 const resultError = (error) => error?.message || ''
-const empty = (message = 'Las funciones sociales no estÃ¡n configuradas.') => ({ data: null, error: message })
+const empty = (message = 'Las funciones sociales no están configuradas.') => ({ data: null, error: message })
 
 export function createSocialRepository(client = supabase, userId = '') {
   const unavailable = () => empty()

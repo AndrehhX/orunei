@@ -6,7 +6,19 @@ html { scroll-behavior: smooth; }
 body { @apply bg-[#f4f4fb] text-slate-900 antialiased transition-colors duration-300; }
 .dark body { @apply bg-[#0e0e17] text-slate-100; }
 .card { @apply bg-white/90 dark:bg-[#171723] rounded-2xl border border-white dark:border-white/5 shadow-sm; }
+.card { transition: transform 280ms cubic-bezier(.22,1,.36,1), box-shadow 280ms cubic-bezier(.22,1,.36,1), border-color 280ms cubic-bezier(.22,1,.36,1); }
+.animate-page-enter { animation: page-enter .55s cubic-bezier(.22,1,.36,1) both; }
+.custom-cursor { position: fixed; inset: 0; z-index: 9999; pointer-events: none; }
+.custom-cursor-ring, .custom-cursor-dot { position: fixed; left: 0; top: 0; pointer-events: none; will-change: transform; }
+.custom-cursor-ring { width: 36px; height: 36px; border: 1px solid rgb(109 92 255 / .62); border-radius: 9999px; background: rgb(109 92 255 / .08); transition: width 220ms cubic-bezier(.22,1,.36,1), height 220ms cubic-bezier(.22,1,.36,1), border-color 220ms ease, background-color 220ms ease, opacity 220ms ease; }
+.custom-cursor-dot { width: 8px; height: 8px; border-radius: 9999px; background: #6d5cff; box-shadow: 0 0 0 3px rgb(255 255 255 / .65); transition: transform 140ms cubic-bezier(.22,1,.36,1), background-color 180ms ease; }
+.custom-cursor.is-interactive .custom-cursor-ring { width: 52px; height: 52px; border-color: rgb(240 138 184 / .85); background: rgb(240 138 184 / .14); }
+.custom-cursor.is-interactive .custom-cursor-dot { background: #f08ab8; }
+.custom-cursor.is-pressed .custom-cursor-ring { width: 30px; height: 30px; }
+.cursor-away .custom-cursor { opacity: 0; }
+@keyframes page-enter { from { opacity: 0; transform: translateY(8px) scale(.995); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .scroll-hide::-webkit-scrollbar { display: none; }
 button, a { -webkit-tap-highlight-color: transparent; }
 @media (prefers-reduced-motion: no-preference) { * { transition-timing-function: cubic-bezier(.22,1,.36,1); } }
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) { .has-custom-cursor, .has-custom-cursor * { cursor: none !important; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

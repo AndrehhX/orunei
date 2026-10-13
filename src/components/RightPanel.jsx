@@ -6,7 +6,7 @@ import { useProfile } from '../profile/ProfileProvider'
 import { selectTasteGenres } from '../profile/profileData'
 import { useSocial } from '../social/SocialProvider.jsx'
 
-const Head = ({ children, onAll }) => <div className="mb-3 flex items-center justify-between"><h3 className="font-bold">{children}</h3>{onAll && <a href="#amigos" onClick={(e) => { e.preventDefault(); onAll?.() }} className="flex items-center gap-1 text-[11px] text-brand">Ver todo <ArrowRight size={12} /></a>}</div>
+const Head = ({ children, onAll, href = '#amigos' }) => <div className="mb-3 flex items-center justify-between"><h3 className="font-bold">{children}</h3>{onAll && <a href={href} onClick={(e) => { e.preventDefault(); onAll?.() }} className="flex items-center gap-1 text-[11px] text-brand">Ver todo <ArrowRight size={12} /></a>}</div>
 const Avatar = ({ profile }) => <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-brand to-pink-400 text-white">{profile?.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : <UserRound size={15} />}</div>
 
 export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOpenProfile }) {
@@ -35,7 +35,7 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
       </div>
       <div className="card p-4">
         <Head onAll={onSeeFriends}><span className="inline-flex items-center gap-2"><Users size={16} className="text-brand" />Amigos</span></Head>
-        {friends.length ? friends.slice(0, 4).map((friendship) => <button key={friendship.id} onClick={() => friendship.profile?.username && onOpenProfile?.(friendship.profile.username)} className="flex w-full items-center gap-2.5 py-2 text-left"><Avatar profile={friendship.profile} /><div className="min-w-0 leading-tight"><p className="truncate text-sm font-semibold">{friendship.profile?.displayName || 'Perfil de Orunei'}</p><p className="truncate text-[11px] text-slate-500">@{friendship.profile?.username || 'usuario'}</p></div></button>) : <p className="py-2 text-xs text-slate-500">Busca perfiles y conecta con personas reales.</p>}
+        {friends.length ? friends.slice(0, 4).map((friendship) => <button key={friendship.id} onClick={() => friendship.profile?.username && onOpenProfile?.(friendship.profile.username)} className="flex w-full items-center gap-2.5 py-2 text-left"><Avatar profile={friendship.profile} /><div className="min-w-0 leading-tight"><p className="truncate text-sm font-semibold">{friendship.profile?.displayName || 'Perfil de Orunei'}</p><p className="truncate text-[11px] text-slate-500">@{friendship.profile?.username || 'usuario'}</p></div></button>) : <div className="space-y-2"><p className="text-xs leading-5 text-slate-500">Busca perfiles y conecta con personas reales.</p><button onClick={onSeeFriends} className="text-xs font-semibold text-brand transition hover:translate-x-0.5">Buscar perfiles <ArrowRight size={12} className="inline" /></button></div>}
       </div>
       <div className="card p-4">
         <Head>Tendencias hoy</Head>
@@ -46,7 +46,7 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
         ))}
       </div>
       <div className="card p-4">
-        <Head onAll={onSeeNews}>Noticias destacadas</Head>
+        <Head onAll={onSeeNews} href="#noticias">Noticias destacadas</Head>
         {!newsItems.length && newsStatus === 'error' && <p className="py-2 text-xs text-slate-500">Las fuentes no están disponibles ahora.</p>}
         {newsItems.map((f, i) => f === i ? <div key={i} className="my-2 h-[62px] animate-pulse rounded-lg bg-slate-200/60 dark:bg-white/5" /> : <NewsLink key={f.id} n={f} className="group flex cursor-pointer gap-3 rounded-lg py-2 transition-transform duration-300 hover:translate-x-1"><Poster img={f.img} q={f.q} grad={f.grad} wide title="" className="h-[62px] w-[98px] shrink-0 rounded-lg" /><div className="min-w-0 leading-snug"><p className="line-clamp-2 text-[13px] font-bold">{f.t}</p><p className="text-[11px] text-slate-500">{f.s} · {f.h}</p></div></NewsLink>)}
       </div>

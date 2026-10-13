@@ -13,6 +13,7 @@ import ProfileEditor from './components/ProfileEditor'
 import FriendsPage from './components/FriendsPage'
 import PublicProfileRoute from './components/PublicProfileRoute'
 import DevelopmentNotice from './components/DevelopmentNotice'
+import CustomCursor from './components/CustomCursor'
 import { getDevelopmentNotice } from './developmentNotice'
 import { useAuth } from './auth/AuthProvider'
 import { createProfileRepository } from './profile/profileRepository'
@@ -96,10 +97,12 @@ export default function App() {
   if (!user) return <Login onSignIn={signIn} onSignUp={signUp} authStatus={authStatus} authError={authError} dark={dark} setDark={setDark} />
   return (
   <ProfileProvider user={user} repository={repository}>
-    <div className="mx-auto flex animate-fade min-h-screen max-w-[1536px]">
+    <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
+      <CustomCursor />
       <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
       <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
         <AppHeader query={query} setQuery={setQuery} />
+        <div key={`${page}:${tab}`} className="animate-page-enter">
         {page === 'anime' ? <AnimePage query={query} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
         <div className="flex flex-wrap items-end justify-between gap-3 animate-rise">
           <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
@@ -111,6 +114,7 @@ export default function App() {
         </div>
         {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero /><Library query={query} /><Because query={query} /><News query={query} onMore={() => setTab('Noticias')} /></>}
         </>}
+        </div>
       </main>
       {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => navigatePage('profile')} onSeeFriends={() => navigatePage('friends')} onOpenProfile={openPublicProfile} />}
       {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Sparkles, Mail, Lock, User, Eye, EyeOff, Check, Sun, Moon } from 'lucide-react'
 import Mascots from './Mascots'
 import { REGISTER_USERNAME_PLACEHOLDER } from '../auth/authModel.js'
+import CustomCursor from './CustomCursor'
 
 function Field({ icon: I, label, children, ...p }) {
   return (
@@ -49,6 +50,8 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
   const fail = (m) => { setErr(m); setNotice(''); setShake((s) => s + 1) }
 
   return (
+    <>
+    <CustomCursor />
     <div className="relative grid min-h-screen place-items-center overflow-hidden px-4 py-10 animate-fade">
       <div className="absolute -left-24 -top-24 h-96 w-96 animate-floaty rounded-full bg-brand/25 blur-3xl" />
       <div className="absolute -bottom-32 -right-20 h-[26rem] w-[26rem] animate-floaty rounded-full bg-pink-300/30 blur-3xl [animation-delay:-5s]" />
@@ -84,5 +87,6 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
         </form>
       </div>
     </div>
+    </>
   )
 }

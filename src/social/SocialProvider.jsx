@@ -61,28 +61,28 @@ export function SocialProvider({ children }) {
   }, [repository])
 
   const sendFriendRequest = useCallback(async (targetId) => {
-    const result = await repository?.sendFriendRequest(targetId) || { data: null, error: 'No hay una sesiÃ³n activa.' }
+    const result = await repository?.sendFriendRequest(targetId) || { data: null, error: 'No hay una sesión activa.' }
     if (result.error) setError(result.error)
     else await refreshFriendships()
     return result
   }, [refreshFriendships, repository])
 
   const respondToFriendRequest = useCallback(async (id, nextStatus) => {
-    const result = await repository?.respondToFriendRequest(id, nextStatus) || { data: null, error: 'No hay una sesiÃ³n activa.' }
+    const result = await repository?.respondToFriendRequest(id, nextStatus) || { data: null, error: 'No hay una sesión activa.' }
     if (result.error) setError(result.error)
     else await refreshFriendships()
     return result
   }, [refreshFriendships, repository])
 
   const cancelFriendRequest = useCallback(async (id) => {
-    const result = await repository?.cancelFriendRequest(id) || { data: null, error: 'No hay una sesiÃ³n activa.' }
+    const result = await repository?.cancelFriendRequest(id) || { data: null, error: 'No hay una sesión activa.' }
     if (result.error) setError(result.error)
     else await refreshFriendships()
     return result
   }, [refreshFriendships, repository])
 
   const removeFriend = useCallback(async (id) => {
-    const result = await repository?.removeFriend(id) || { data: null, error: 'No hay una sesiÃ³n activa.' }
+    const result = await repository?.removeFriend(id) || { data: null, error: 'No hay una sesión activa.' }
     if (result.error) setError(result.error)
     else await refreshFriendships()
     return result
@@ -90,7 +90,7 @@ export function SocialProvider({ children }) {
 
   const createComment = useCallback(async (profileId, body) => {
     const previous = comments
-    const result = await repository?.createComment(profileId, body) || { data: null, error: 'No hay una sesiÃ³n activa.' }
+    const result = await repository?.createComment(profileId, body) || { data: null, error: 'No hay una sesión activa.' }
     if (result.error) {
       setComments(previous)
       setError(result.error)
@@ -100,7 +100,7 @@ export function SocialProvider({ children }) {
 
   const updateComment = useCallback(async (id, body) => {
     const previous = comments
-    const result = await repository?.updateComment(id, body) || { data: null, error: 'No hay una sesiÃ³n activa.' }
+    const result = await repository?.updateComment(id, body) || { data: null, error: 'No hay una sesión activa.' }
     if (result.error) {
       setComments(previous)
       setError(result.error)
@@ -111,7 +111,7 @@ export function SocialProvider({ children }) {
   const deleteComment = useCallback(async (id) => {
     const previous = comments
     setComments((current) => current.filter((comment) => comment.id !== id))
-    const result = await repository?.deleteComment(id) || { data: null, error: 'No hay una sesiÃ³n activa.' }
+    const result = await repository?.deleteComment(id) || { data: null, error: 'No hay una sesión activa.' }
     if (result.error) {
       setComments(previous)
       setError(result.error)
