@@ -18,7 +18,7 @@ src/
     Sidebar.jsx         navigation + light/dark toggle
     Hero.jsx            recommendation + trending banners
     Rows.jsx            library, "because you like", news
-    RightPanel.jsx      profile, similar users, trends, featured news
+    RightPanel.jsx      profile, friends, trends, featured news
     ProfilePage.jsx     private profile, AnimeList, favorites, lists, activity
     ProfileEditor.jsx   private profile editor and profile image uploads
     Poster.jsx          image with gradient fallback
