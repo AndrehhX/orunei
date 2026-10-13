@@ -1,4 +1,5 @@
 export const PUBLIC_PROFILE_SECTIONS = ['animeList', 'favorites', 'taste', 'activity', 'reviews', 'lists']
+import { canComment } from '../social/model.js'
 
 const visibilityAllows = (visibility, relationship) => visibility === 'public' || (visibility === 'friends' && relationship === 'accepted')
 
@@ -18,4 +19,10 @@ export function selectVisibleProfile(profile = {}, viewer = {}) {
 
 export function canViewProfileSection(profile, viewer, section) {
   return selectVisibleProfile(profile, viewer).visibleSections.includes(section)
+}
+
+export function selectVisibleComments(profile = {}, viewer = {}, comments = []) {
+  const isOwner = Boolean(viewer.isOwner || (viewer.id && viewer.profileId && viewer.id === viewer.profileId))
+  if (!isOwner && !canComment(profile, viewer)) return []
+  return Array.isArray(comments) ? comments.map((comment) => ({ ...comment, canEdit: viewer.id === comment.authorId, canModerate: isOwner })) : []
 }

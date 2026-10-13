@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, ArrowLeft, BookOpen, Check, Eye, Heart, List, LockKeyhole, Sparkles } from 'lucide-react'
 import Poster from './Poster'
+import ProfileComments from './ProfileComments'
 import { library as defaultLibrary } from '../data'
 import { selectAnimeSections } from '../profile/profileData'
 import { selectVisibleProfile } from '../profile/publicProfile'
@@ -24,6 +25,7 @@ const groups = [
 function Avatar({ profile }) {
   return <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 shadow-lg dark:border-[#171723] md:h-28 md:w-28">
     {profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} /> : <span className="grid h-full w-full place-items-center text-3xl font-bold text-white">{profile.displayName.slice(0, 1).toUpperCase()}</span>}
+    {active === 'overview' && <ProfileComments profile={profile} viewer={viewer} />}
   </div>
 }
 
