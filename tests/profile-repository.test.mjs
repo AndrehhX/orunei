@@ -101,14 +101,16 @@ test('does not resolve a private profile for an unrelated viewer', async () => {
 })
 
 test('loads and persists the account AnimeList through the remote repository', async () => {
-  const client = makeClient({ profile: { id: 'user-1', display_name: 'Andreh', username: 'andreh' }, anime: [{ anime_id: '101', title: 'Frieren', status: 'watching', favorite: true }] })
+  const client = makeClient({ profile: { id: 'user-1', display_name: 'Andreh', username: 'andreh' }, anime: [{ anime_id: '101', title: 'Frieren', genres: ['Fantasy', 'Drama'], status: 'watching', favorite: true }] })
   const repository = createProfileRepository(client)
   const own = await repository.getOwnProfile('user-1')
   assert.equal(own.data.animeList[0].id, '101')
+  assert.deepEqual(own.data.animeList[0].genres, ['Fantasy', 'Drama'])
   const saved = await repository.saveAnimeList('user-1', own.data.animeList)
   assert.equal(saved.error, '')
   assert.equal(client.calls.some((call) => call.type === 'delete'), true)
-  assert.equal(client.calls.some((call) => call.type === 'upsert'), true)
+  const animeUpsert = client.calls.find((call) => call.type === 'upsert')
+  assert.deepEqual(animeUpsert.payload[0].genres, ['Fantasy', 'Drama'])
 })
 
 test('loads private lists and activity and writes new remote activity', async () => {

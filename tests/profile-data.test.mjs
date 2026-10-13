@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readProfileStorage, writeProfileStorage } from '../src/profile/profileStorage.js'
-import { selectAnimeSections, selectProfileStats, selectRecentActivity } from '../src/profile/profileData.js'
+import { selectAnimeSections, selectProfileStats, selectRecentActivity, selectTasteGenres } from '../src/profile/profileData.js'
 import { createProfile } from '../src/profile/model.js'
 
 const library = [
@@ -21,6 +21,20 @@ test('selects AnimeList sections from the real library statuses', () => {
     completed: ['A Silent Voice'],
     favorites: ['Your Name.'],
   })
+})
+
+test('derives taste bars from the genres stored on the real AnimeList', () => {
+  const tastes = selectTasteGenres([
+    { t: 'Your Name.', genres: ['Romance', 'Drama'] },
+    { t: 'A Silent Voice', genres: ['Romance', 'Drama'] },
+    { t: 'Frieren', genres: ['Fantasy'] },
+  ])
+
+  assert.deepEqual(tastes, [
+    { name: 'Romance', count: 2, total: 3, pct: 100 },
+    { name: 'Drama', count: 2, total: 3, pct: 100 },
+    { name: 'Fantasy', count: 1, total: 3, pct: 50 },
+  ])
 })
 
 test('selects stats and recent profile activity without inventing social counts', () => {

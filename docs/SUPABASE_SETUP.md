@@ -12,6 +12,7 @@ La aplicación ya no crea cuentas demo. Para activar registro, perfiles, amistad
    - `supabase/migrations/006_private_profile_identity_rls.sql`
    - `supabase/migrations/007_private_profile_sections_rls.sql`
    - `supabase/migrations/008_remove_unsupported_profile_sections.sql`
+   - `supabase/migrations/009_profile_anime_genres.sql`
 3. En **Authentication → Providers**, activa Email. Para pruebas locales puedes desactivar temporalmente la confirmación de correo; en producción conviene mantenerla activa.
 4. Copia `.env.example` como `.env` y completa:
 

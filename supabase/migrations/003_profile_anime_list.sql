@@ -7,6 +7,7 @@ create table if not exists public.profile_anime (
   favorite boolean not null default false,
   poster_url text not null default '',
   banner_url text not null default '',
+  genres text[] not null default '{}',
   year integer,
   updated_at timestamptz not null default now(),
   primary key (profile_id, anime_id)

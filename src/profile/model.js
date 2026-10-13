@@ -39,6 +39,11 @@ export const DEFAULT_PROFILE = {
 const clone = (value) => JSON.parse(JSON.stringify(value))
 const text = (value, fallback = '') => typeof value === 'string' ? value.trim() : fallback
 
+function genres(value) {
+  const source = Array.isArray(value) ? value : typeof value === 'string' ? [value] : []
+  return [...new Set(source.map((genre) => text(genre)).filter(Boolean))].slice(0, 12)
+}
+
 function slug(value) {
   return text(value)
     .normalize('NFKD')
@@ -125,6 +130,7 @@ export function normalizeAnimeEntry(raw = {}, index = 0) {
     banner: text(raw.banner ?? raw.bannerUrl ?? raw.banner_url),
     grad: text(raw.grad) || 'linear-gradient(135deg,#c9b7e6,#6f8a6b)',
     year: Number.isFinite(raw.year) ? raw.year : null,
+    genres: genres(raw.genres ?? raw.genre),
   }
 }
 
@@ -147,6 +153,7 @@ export function toRemoteAnimeEntry(profileId, entry) {
     poster_url: normalized.img,
     banner_url: normalized.banner,
     year: normalized.year,
+    genres: normalized.genres,
     updated_at: new Date().toISOString(),
   }
 }

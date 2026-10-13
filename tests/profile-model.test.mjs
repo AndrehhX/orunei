@@ -6,7 +6,9 @@ import {
   createProfile,
   getProfileStats,
   makeActivity,
+  normalizeAnimeEntry,
   normalizeProfile,
+  toRemoteAnimeEntry,
   validateImageFile,
 } from '../src/profile/model.js'
 
@@ -46,6 +48,12 @@ test('normalizes malformed local data without losing the user identity', () => {
   assert.equal(profile.customLists[0].accent, DEFAULT_PROFILE.accent)
   assert.deepEqual(profile.customLists[0].animeIds, ['1', '2'])
   assert.equal(profile.activity.length, 1)
+})
+
+test('normalizes and maps real AniList genres for remote AnimeList rows', () => {
+  const entry = normalizeAnimeEntry({ id: 101, title: 'Frieren', genres: ['Fantasy', 'Drama', 'Fantasy'] })
+  assert.deepEqual(entry.genres, ['Fantasy', 'Drama'])
+  assert.deepEqual(toRemoteAnimeEntry('user-1', entry).genres, ['Fantasy', 'Drama'])
 })
 
 test('validates image type and file size before reading a file', () => {

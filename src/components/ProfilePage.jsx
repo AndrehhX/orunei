@@ -3,9 +3,8 @@ import { Activity, ArrowDown, ArrowUp, BookOpen, Check, ChevronRight, Eye, Heart
 import Poster from './Poster'
 import PublicProfilePage from './PublicProfilePage'
 import ProfileAnimeListManager from './ProfileAnimeListManager'
-import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
-import { selectAnimeSections, selectProfileStats, selectRecentActivity } from '../profile/profileData'
+import { selectAnimeSections, selectProfileStats, selectRecentActivity, selectTasteGenres } from '../profile/profileData'
 import { addAnimeToList, createCustomList, deleteCustomList, moveCustomList, removeAnimeFromList, updateCustomList } from '../profile/profileLists'
 
 const tabs = [
@@ -54,7 +53,6 @@ function ActivityList({ activity }) {
 
 export default function ProfilePage({ onEdit }) {
   const { profile, profileStatus, updateCustomLists, updateAnimeList, recordActivity, storageError } = useProfile()
-  const rec = useRec()
   const [active, setActive] = useState(profile.landingSection || 'overview')
   const [publicView, setPublicView] = useState(false)
   const [newListTitle, setNewListTitle] = useState('')
@@ -64,7 +62,8 @@ export default function ProfilePage({ onEdit }) {
   const profileLibrary = profile.animeList || []
   const library = profileLibrary
   const sections = useMemo(() => selectAnimeSections(profileLibrary), [profileLibrary])
-  const stats = selectProfileStats(profileLibrary, rec.count, profile)
+  const tasteGenres = useMemo(() => selectTasteGenres(profileLibrary), [profileLibrary])
+  const stats = selectProfileStats(profileLibrary, tasteGenres.length, profile)
   const activity = selectRecentActivity(profile, profileLibrary)
   const featured = profileLibrary.find((item) => item.q === profile.featuredAnimeId) || profileLibrary.find((item) => item.favorite) || profileLibrary[0]
   const changeAnime = (id, patch) => updateAnimeList((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item))
@@ -104,7 +103,7 @@ export default function ProfilePage({ onEdit }) {
           <div className="min-w-[180px] flex-1 pb-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">{profile.displayName}</h1><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600"><LockKeyhole size={11} /> Solo tú</span></div><p className="text-sm text-slate-500">@{profile.username}</p></div>
           <div className="flex flex-wrap gap-2">
             {onEdit && <button onClick={onEdit} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand dark:bg-white dark:text-slate-900"><Pencil size={15} /> Editar perfil</button>}
-            <button onClick={() => setPublicView(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200"><Eye size={15} /> Vista pÃºblica</button>
+            <button onClick={() => setPublicView(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200"><Eye size={15} /> Vista pública</button>
           </div>
         </div>
         <div className="mt-4 max-w-2xl"><p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{profile.bio || 'Añade una bio para contar qué historias te acompañan.'}</p>{profile.status && <p className="mt-2 text-xs font-medium text-brand">{profile.status}</p>}</div>
@@ -121,7 +120,7 @@ export default function ProfilePage({ onEdit }) {
     {active === 'overview' && <div className="grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
       <section className="card p-5"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-bold">Tu espacio</h2><p className="text-xs text-slate-500">Una vista privada de lo que estás viendo.</p></div><button onClick={() => setActive('animelist')} className="text-xs font-semibold text-brand">Ver AnimeList <ChevronRight className="inline" size={14} /></button></div><div className="grid grid-cols-2 gap-4 sm:grid-cols-4">{groups.map(([id, label, Icon, color]) => <button key={id} onClick={() => setActive('animelist')} className="rounded-2xl border border-slate-200/80 p-3 text-left transition hover:-translate-y-0.5 hover:border-brand/40 dark:border-white/10"><Icon size={17} className={color} /><p className="mt-4 text-2xl font-extrabold">{sections[id].length}</p><p className="text-xs text-slate-500">{label}</p></button>)}</div></section>
       <section className="card p-5"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-bold">Destacado</h2><p className="text-xs text-slate-500">Tu historia elegida.</p></div><Heart size={17} className="text-pink-500" /></div>{featured ? <div className="flex items-center gap-3"><Poster {...featured} title={featured.t} className="h-28 w-20 shrink-0 rounded-xl" /><div className="min-w-0"><p className="truncate font-bold">{featured.t}</p><p className="mt-1 text-xs text-slate-500">{featured.s}</p><p className="mt-3 text-xs leading-5 text-slate-500">Puedes cambiar este destacado desde Editar perfil.</p></div></div> : <EmptyState title="Aún no tienes una obra destacada" detail="Añade una obra a tu AnimeList para verla aquí." />}</section>
-      <section className="card p-5"><div className="mb-4"><h2 className="text-lg font-bold">Tus gustos</h2><p className="text-xs text-slate-500">Según tus interacciones con Orunei.</p></div>{rec.topGenres.length ? <div className="space-y-2.5">{rec.topGenres.slice(0, 5).map((genre) => <div key={genre.name}><div className="mb-1 flex justify-between text-xs"><span className="font-medium">{genre.name}</span><span className="text-slate-500">{genre.pct}%</span></div><div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-brand to-pink-400" style={{ width: `${genre.pct}%` }} /></div></div>)}</div> : <p className="text-sm text-slate-500">Aún estamos aprendiendo tus gustos.</p>}</section>
+      <section className="card p-5"><div className="mb-4"><h2 className="text-lg font-bold">Tus gustos</h2><p className="text-xs text-slate-500">Calculados desde las obras de tu AnimeList.</p></div>{tasteGenres.length ? <div className="space-y-3">{tasteGenres.map((genre) => <div key={genre.name}><div className="mb-1 flex justify-between text-xs"><span className="font-medium">{genre.name}</span><span className="text-slate-500">{genre.count}/{genre.total} obras</span></div><div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-brand to-pink-400 transition-all duration-500" style={{ width: `${genre.pct}%` }} /></div></div>)}</div> : <p className="text-sm leading-5 text-slate-500">{profileLibrary.length ? 'Tus obras aún no tienen géneros registrados.' : 'Añade obras a tu AnimeList para construir este resumen con datos reales.'}</p>}</section>
       <section className="card p-5 xl:col-span-2"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-bold">Actividad reciente</h2><button onClick={() => setActive('activity')} className="text-xs font-semibold text-brand">Ver todo <ChevronRight className="inline" size={14} /></button></div><ActivityList activity={activity.slice(0, 3)} /></section>
     </div>}
 

@@ -1,5 +1,7 @@
 const text = (value) => typeof value === 'string' ? value.trim() : ''
 
+export const REGISTER_USERNAME_PLACEHOLDER = 'ej. mika_anime'
+
 export function normalizeAuthUser(user) {
   if (!user?.id) return null
   const email = text(user.email)

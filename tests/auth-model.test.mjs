@@ -1,6 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeAuthUser } from '../src/auth/authModel.js'
+import { normalizeAuthUser, REGISTER_USERNAME_PLACEHOLDER } from '../src/auth/authModel.js'
+
+test('uses a neutral username example in registration', () => {
+  assert.equal(REGISTER_USERNAME_PLACEHOLDER, 'ej. mika_anime')
+  assert.notEqual(REGISTER_USERNAME_PLACEHOLDER, 'dereck')
+})
 
 test('normalizes Supabase identity metadata for the app shell', () => {
   assert.deepEqual(normalizeAuthUser({

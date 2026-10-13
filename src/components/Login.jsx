@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Sparkles, Mail, Lock, User, Eye, EyeOff, Check, Sun, Moon } from 'lucide-react'
 import Mascots from './Mascots'
+import { REGISTER_USERNAME_PLACEHOLDER } from '../auth/authModel.js'
 
 function Field({ icon: I, label, children, ...p }) {
   return (
@@ -65,7 +66,7 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
             {authStatus === 'misconfigured' && <p role="alert" className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-700">{authError || 'Faltan VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.'}</p>}
           </div>
           <div className={`grid transition-all duration-500 ease-smooth ${reg ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-            <div className="overflow-hidden"><div className="pb-1"><Field icon={User} label="Usuario" value={f.name} onChange={set('name')} onFocus={() => setFocus('name')} onBlur={() => setFocus(null)} placeholder="dereck" tabIndex={reg ? 0 : -1} /></div></div>
+            <div className="overflow-hidden"><div className="pb-1"><Field icon={User} label="Usuario" value={f.name} onChange={set('name')} onFocus={() => setFocus('name')} onBlur={() => setFocus(null)} placeholder={REGISTER_USERNAME_PLACEHOLDER} autoComplete="username" tabIndex={reg ? 0 : -1} /></div></div>
           </div>
           <Field icon={Mail} label="Correo" type="email" value={f.email} onChange={set('email')} onFocus={() => setFocus('email')} onBlur={() => setFocus(null)} placeholder="tu@correo.com" autoComplete="email" />
           <Field icon={Lock} label="Contraseña" type={show ? 'text' : 'password'} value={f.pass} onChange={set('pass')} onFocus={() => setFocus('pass')} onBlur={() => setFocus(null)} placeholder="••••••••" autoComplete="current-password">

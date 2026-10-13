@@ -13,6 +13,7 @@ function toEntry(media) {
     img: media.coverImage?.extraLarge || '',
     grad: `linear-gradient(135deg, ${media.coverImage?.color || '#6d5cff'}, #f08ab8)`,
     year: media.seasonYear || null,
+    genres: Array.isArray(media.genres) ? media.genres : [],
   }
 }
 
