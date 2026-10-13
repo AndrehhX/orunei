@@ -19,7 +19,14 @@ src/
     Hero.jsx            recommendation + trending banners
     Rows.jsx            library, "because you like", news
     RightPanel.jsx      profile, similar users, trends, featured news
+    ProfilePage.jsx     private profile, AnimeList, favorites, lists, activity
+    ProfileEditor.jsx   private profile editor and local image uploads
     Poster.jsx          image with gradient fallback
+  profile/
+    model.js            normalized profile contract and image constraints
+    ProfileProvider.jsx local profile state and persistence
+    profileData.js      AnimeList and profile selectors
+    profileLists.js     custom-list CRUD helpers
 ```
 
 ## Images
@@ -28,7 +35,22 @@ To force a specific picture, set `img: "https://..."` on that item. If nothing l
 
 ## Features
 Dark mode (saved in localStorage), hover/lift animations, staggered entrance, responsive layout,
-reduced-motion support. Only the "Para ti" page is implemented; other nav items are placeholders.
+reduced-motion support. The first private profile version is available from **Perfil**.
+
+## Private profile V1
+The profile is intentionally owner-only in this version. It is not a public social profile and
+does not create followers, public counters, or cloud uploads. Profile data is stored locally under
+`orunei-profile-v1`, separately from login data and the recommendation taste profile.
+
+From **Perfil → Editar perfil** you can change the display name, username, bio, status, accent,
+featured anime, pinned sections, future privacy preferences, avatar, and banner. Images are
+validated as image files under 5 MB, resized in the browser (avatar up to 512px square and banner
+up to 1600px wide), then saved as local data URLs.
+
+The private profile also exposes the existing library as AnimeList grouped by status, Favorites,
+private custom lists with create/edit/delete and add/remove anime actions, and a local activity
+history. Malformed stored data is normalized back to safe defaults and storage quota failures are
+shown as recoverable UI errors.
 
 ## Login
 Any valid email + password (4+ chars) signs you in (demo auth, stored in localStorage). The mascots follow your cursor, look down while you type your email, shut their eyes when you type the password and peek when you press the eye icon. Log out with the icon next to your name in the sidebar.

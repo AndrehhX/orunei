@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Activity, BookOpen, Check, ChevronRight, Heart, List, LockKeyhole, Pencil, PlayCircle, Plus, Sparkles } from 'lucide-react'
+import { Activity, BookOpen, Check, ChevronRight, Heart, List, LockKeyhole, Pencil, PlayCircle, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import Poster from './Poster'
 import { library } from '../data'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
 import { selectAnimeSections, selectProfileStats, selectRecentActivity } from '../profile/profileData'
+import { addAnimeToList, createCustomList, deleteCustomList, removeAnimeFromList, updateCustomList } from '../profile/profileLists'
 
 const tabs = [
   ['overview', 'Resumen', Sparkles],
@@ -46,13 +47,33 @@ function ActivityList({ activity }) {
 }
 
 export default function ProfilePage({ onEdit }) {
-  const { profile } = useProfile()
+  const { profile, updateCustomLists, recordActivity } = useProfile()
   const rec = useRec()
   const [active, setActive] = useState(profile.landingSection || 'overview')
+  const [newListTitle, setNewListTitle] = useState('')
+  const [newListDescription, setNewListDescription] = useState('')
+  const [listAnimeDraft, setListAnimeDraft] = useState({})
   const sections = useMemo(() => selectAnimeSections(library), [])
   const stats = selectProfileStats(library, rec.count, profile)
   const activity = selectRecentActivity(profile, library)
   const featured = library.find((item) => item.q === profile.featuredAnimeId) || library.find((item) => item.s.startsWith('Favorito')) || library[0]
+  const createList = () => {
+    const list = createCustomList(newListTitle, newListDescription)
+    if (!list.title) return
+    updateCustomLists((lists) => [...lists, list])
+    recordActivity('list', `Creó la lista “${list.title}”`)
+    setNewListTitle(''); setNewListDescription('')
+  }
+  const editList = (id, patch) => updateCustomLists((lists) => updateCustomList(lists, id, patch))
+  const removeList = (list) => { updateCustomLists((lists) => deleteCustomList(lists, list.id)); recordActivity('list', `Eliminó la lista “${list.title}”`) }
+  const addToList = (list) => {
+    const animeId = listAnimeDraft[list.id]
+    if (!animeId) return
+    updateCustomLists((lists) => addAnimeToList(lists, list.id, animeId))
+    recordActivity('list', `Añadió una obra a “${list.title}”`)
+    setListAnimeDraft((current) => ({ ...current, [list.id]: '' }))
+  }
+  const removeFromList = (list, animeId) => { updateCustomLists((lists) => removeAnimeFromList(lists, list.id, animeId)); recordActivity('list', `Quitó una obra de “${list.title}”`) }
 
   return <div className="space-y-5 pb-10 animate-fade">
     <section className="overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
@@ -84,7 +105,7 @@ export default function ProfilePage({ onEdit }) {
 
     {active === 'favorites' && <section><div className="mb-5"><h2 className="text-2xl font-extrabold">Favoritos</h2><p className="text-sm text-slate-500">Las historias que quieres tener siempre a mano.</p></div>{sections.favorites.length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">{sections.favorites.map((item) => <AnimeCard key={item.q} item={item} />)}</div> : <div className="card p-8"><EmptyState title="Aún no tienes favoritos" detail="Marca un anime como favorito desde tu biblioteca." /></div>}</section>}
 
-    {active === 'lists' && <section><div className="mb-5 flex items-end justify-between gap-3"><div><h2 className="text-2xl font-extrabold">Listas personalizadas</h2><p className="text-sm text-slate-500">Colecciones privadas para organizar tus historias.</p></div><button className="inline-flex items-center gap-2 rounded-xl bg-brand px-3.5 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand/20"><Plus size={15} /> Nueva lista</button></div>{profile.customLists.length ? <div className="grid gap-4 md:grid-cols-2">{profile.customLists.map((list) => <article key={list.id} className="card p-5"><div className="flex items-start justify-between"><div><h3 className="font-bold">{list.title}</h3><p className="mt-1 text-xs text-slate-500">{list.description || 'Sin descripción'}</p></div><span className="rounded-full bg-brand/10 px-2 py-1 text-[10px] font-semibold text-brand">{list.animeIds.length} obras</span></div></article>)}</div> : <EmptyState title="Crea tu primera lista" detail="Agrupa tus anime por tema, mood o cualquier criterio personal." action={<button className="mt-4 inline-flex items-center gap-2 rounded-xl bg-brand px-3.5 py-2 text-sm font-semibold text-white"><Plus size={15} /> Crear lista</button>} />}</section>}
+    {active === 'lists' && <section><div className="mb-5"><h2 className="text-2xl font-extrabold">Listas personalizadas</h2><p className="text-sm text-slate-500">Colecciones privadas para organizar tus historias.</p></div><div className="card mb-5 p-4"><div className="flex flex-col gap-2 sm:flex-row"><input value={newListTitle} onChange={(event) => setNewListTitle(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && createList()} placeholder="Nombre de la nueva lista" className="h-10 flex-1 rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none focus:border-brand dark:border-white/10" /><input value={newListDescription} onChange={(event) => setNewListDescription(event.target.value)} placeholder="Descripción opcional" className="h-10 flex-1 rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none focus:border-brand dark:border-white/10" /><button onClick={createList} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand px-3.5 text-sm font-semibold text-white shadow-md shadow-brand/20"><Plus size={15} /> Crear lista</button></div><p className="mt-2 text-[11px] text-slate-500">Las listas son privadas y se guardan en este navegador.</p></div>{profile.customLists.length ? <div className="grid gap-4 md:grid-cols-2">{profile.customLists.map((list) => <article key={list.id} className="card p-5"><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><input value={list.title} onChange={(event) => editList(list.id, { title: event.target.value })} aria-label={`Nombre de ${list.title}`} className="w-full bg-transparent font-bold outline-none focus:text-brand" /><input value={list.description} onChange={(event) => editList(list.id, { description: event.target.value })} placeholder="Añade una descripción" aria-label={`Descripción de ${list.title}`} className="mt-1 w-full bg-transparent text-xs text-slate-500 outline-none" /></div><span className="rounded-full bg-brand/10 px-2 py-1 text-[10px] font-semibold text-brand">{list.animeIds.length} obras</span><button onClick={() => removeList(list)} aria-label={`Eliminar ${list.title}`} className="grid h-7 w-7 place-items-center rounded-full text-slate-400 transition hover:bg-red-500/10 hover:text-red-500"><Trash2 size={14} /></button></div><div className="mt-4 flex gap-2"><select value={listAnimeDraft[list.id] || ''} onChange={(event) => setListAnimeDraft((current) => ({ ...current, [list.id]: event.target.value }))} aria-label={`Añadir anime a ${list.title}`} className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-transparent px-2 text-xs outline-none dark:border-white/10"><option value="">Añadir anime…</option>{library.filter((item) => !list.animeIds.includes(item.q)).map((item) => <option key={item.q} value={item.q}>{item.t}</option>)}</select><button onClick={() => addToList(list)} className="rounded-lg border border-brand px-3 text-xs font-semibold text-brand transition hover:bg-brand hover:text-white">Añadir</button></div><div className="mt-3 flex flex-wrap gap-2">{list.animeIds.length ? list.animeIds.map((animeId) => { const item = library.find((entry) => entry.q === animeId); return <span key={animeId} className="inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] dark:bg-white/10">{item?.t || animeId}<button onClick={() => removeFromList(list, animeId)} aria-label={`Quitar ${item?.t || animeId}`} className="text-slate-400 hover:text-red-500"><X size={12} /></button></span> }) : <span className="text-xs text-slate-500">Lista vacía. Añade una obra arriba.</span>}</div></article>)}</div> : <EmptyState title="Crea tu primera lista" detail="Agrupa tus anime por tema, mood o cualquier criterio personal." />}</section>}
 
     {active === 'activity' && <section><div className="mb-5"><h2 className="text-2xl font-extrabold">Actividad</h2><p className="text-sm text-slate-500">Un historial privado de tus cambios en Orunei.</p></div><ActivityList activity={activity} /></section>}
   </div>
