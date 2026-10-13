@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, ArrowLeft, BookOpen, Check, Eye, Heart, List, LockKeyhole, Sparkles } from 'lucide-react'
+import { Activity, ArrowLeft, BookOpen, Check, Copy, Eye, Heart, List, LockKeyhole, Sparkles } from 'lucide-react'
 import Poster from './Poster'
 import ProfileComments from './ProfileComments'
 import { selectAnimeSections } from '../profile/profileData'
 import { selectVisibleProfile } from '../profile/publicProfile'
+import { getPublicProfileHash } from '../profile/navigation'
 
 const tabs = [
   ['overview', 'Resumen', Sparkles],
@@ -53,6 +54,7 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
   const [active, setActive] = useState('overview')
   const [relationship, setRelationship] = useState(viewer.relationship || 'none')
   const [friendRequesting, setFriendRequesting] = useState(false)
+  const [copied, setCopied] = useState(false)
   useEffect(() => {
     if (!availableTabs.some(([id]) => id === active)) setActive('overview')
   }, [active, availableTabs])
@@ -71,6 +73,15 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
     if (!result?.error) setRelationship('pending')
     setFriendRequesting(false)
   }
+  const copyProfileLink = async () => {
+    if (typeof window === 'undefined' || !navigator.clipboard?.writeText) return
+    const link = `${window.location.origin}${window.location.pathname}${window.location.search}${getPublicProfileHash(profile.username)}`
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2200)
+    } catch {}
+  }
 
   return <div className="space-y-5 pb-10 animate-fade">
     <section className="overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
@@ -81,6 +92,7 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
           <div className="min-w-[180px] flex-1 pb-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">{profile.displayName}</h1><span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-1 text-[10px] font-semibold text-brand"><Eye size={11} /> Perfil público</span></div><p className="text-sm text-slate-500">@{profile.username}</p></div>
           <div className="flex flex-wrap gap-2">
             {!visibility.canEdit && onFriendRequest && <button onClick={requestFriendship} disabled={friendRequesting || relationship !== 'none'} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{friendRequesting ? 'Enviando…' : relationship === 'pending' ? 'Solicitud enviada' : relationship === 'accepted' ? 'Amigos' : 'Agregar amigo'}</button>}
+            <button onClick={copyProfileLink} disabled={!getPublicProfileHash(profile.username)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand disabled:opacity-50 dark:border-white/10 dark:text-slate-200" aria-label="Copiar enlace del perfil"><>{copied ? <Check size={15} /> : <Copy size={15} />}</>{copied ? 'Enlace copiado' : 'Compartir perfil'}</button>
             {onBack && <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200"><ArrowLeft size={15} /> Volver</button>}
           </div>
         </div>
