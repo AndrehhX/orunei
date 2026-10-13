@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Search, Bell } from 'lucide-react'
+import { Search } from 'lucide-react'
 import Login from './components/Login'
 import AnimePage from './components/AnimePage'
 import NewsPage from './components/NewsPage'
@@ -7,7 +7,7 @@ import Sidebar from './components/Sidebar'
 import Hero from './components/Hero'
 import RightPanel from './components/RightPanel'
 import { Library, Because, News } from './components/Rows'
-import { ProfileProvider } from './profile/ProfileProvider'
+import { ProfileProvider, useProfile } from './profile/ProfileProvider'
 import ProfilePage from './components/ProfilePage'
 import ProfileEditor from './components/ProfileEditor'
 import FriendsPage from './components/FriendsPage'
@@ -20,6 +20,16 @@ import { getPublicProfileHash, getPublicProfileUsername } from './profile/naviga
 import { supabase } from './auth/supabaseClient'
 
 const tabs = ['Todo', 'Anime', 'Películas', 'Series', 'Noticias']
+
+function AppHeader({ query, setQuery }) {
+  const { profile } = useProfile()
+  return <header className="flex items-center gap-4 animate-fade">
+    <label className="flex h-11 flex-1 max-w-[540px] items-center gap-3 rounded-xl bg-slate-200/60 dark:bg-white/5 px-4 text-slate-500 transition focus-within:bg-white dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-brand/40">
+      <Search size={18} /><input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-sm outline-none" placeholder="Buscar anime, películas, series..." />
+    </label>
+    <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-slate-600 to-slate-900 text-sm font-bold text-white">{profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : profile.displayName.slice(0, 1).toUpperCase()}</div>
+  </header>
+}
 
 export default function App() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
@@ -89,13 +99,7 @@ export default function App() {
     <div className="mx-auto flex animate-fade min-h-screen max-w-[1536px]">
       <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
       <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
-        <header className="flex items-center gap-4 animate-fade">
-          <label className="flex h-11 flex-1 max-w-[540px] items-center gap-3 rounded-xl bg-slate-200/60 dark:bg-white/5 px-4 text-slate-500 transition focus-within:bg-white dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-brand/40">
-            <Search size={18} /><input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-sm outline-none" placeholder="Buscar anime, películas, series..." />
-          </label>
-          <button className="relative ml-auto grid h-10 w-10 place-items-center rounded-full bg-white dark:bg-white/10 shadow-sm transition hover:scale-105" aria-label="Notificaciones"><Bell size={18} /><i className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" /></button>
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-900" />
-        </header>
+        <AppHeader query={query} setQuery={setQuery} />
         {page === 'anime' ? <AnimePage query={query} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
         <div className="flex flex-wrap items-end justify-between gap-3 animate-rise">
           <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
