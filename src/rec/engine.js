@@ -1,5 +1,6 @@
 // Taste engine: content-based + implicit feedback + time decay + diversity + exploration.
 const HALF = 45 * 864e5 // taste half-life: 45 days
+export const STATUS_WEIGHTS = { completed: 1, watching: 0.7, favorite: 0.95, paused: 0.25, planned: 0.15 }
 // Signal strengths (positive = pulls profile toward an item, negative = pushes away). "un*" reverses a signal.
 export const AW = { like: 1, add: 1.6, click: 0.15, dismiss: -0.6, dislike: -1.2, news: 0.6, unlike: -1, unadd: -1.6, unnews: -0.6 }
 
@@ -31,6 +32,74 @@ export function formatCount(value) {
 
 export const dot = (a, b) => { let s = 0; for (const k in a) if (b[k]) s += a[k] * b[k]; return s }
 export const norm = (a) => Math.sqrt(dot(a, a))
+
+const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, Number.isFinite(value) ? value : min))
+const timestamp = (value, fallback) => {
+  const parsed = typeof value === 'number' ? value : Date.parse(value || '')
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+const entryFeatures = (entry = {}) => {
+  if (entry.f && Object.keys(entry.f).length) return entry.f
+  const f = {}
+  ;(entry.genres || []).filter(Boolean).forEach((genre) => { f[`g:${genre}`] = 1 })
+  ;(entry.tags || []).filter((tag) => tag && !tag.isGeneralSpoiler && (tag.rank || 0) >= 45).slice(0, 8).forEach((tag) => { f[`t:${tag.name}`] = (0.8 * tag.rank) / 100 })
+  const studio = entry.studio || entry.studios?.nodes?.[0]?.name
+  if (studio) f[`s:${studio}`] = 0.5
+  if (entry.format) f[`f:${entry.format}`] = 0.3
+  if (entry.year || entry.seasonYear) f[`d:${Math.floor((entry.year || entry.seasonYear) / 10) * 10}`] = 0.25
+  return f
+}
+
+export function profileSignature(entries = []) {
+  return (Array.isArray(entries) ? entries : [])
+    .map((entry) => ({
+      id: String(entry?.id ?? entry?.q ?? entry?.t ?? ''),
+      status: String(entry?.status || entry?.s || '').toLowerCase(),
+      favorite: Boolean(entry?.favorite),
+      genres: [...(entry?.genres || [])].map(String).sort(),
+      updatedAt: entry?.updatedAt || entry?.updated_at || '',
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((entry) => JSON.stringify(entry))
+    .join('|')
+}
+
+function addFeatures(target, features, weight) {
+  Object.entries(features || {}).forEach(([key, value]) => {
+    const next = (target[key] || 0) + Number(value || 0) * weight
+    if (Math.abs(next) > 0.001) target[key] = Math.max(-6, Math.min(6, next))
+    else delete target[key]
+  })
+}
+
+export function buildTasteProfile(entries = [], explicitState = {}, now = Date.now()) {
+  const w = {}
+  let confidence = 0
+  for (const entry of [...(Array.isArray(entries) ? entries : [])].sort((a, b) => String(a?.id ?? a?.q ?? '').localeCompare(String(b?.id ?? b?.q ?? '')))) {
+    const status = String(entry?.status || entry?.s || '').toLowerCase()
+    const age = Math.max(0, now - timestamp(entry?.updatedAt || entry?.updated_at, now))
+    const decay = 0.5 ** (age / HALF)
+    const base = STATUS_WEIGHTS[status] || 0
+    const features = entryFeatures(entry)
+    if (base) {
+      addFeatures(w, features, base * decay)
+      confidence += base * decay
+    }
+    if (entry?.favorite) {
+      addFeatures(w, features, STATUS_WEIGHTS.favorite * decay)
+      confidence += STATUS_WEIGHTS.favorite * decay
+    }
+  }
+  for (const item of explicitState?.likedItems || explicitState?.positive || []) {
+    addFeatures(w, item.v || item.f || entryFeatures(item), AW.like)
+    confidence += AW.like
+  }
+  for (const item of explicitState?.hiddenItems || explicitState?.negative || []) {
+    addFeatures(w, item.v || item.f || entryFeatures(item), AW.dismiss)
+    confidence += Math.abs(AW.dismiss)
+  }
+  return { w, t: now, n: confidence, signature: profileSignature(entries) }
+}
 
 // AniList media -> item with sparse feature map: genres, weighted tags, studio, format, decade.
 export function toItem(m) {
@@ -74,19 +143,32 @@ export function update(p, item, action, now = Date.now()) {
   return { p: { ...p, w, t: now, n: Math.max(0, (p.n || 0) + a) }, d }
 }
 
+export function scoreCandidate(item, p, context = {}) {
+  const profileNorm = norm(p?.w || {}) || 1
+  const itemNorm = norm(item?.v || {}) || 1
+  const affinity = clamp(dot(p?.w || {}, item?.v || {}) / (profileNorm * itemNorm))
+  const quality = clamp(((item?.score || 0) - 60) / 35)
+  const trend = clamp(Math.log10(1 + Math.max(0, item?.trend || 0)) / 2.2)
+  const popularity = clamp(Math.log10(1 + Math.max(0, item?.pop || 0)) / 5.5)
+  const currentYear = context.year || new Date().getFullYear()
+  const freshness = Math.exp(-Math.max(0, currentYear - (item?.year || currentYear)) / 8)
+  const exploration = context.exploration ?? (affinity < 0.25 ? 1 : 0)
+  const score = 0.45 * affinity + 0.18 * quality + 0.12 * trend + 0.1 * popularity + 0.1 * freshness + 0.05 * clamp(exploration)
+  return { score, components: { affinity, quality, trend, popularity, freshness } }
+}
+
 // Rank candidates: cosine(profile, item) blended with quality/trend/popularity/freshness (profile weight grows with confidence),
 // then MMR re-ranking for diversity and one "explore" slot for things outside the known taste.
 export function recommend(pool, p, { exclude, liked = [], n = 8, year = new Date().getFullYear() }) {
   const wn = norm(p.w) || 1
   const conf = 1 - Math.exp(-Math.max(0, p.n || 0) / 4)
   const cand = pool.filter((i) => !exclude.has(i.id)).map((i) => {
-    const sim = wn > 1e-6 ? dot(p.w, i.v) / wn : 0
+    const sim = wn > 1e-6 ? dot(p.w, i.v) / (wn * (norm(i.v) || 1)) : 0
     let cov = 0
     for (const k in i.v) if (Math.abs(p.w[k] || 0) > 0.25) cov += i.v[k] ** 2
-    const q = Math.max(0, Math.min(1, (i.score - 60) / 35))
-    const tr = Math.min(1, Math.log10(1 + i.trend) / 2.2), pp = Math.min(1, Math.log10(1 + i.pop) / 5.5)
-    const fr = Math.exp(-(year - (i.year || year)) / 8)
-    return { ...i, s: conf * 0.7 * sim + 0.18 * q + 0.07 * tr + 0.05 * pp + 0.05 * fr, cov, q }
+    const scored = scoreCandidate(i, p, { year, exploration: conf > 0.3 && cov < 0.35 ? 1 : 0 })
+    const q = scored.components.quality
+    return { ...i, s: conf * scored.score + (1 - conf) * (0.18 * q + 0.12 * scored.components.trend + 0.1 * scored.components.popularity + 0.1 * scored.components.freshness), cov, q, components: scored.components }
   })
   const explore = conf > 0.3 ? cand.filter((i) => i.cov < 0.35 && i.q > 0.55).sort((a, b) => b.s - a.s)[0] : null
   const out = []
@@ -104,7 +186,11 @@ export function recommend(pool, p, { exclude, liked = [], n = 8, year = new Date
   return out.map((i) => {
     let near = null, ns = 0.15
     liked.forEach((l) => { const c = dot(i.v, l.v); if (c > ns) { ns = c; near = l } })
-    return { ...i, reason: i.explore ? 'Algo nuevo que podría gustarte' : near ? `Porque te gusta ${near.title}` : 'Popular y muy bien valorado' }
+    const matchedGenres = Object.keys(i.v || {}).filter((key) => key.startsWith('g:') && (p.w[key] || 0) > 0.25).map(label)
+    const reasonKey = i.explore ? 'explore' : near ? 'similar_to' : matchedGenres.length ? 'matches_taste' : i.trend > 0 ? 'trending' : 'popular'
+    const reasonData = i.explore ? {} : near ? { title: near.title } : matchedGenres.length ? { genres: matchedGenres.slice(0, 2) } : {}
+    const reason = i.explore ? 'Algo nuevo que podría gustarte' : near ? `Porque te gusta ${near.title}` : matchedGenres.length ? `Coincide con tus gustos de ${matchedGenres.slice(0, 2).join(' y ')}` : i.trend > 0 ? 'Está en tendencia ahora' : 'Popular y muy bien valorado'
+    return { ...i, reasonKey, reasonData, reason }
   })
 }
 

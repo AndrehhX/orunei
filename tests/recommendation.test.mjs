@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import * as engine from '../src/rec/engine.js'
-const { librarySignal } = engine
+const { librarySignal, STATUS_WEIGHTS, buildTasteProfile, profileSignature, scoreCandidate, recommend } = engine
 
 const animeApi = fs.readFileSync(new URL('../src/api/anime.js', import.meta.url), 'utf8')
 const detail = fs.readFileSync(new URL('../src/components/AnimeDetail.jsx', import.meta.url), 'utf8')
@@ -19,6 +19,77 @@ test('maps AnimeList state to intentional recommendation signals', () => {
   assert.equal(librarySignal({ status: 'planned', favorite: false }), 'click')
   assert.equal(librarySignal({ status: 'paused', favorite: false }), 'click')
   assert.equal(librarySignal({ status: 'planned', favorite: true }), 'like')
+})
+
+test('uses distinct weights for each library state', () => {
+  assert.deepEqual(STATUS_WEIGHTS, {
+    completed: 1,
+    watching: 0.7,
+    favorite: 0.95,
+    paused: 0.25,
+    planned: 0.15,
+  })
+})
+
+test('rebuilds the same taste profile regardless of library order', () => {
+  const entries = [
+    { id: '1', status: 'completed', genres: ['Drama', 'Romance'], updatedAt: '2026-01-01T00:00:00.000Z' },
+    { id: '2', status: 'planned', genres: ['Comedy'], updatedAt: '2026-01-02T00:00:00.000Z' },
+    { id: '3', status: 'watching', favorite: true, genres: ['Drama'], updatedAt: '2026-01-03T00:00:00.000Z' },
+  ]
+
+  const first = buildTasteProfile(entries, {}, Date.parse('2026-02-01T00:00:00.000Z'))
+  const second = buildTasteProfile([...entries].reverse(), {}, Date.parse('2026-02-01T00:00:00.000Z'))
+
+  assert.deepEqual(first.w, second.w)
+  assert.equal(first.n, second.n)
+  assert.ok(first.w['g:Drama'] > first.w['g:Comedy'])
+})
+
+test('profile signature changes with status but stays stable for reordered entries', () => {
+  const entries = [
+    { id: '1', status: 'planned', favorite: false, genres: ['Action'] },
+    { id: '2', status: 'completed', favorite: true, genres: ['Drama'] },
+  ]
+
+  assert.equal(profileSignature(entries), profileSignature([...entries].reverse()))
+  assert.notEqual(profileSignature(entries), profileSignature([{ ...entries[0], status: 'completed' }, entries[1]]))
+})
+
+test('applies temporal decay to older taste signals', () => {
+  const entry = { id: '1', status: 'completed', genres: ['Fantasy'], updatedAt: '2026-01-01T00:00:00.000Z' }
+  const recent = buildTasteProfile([entry], {}, Date.parse('2026-01-02T00:00:00.000Z'))
+  const old = buildTasteProfile([entry], {}, Date.parse('2026-02-15T00:00:00.000Z'))
+
+  assert.ok(recent.w['g:Fantasy'] > old.w['g:Fantasy'])
+})
+
+test('returns weighted score components for a candidate', () => {
+  const result = scoreCandidate(
+    { id: 10, score: 90, trend: 1000, pop: 10000, year: 2026, v: { 'g:Drama': 1 } },
+    { w: { 'g:Drama': 1 }, n: 3 },
+    { year: 2026 },
+  )
+
+  assert.equal(typeof result.score, 'number')
+  assert.deepEqual(Object.keys(result.components).sort(), ['affinity', 'freshness', 'popularity', 'quality', 'trend'])
+  assert.ok(result.components.affinity > 0)
+  assert.ok(result.score > 0)
+})
+
+test('returns structured reasons for recommendations', () => {
+  const [result] = recommend([
+    { id: 10, title: 'Nueva historia', score: 85, trend: 10, pop: 100, year: 2026, v: { 'g:Drama': 1 } },
+  ], { w: { 'g:Drama': 1 }, n: 3 }, {
+    exclude: new Set(),
+    liked: [{ id: 9, title: 'Tu drama favorito', v: { 'g:Drama': 1 } }],
+    n: 1,
+    year: 2026,
+  })
+
+  assert.equal(result.reasonKey, 'similar_to')
+  assert.deepEqual(result.reasonData, { title: 'Tu drama favorito' })
+  assert.match(result.reason, /Tu drama favorito/)
 })
 
 test('rotates the live hero selection through the refreshed anime pool', () => {
