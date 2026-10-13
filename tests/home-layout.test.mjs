@@ -20,3 +20,19 @@ test('uses a more balanced responsive proportion for the home hero', () => {
   assert.match(hero, /flex-col justify-start gap-2/)
   assert.match(hero, /pt-6/)
 })
+
+test('uses the profile AnimeList for the home library and empty state', () => {
+  const rows = fs.readFileSync(new URL('../src/components/Rows.jsx', import.meta.url), 'utf8')
+
+  assert.match(rows, /useProfile/)
+  assert.match(rows, /profile\.animeList/)
+  assert.match(rows, /Tu biblioteca está vacía/)
+  assert.doesNotMatch(rows, /import \{ library, because \} from '\.\.\/data'/)
+})
+
+test('does not seed personalized recommendations with hardcoded anime', () => {
+  const recommendations = fs.readFileSync(new URL('../src/rec/rec.jsx', import.meta.url), 'utf8')
+
+  assert.doesNotMatch(recommendations, /const SEEDS/)
+  assert.doesNotMatch(recommendations, /seeded: false/)
+})

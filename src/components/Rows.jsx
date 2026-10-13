@@ -1,28 +1,30 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronRight, Star, MoreHorizontal, X } from 'lucide-react'
 import LikeBtn from './LikeBtn'
 import { useRec } from '../rec/rec'
 import Poster from './Poster'
 import Reveal from './Reveal'
-import { library, because } from '../data'
 import { useNews, NewsLink } from '../news'
+import { useProfile } from '../profile/ProfileProvider'
 
 export const Title = ({ children, onClick }) => (
   <div className="mb-3 flex items-center justify-between"><h3 onClick={onClick} className={`flex items-center gap-1 text-[17px] font-bold transition-colors ${onClick ? 'cursor-pointer hover:text-brand' : ''}`}>{children}<ChevronRight size={17} /></h3><ChevronRight size={15} className="text-slate-400" /></div>
 )
 const Dots = () => <button className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/45 text-white opacity-80 transition hover:opacity-100"><MoreHorizontal size={14} /></button>
 
-const Empty = ({ q }) => <p className="col-span-full py-6 text-center text-sm text-slate-500">Sin resultados para “{q}”</p>
+const Empty = ({ q, message }) => <div className="col-span-full rounded-2xl border border-dashed border-slate-300/80 px-5 py-7 text-center text-sm leading-6 text-slate-500 dark:border-white/10">{message || `Sin resultados para “${q}”`}</div>
 const ok = (t, q) => t.toLowerCase().includes((q || '').toLowerCase())
 const stag = (i, b = 0) => b + i * 70
 
 export function Library({ query }) {
-  const list = library.filter((a) => ok(a.t, query))
+  const { profile } = useProfile()
+  const source = Array.isArray(profile.animeList) ? profile.animeList : []
+  const list = source.filter((a) => ok(a.t, query))
   return (
     <section>
       <Title>Continuar con tu biblioteca</Title>
       <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
-        {!list.length && <Empty q={query} />}
+        {!list.length && <Empty q={query} message={query ? undefined : 'Tu biblioteca está vacía. Agrega obras a tu AnimeList para verlas aquí.'} />}
         {list.map((a, i) => (
           <Reveal key={a.t} delay={stag(i, 150)}><article className="group card cursor-pointer overflow-hidden transition duration-500 ease-spring hover:-translate-y-1.5 hover:shadow-xl">
             <Poster {...a} title={a.t} className="aspect-[3/3.6]"><Dots /></Poster>
@@ -59,22 +61,28 @@ function RecCard({ i, idx, rec }) {
 
 export function Because({ query }) {
   const rec = useRec()
-  const live = rec.ready
-  const list = (live ? rec.recs.slice(0, 6) : because).filter((a) => ok(a.title || a.t, query))
-  const title = live ? (rec.anchor ? `Porque te gusta ${rec.anchor}` : 'Recomendado para ti') : 'Porque te gusta A Silent Voice'
+  const { profile } = useProfile()
+  const profileLibrary = Array.isArray(profile.animeList) ? profile.animeList : []
+  const librarySignature = profileLibrary.map((item) => `${item.id}:${item.status}:${item.favorite ? '1' : '0'}`).join('|')
+  useEffect(() => {
+    if (rec.ready) rec.syncLibrary(profileLibrary)
+  }, [rec.ready, rec.syncLibrary, librarySignature])
+  const live = profileLibrary.length > 0 && rec.ready
+  const list = live ? rec.recs.slice(0, 6).filter((a) => ok(a.title || a.t, query)) : []
+  const title = profileLibrary.length > 0 ? (rec.anchor ? `Porque te gusta ${rec.anchor}` : 'Recomendado para ti') : 'Recomendaciones para ti'
+  const emptyMessage = query
+    ? undefined
+    : profileLibrary.length === 0
+      ? 'Añade obras a tu AnimeList para recibir recomendaciones personalizadas.'
+      : rec.ready
+        ? 'Todavía no encontramos recomendaciones para tu perfil.'
+        : 'Estamos preparando recomendaciones para tu perfil…'
   return (
     <section>
       <div key={title} className="animate-fade"><Title>{title}</Title></div>
       <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
-        {!list.length && <Empty q={query} />}
-        {list.map((a, i) => live ? <RecCard key={a.id} i={a} idx={i} rec={rec} /> : (
-          <Reveal key={a.t} delay={stag(i, 250)}>
-            <article className="group cursor-pointer transition duration-500 ease-spring hover:-translate-y-1.5">
-              <Poster {...a} title={a.t} className="aspect-[3/2.1] rounded-xl shadow-sm group-hover:shadow-xl"><Dots /></Poster>
-              <p className="mt-2 truncate text-[13px] font-semibold">{a.t}</p><Stat y={a.y} r={a.r} />
-            </article>
-          </Reveal>
-        ))}
+        {!list.length && <Empty q={query} message={emptyMessage} />}
+        {list.map((a, i) => <RecCard key={a.id} i={a} idx={i} rec={rec} />)}
       </div>
     </section>
   )

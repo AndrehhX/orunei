@@ -1,12 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { toItem, vectorize, update, recommend, topGenres, label, dot, norm } from './engine'
 
-const KEY = 'orunei-taste-v1', POOL = 'orunei-pool-v1'
+const KEY = 'orunei-taste-v2', POOL = 'orunei-pool-v1'
 const F = 'id title{romaji english} coverImage{extraLarge} bannerImage genres tags{name rank isGeneralSpoiler} studios(isMain:true){nodes{name}} averageScore popularity trending seasonYear format'
 const pg = (a, page, sort) => `${a}: Page(page:${page}, perPage:30){ media(type:ANIME, sort:${sort}, isAdult:false){ ${F} } }`
 const QUERY = `query { ${pg('a', 1, 'POPULARITY_DESC')} ${pg('b', 1, 'TRENDING_DESC')} ${pg('c', 1, 'SCORE_DESC')} ${pg('d', 2, 'POPULARITY_DESC')} }`
-const SEEDS = ['kimi no na wa', 'sen to chihiro', 'koe no katachi'] // what the user already finished (matches the library row)
-
 const Ctx = createContext({ ready: false, recs: [], topGenres: [], count: 0, anchor: '', isNewsLiked: () => false, like() {}, dismiss() {}, likeMedia() {}, isLiked: () => false, likeNews() {}, addByQuery() {}, affinity: () => null })
 export const useRec = () => useContext(Ctx)
 
@@ -21,7 +19,7 @@ async function loadPool() {
   return items
 }
 
-const empty = { p: { w: {}, t: 0, n: 0 }, liked: [], hidden: [], news: [], seeded: false }
+const empty = { p: { w: {}, t: 0, n: 0 }, liked: [], hidden: [], news: [], librarySignature: '' }
 
 export function RecProvider({ children }) {
   const [pool, setPool] = useState([])
@@ -49,17 +47,6 @@ export function RecProvider({ children }) {
     if (!quiet) say(d, action)
   }, [])
 
-  // Seed the profile once with what the user already finished.
-  useEffect(() => {
-    if (!pool.length || ref.current.seeded) return
-    let cur = ref.current, liked = [...cur.liked]
-    SEEDS.forEach((s) => {
-      const it = pool.find((i) => i.alts.some((a) => a.startsWith(s)))
-      if (it && !liked.includes(it.id)) { cur = { ...cur, p: update(cur.p, it, 'add').p }; liked.push(it.id) }
-    })
-    setSt({ ...cur, liked, seeded: true })
-  }, [pool])
-
   const byId = useMemo(() => new Map(pool.map((i) => [i.id, i])), [pool])
   const find = (q) => { q = q.toLowerCase(); return pool.find((i) => i.alts.some((a) => a.startsWith(q) || a.includes(q))) }
 
@@ -71,6 +58,24 @@ export function RecProvider({ children }) {
     if (on && !has) apply(it, 'add', { liked: [...cur.liked, it.id] })
     if (!on && has) apply(it, 'unadd', { liked: cur.liked.filter((x) => x !== it.id) })
   }
+  const syncLibrary = useCallback((entries = []) => {
+    if (!pool.length) return
+    const rows = Array.isArray(entries) ? entries : []
+    const signature = rows.map((entry) => `${entry.id}:${entry.status}:${entry.favorite ? '1' : '0'}`).join('|')
+    const cur = ref.current
+    if (cur.librarySignature === signature) return
+    let p = cur.p
+    const liked = [...cur.liked]
+    rows.forEach((entry) => {
+      const query = String(entry.q || entry.t || '').toLowerCase()
+      const item = pool.find((candidate) => String(candidate.id) === String(entry.id) || candidate.alts.some((alt) => alt === query || alt.includes(query)))
+      if (item && !liked.includes(item.id)) {
+        p = update(p, item, 'add').p
+        liked.push(item.id)
+      }
+    })
+    setSt({ ...cur, p, liked, librarySignature: signature })
+  }, [pool])
   // Like any anime from the catalogue (even outside the candidate pool): build its vector on the fly.
   const likeMedia = (m) => {
     const cur = ref.current, has = cur.liked.includes(m.id)
@@ -101,7 +106,7 @@ export function RecProvider({ children }) {
     return Math.max(0, Math.min(1, dot(st.p.w, v) / wn))
   }
 
-  const value = { ready: pool.length > 0, recs, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.includes(id), addByQuery, affinity, isNewsLiked: (id) => st.news.includes(id) }
+  const value = { ready: pool.length > 0, recs, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.includes(id), addByQuery, syncLibrary, affinity, isNewsLiked: (id) => st.news.includes(id) }
   return (
     <Ctx.Provider value={value}>
       {children}
