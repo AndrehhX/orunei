@@ -3,6 +3,8 @@ const HALF = 45 * 864e5 // taste half-life: 45 days
 // Signal strengths (positive = pulls profile toward an item, negative = pushes away). "un*" reverses a signal.
 export const AW = { like: 1, add: 1.6, click: 0.15, dismiss: -0.6, dislike: -1.2, news: 0.6, unlike: -1, unadd: -1.6, unnews: -0.6 }
 
+export const librarySignal = (entry = {}) => entry.favorite ? 'like' : ['watching', 'completed'].includes(entry.status) ? 'add' : 'click'
+
 export const dot = (a, b) => { let s = 0; for (const k in a) if (b[k]) s += a[k] * b[k]; return s }
 export const norm = (a) => Math.sqrt(dot(a, a))
 

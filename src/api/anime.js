@@ -3,8 +3,8 @@ import { FORMATS, STATUS, SORTS, buildCatalogRequest } from './catalogQuery'
 
 export { FORMATS, STATUS, SORTS } from './catalogQuery'
 // All sources are public + CORS-friendly: AniList (GraphQL), Jikan (MyAnimeList), Kitsu, Reddit, and OMDb (IMDb, optional key).
-const gql = async (query, variables) => {
-  const r = await fetch('https://graphql.anilist.co', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables }) })
+const gql = async (query, variables, signal) => {
+  const r = await fetch('https://graphql.anilist.co', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables }), signal })
   const j = await r.json()
   if (!j.data) throw new Error(j.errors?.[0]?.message || 'AniList error')
   return j.data
@@ -19,9 +19,9 @@ export const crunchy = (m) => m.externalLinks?.find((l) => l.site === 'Crunchyro
 
 export const clean = (t = '') => t.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').replace(/~!|!~/g, '').replace(/img\d*\([^)]*\)/gi, '').replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_`#>]+/g, '').replace(/\n{3,}/g, '\n\n').trim()
 
-export async function searchAnime(f, page = 1) {
+export async function searchAnime(f, page = 1, signal) {
   const request = buildCatalogRequest(f, page)
-  const d = await gql(request.query, request.variables)
+  const d = await gql(request.query, request.variables, signal)
   return { items: d.Page.media, more: d.Page.pageInfo.hasNextPage }
 }
 
@@ -37,7 +37,7 @@ export const ratingJobs = (m) => ({
   anilist: async () => (m.averageScore ? { v: m.averageScore / 10, n: m.popularity, label: 'usuarios' } : null),
   mal: async () => { if (!m.idMal) return null; const { data } = await json(`https://api.jikan.moe/v4/anime/${m.idMal}`); return data.score ? { v: data.score, n: data.scored_by, label: 'votos', extra: data.rank && `#${data.rank}` } : null },
   kitsu: async () => { const { data } = await json(`https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(title(m))}&page[limit]=1`); const a = data[0]?.attributes; return a?.averageRating ? { v: +a.averageRating / 10, n: a.userCount, label: 'usuarios' } : null },
-  imdb: async () => { const k = import.meta.env.VITE_OMDB_KEY; if (!k) return { off: true }; const d = await json(`https://www.omdbapi.com/?apikey=${k}&t=${encodeURIComponent(title(m))}`); return d.imdbRating && d.imdbRating !== 'N/A' ? { v: +d.imdbRating, n: +d.imdbVotes.replace(/,/g, ''), label: 'votos' } : null },
+  imdb: async () => { const k = import.meta.env?.VITE_OMDB_KEY; if (!k) return { unavailable: true }; const d = await json(`https://www.omdbapi.com/?apikey=${k}&t=${encodeURIComponent(title(m))}`); return d.imdbRating && d.imdbRating !== 'N/A' ? { v: +d.imdbRating, n: +d.imdbVotes.replace(/,/g, ''), label: 'votos' } : { unavailable: true } },
 })
 
 // ---- Community: reviews + forum + discussions from several sites, normalised to one shape ----

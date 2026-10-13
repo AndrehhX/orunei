@@ -7,7 +7,7 @@ Anime / movies / series discovery dashboard ("Para ti" view) built with **React 
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # production build in /dist
-npm test         # 55 domain and repository tests
+  npm test         # full domain, interaction, and performance test suite
 ```
 
 ## Structure
@@ -35,7 +35,7 @@ Covers and banners load automatically from the public AniList API using the `q` 
 To force a specific picture, set `img: "https://..."` on that item. If nothing loads, a gradient placeholder is shown.
 
 ## Features
-Dark mode (saved in localStorage), hover/lift animations, staggered entrance, responsive layout,
+Dark mode (saved in localStorage), lightweight hover/lift animations, responsive layout,
 reduced-motion support. The authenticated private profile and read-only public preview are available
 from **Perfil**.
 
@@ -90,7 +90,7 @@ Runs 100% in the browser, no accounts or servers needed.
 ## Anime catalogue
 Sidebar → **Anime**. Curated filters (12 genres, format, year, status, sort), the header search box searches AniList, "load more" pagination, and a full detail view:
 - **Hero** with banner, cover, genres, next-episode countdown, **Watch on Crunchyroll**, trailer and Like (which trains your taste profile).
-- **Ratings** side by side: AniList, MyAnimeList (Jikan), Kitsu and IMDb. IMDb has no free keyless API, so it needs a free OMDb key: copy `.env.example` to `.env` and fill `VITE_OMDB_KEY`.
+- **Ratings** side by side: AniList, MyAnimeList (Jikan), Kitsu and IMDb. IMDb is intentionally shown as **No disponible** until its integration is finalized; no token/setup message is shown in the product UI.
 - **Overview:** synopsis, weighted tags (spoiler tags hidden by default), info table and "if you liked it" recommendations.
 - **Episodes:** real Crunchyroll episode links when AniList has them, otherwise numbered buttons that open Crunchyroll.
 - **Community:** reviews and discussions merged from AniList reviews, AniList forum, MyAnimeList reviews and Reddit, sorted by likes, with source filters, spoiler blur and links to the originals. Sources load independently, so one failing doesn't block the rest.

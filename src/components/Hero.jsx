@@ -7,11 +7,12 @@ import { useProfile } from '../profile/ProfileProvider'
 import { createLibraryEntry } from '../profile/model.js'
 import { truncateWithEllipsis } from '../ui/text.js'
 
-export default function Hero() {
+export default function Hero({ onOpenDetail }) {
   const rec = useRec()
   const { profile, updateAnimeList, recordActivity } = useProfile()
   const latest = rec.latest || []
   const currentSlides = useMemo(() => latest.length >= 3 ? latest.map((item) => ({
+    id: item.id,
     title: item.title,
     q: item.title,
     img: item.img,
@@ -21,6 +22,7 @@ export default function Hero() {
     grad: 'linear-gradient(135deg,#1b1f4d,#c0627a)',
   })) : slides.map((slide) => ({ ...slide, desc: truncateWithEllipsis(slide.desc) })), [latest])
   const currentTrending = useMemo(() => latest[0] ? {
+    id: latest[0].id,
     title: latest[0].title,
     q: latest[0].title,
     img: latest[0].img,
@@ -66,7 +68,7 @@ export default function Hero() {
                   <button onClick={() => toggleLibrary(s)}
                     className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${inLibrary(s) ? 'bg-emerald-500' : 'bg-brand hover:brightness-110'}`}>
                     {inLibrary(s) ? <Check size={16} /> : <Plus size={16} />}{inLibrary(s) ? 'En tu biblioteca' : 'Agregar a mi biblioteca'}</button>
-                  <button className="flex items-center gap-1.5 rounded-lg border border-white/40 px-4 py-2 text-sm font-medium backdrop-blur transition hover:bg-white/15 active:scale-95"><Info size={15} />Ver detalles</button>
+                  <button onClick={() => onOpenDetail?.(s)} className="flex items-center gap-1.5 rounded-lg border border-white/40 px-4 py-2 text-sm font-medium backdrop-blur transition hover:bg-white/15 active:scale-95"><Info size={15} />Ver detalles</button>
                   <button onClick={() => setSaved((a) => ({ ...a, [n]: !a[n] }))} aria-label="Guardar" className="grid w-10 place-items-center rounded-lg border border-white/40 transition hover:bg-white/15 active:scale-90"><Bookmark size={16} className={`transition-all ${saved[n] ? 'fill-white' : ''}`} /></button>
                 </div>
               </div>
@@ -82,7 +84,7 @@ export default function Hero() {
           {currentSlides.map((_, n) => <i key={n} className={`h-1.5 rounded-full bg-white transition-all duration-500 ${n === i ? 'w-5 opacity-100' : 'w-1.5 opacity-40'}`} />)}
         </div>
       </div>
-      <Poster {...currentTrending} className="group hidden h-[360px] cursor-pointer rounded-2xl shadow-sm md:h-[340px] xl:h-[320px] md:block">
+      <Poster {...currentTrending} onClick={() => onOpenDetail?.(currentTrending)} className="group hidden h-[360px] cursor-pointer rounded-2xl shadow-sm md:h-[340px] xl:h-[320px] md:block">
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20" />
         <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs text-white backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
@@ -90,7 +92,7 @@ export default function Hero() {
           <p className="text-[11px] text-white/80">{currentTrending.meta}</p>
           <p className="mt-1 flex items-center gap-1 text-sm font-semibold"><Star size={14} className="fill-yellow-400 text-yellow-400" />{currentTrending.rating}</p>
         </div>
-        <button onClick={() => toggleLibrary(currentTrending)} aria-label="Agregar" className={`absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-full transition-all duration-300 hover:scale-110 active:scale-90 ${inLibrary(currentTrending) ? 'rotate-[360deg] bg-emerald-400 text-white' : 'bg-white text-black'}`}>{inLibrary(currentTrending) ? <Check size={18} /> : <Plus size={18} />}</button>
+        <button onClick={(event) => { event.stopPropagation(); toggleLibrary(currentTrending) }} aria-label="Agregar" className={`absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-full transition-all duration-300 hover:scale-110 active:scale-90 ${inLibrary(currentTrending) ? 'rotate-[360deg] bg-emerald-400 text-white' : 'bg-white text-black'}`}>{inLibrary(currentTrending) ? <Check size={18} /> : <Plus size={18} />}</button>
       </Poster>
     </section>
   )

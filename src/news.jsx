@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { buildNewsImageFallback, extractFeedImage } from './newsImages'
 
 // Public RSS feeds, converted to JSON (CORS-friendly, no API key) by rss2json.
@@ -38,20 +38,23 @@ const withImageFallback = (item) => ({ ...item, img: item.img || buildNewsImageF
 
 export function NewsProvider({ children }) {
   const [state, setState] = useState({ items: [], status: 'loading' })
+  const activeRequest = useRef(0)
   const load = useCallback(async (force) => {
+    const requestId = ++activeRequest.current
     if (!force) {
-      try { const c = JSON.parse(sessionStorage.getItem(KEY)); if (c && Date.now() - c.at < TTL) return setState({ items: c.items.map(withImageFallback), status: 'ok' }) } catch {}
+      try { const c = JSON.parse(sessionStorage.getItem(KEY)); if (c && Date.now() - c.at < TTL) { if (requestId === activeRequest.current) setState({ items: c.items.map(withImageFallback), status: 'ok' }); return } } catch {}
     }
     setState((s) => ({ ...s, status: 'loading' }))
     const res = await Promise.allSettled(FEEDS.map(loadFeed))
+    if (requestId !== activeRequest.current) return
     const seen = new Set()
     const items = res.flatMap((r) => (r.status === 'fulfilled' ? r.value : [])).filter((n) => n.t && !seen.has(n.id) && seen.add(n.id)).sort((a, b) => b.ts - a.ts)
     if (!items.length) return setState({ items: [], status: 'error' })
     try { sessionStorage.setItem(KEY, JSON.stringify({ at: Date.now(), items })) } catch {}
     setState({ items: items.map(withImageFallback), status: 'ok' })
   }, [])
-  useEffect(() => { load() }, [load])
-  const items = state.items.map((n) => ({ ...n, h: n.ts ? timeAgo(n.ts) : n.h }))
+  useEffect(() => { load(); return () => { activeRequest.current += 1 } }, [load])
+  const items = useMemo(() => state.items.map((n) => ({ ...n, h: n.ts ? timeAgo(n.ts) : n.h })), [state.items])
   return <Ctx.Provider value={{ items, status: state.status, reload: () => load(true) }}>{children}</Ctx.Provider>
 }
 

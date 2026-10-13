@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { toItem, vectorize, update, recommend, topGenres, label, dot, norm } from './engine'
+import { toItem, vectorize, update, recommend, topGenres, label, dot, norm, librarySignal } from './engine'
 
 const KEY = 'orunei-taste-v2', POOL = 'orunei-pool-v2'
 const F = 'id title{romaji english} coverImage{extraLarge} bannerImage description(asHtml:false) genres tags{name rank isGeneralSpoiler} studios(isMain:true){nodes{name}} averageScore popularity trending seasonYear format'
@@ -78,8 +78,9 @@ export function RecProvider({ children }) {
       const query = String(entry.q || entry.t || '').toLowerCase()
       const item = pool.find((candidate) => String(candidate.id) === String(entry.id) || candidate.alts.some((alt) => alt === query || alt.includes(query)))
       if (item && !liked.includes(item.id)) {
-        p = update(p, item, 'add').p
-        liked.push(item.id)
+        const action = librarySignal(entry)
+        p = update(p, item, action).p
+        if (action !== 'click') liked.push(item.id)
       }
     })
     setSt({ ...cur, p, liked, librarySignature: signature })
@@ -88,8 +89,7 @@ export function RecProvider({ children }) {
   const likeMedia = (m) => {
     const cur = ref.current, has = cur.liked.includes(m.id)
     const base = toItem({ ...m, tags: (m.tags || []).filter((t) => !t.isMediaSpoiler) })
-    const n = norm(base.f) || 1, v = {}
-    for (const k in base.f) v[k] = base.f[k] / n
+    const v = byId.get(m.id)?.v || vectorize([base])[0].v
     apply({ ...base, v }, has ? 'unlike' : 'like', { liked: has ? cur.liked.filter((x) => x !== m.id) : [...cur.liked, m.id] })
   }
   const likeNews = (n) => { // a liked post nudges the taste toward any anime it mentions

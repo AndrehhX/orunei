@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { RefreshCw, ExternalLink, WifiOff } from 'lucide-react'
 import Poster from './Poster'
-import Reveal from './Reveal'
 import { useNews, NewsLink } from '../news'
 import LikeBtn from './LikeBtn'
 import { useRec } from '../rec/rec'
@@ -40,8 +39,7 @@ export default function NewsPage({ query }) {
       {!loading && !list.length && <p className="py-10 text-center text-sm text-slate-500">Sin resultados.</p>}
 
       {top && (
-        <Reveal key={src + query}>
-          <NewsLink n={top} className="group relative block h-[300px] cursor-pointer overflow-hidden rounded-2xl shadow-lg">
+        <NewsLink n={top} className="group relative block h-[300px] cursor-pointer overflow-hidden rounded-2xl shadow-lg">
             <Poster img={top.img} q={top.q} grad={top.grad} wide title="" className="absolute inset-0" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 max-w-2xl space-y-2 p-6 text-white">
@@ -51,14 +49,12 @@ export default function NewsPage({ query }) {
             </div>
             {top.link && <ExternalLink size={18} className="absolute right-4 top-16 text-white/80 transition group-hover:scale-125" />}
             <LikeBtn on={rec.isNewsLiked(top.id)} onClick={() => rec.likeNews(top)} className="absolute right-3 top-3 !h-10 !w-10" />
-          </NewsLink>
-        </Reveal>
+        </NewsLink>
       )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {rest.map((n, i) => (
-          <Reveal key={n.id + src} delay={(i % 6) * 70}>
-            <NewsLink n={n} className="group card flex h-full cursor-pointer flex-col overflow-hidden transition duration-500 ease-spring hover:-translate-y-1.5 hover:shadow-xl">
+        {rest.map((n) => (
+            <NewsLink key={n.id + src} n={n} style={{ contentVisibility: 'auto', containIntrinsicSize: '0 320px' }} className="group card flex h-full cursor-pointer flex-col overflow-hidden transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg">
               <Poster img={n.img} q={n.q} grad={n.grad} wide title="" className="h-36"><LikeBtn on={rec.isNewsLiked(n.id)} onClick={() => rec.likeNews(n)} className="absolute right-2 top-2" /></Poster>
               <div className="flex flex-1 flex-col gap-1.5 p-3.5">
                 <p className="text-[11px] font-semibold text-brand">{n.s} · <span className="font-normal text-slate-500">{n.h}</span></p>
@@ -66,7 +62,6 @@ export default function NewsPage({ query }) {
                 <p className="line-clamp-3 text-xs text-slate-500">{n.d}</p>
               </div>
             </NewsLink>
-          </Reveal>
         ))}
       </div>
       {list.length > visibleCount && <button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="mx-auto block rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-white/10">Cargar más noticias</button>}

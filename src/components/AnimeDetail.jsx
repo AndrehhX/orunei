@@ -22,8 +22,8 @@ function Ratings({ m }) {
         <div key={k} className="card p-3.5">
           <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-slate-500"><i className={`h-2 w-2 rounded-full ${color}`} />{name}{v?.extra && <span className="ml-auto text-slate-400">{v.extra}</span>}</div>
           {!v ? <div className="h-8 animate-pulse rounded bg-slate-200/70 dark:bg-white/10" />
-            : v.off ? <p className="text-[11px] leading-snug text-slate-400">Añade <code>VITE_OMDB_KEY</code> en <code>.env</code> para ver IMDb</p>
-            : v.none ? <p className="text-sm text-slate-400">Sin datos</p> : (<>
+            : v.unavailable ? <p className="text-sm text-slate-400">No disponible</p>
+            : v.none ? <p className="text-sm text-slate-400">{k === 'imdb' ? 'No disponible' : 'Sin datos'}</p> : (<>
               <p className="flex items-baseline gap-1 text-2xl font-extrabold"><Star size={16} className="self-center fill-yellow-400 text-yellow-400" />{v.v.toFixed(1)}<span className="text-xs font-medium text-slate-400">/10</span></p>
               <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200/70 dark:bg-white/10"><div className={`h-full rounded-full ${color} transition-all duration-1000 ease-smooth`} style={{ width: v.v * 10 + '%' }} /></div>
               <p className="mt-1 text-[10px] text-slate-400">{v.n?.toLocaleString('es')} {v.label}</p></>)}

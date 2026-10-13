@@ -45,6 +45,7 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [editingProfile, setEditingProfile] = useState(false)
   const [selectedUsername, setSelectedUsername] = useState(initialProfileUsername)
+  const [selectedAnimeId, setSelectedAnimeId] = useState(null)
   const [developmentNotice, setDevelopmentNotice] = useState(null)
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
@@ -71,11 +72,20 @@ export default function App() {
 
   const navigatePage = (nextPage) => {
     setPage(nextPage)
+    if (nextPage !== 'anime') setSelectedAnimeId(null)
     if (nextPage !== 'public-profile') {
       setSelectedUsername('')
       if (typeof window !== 'undefined' && getPublicProfileUsername(window.location.hash)) window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
     }
   }
+  const openAnime = (media) => {
+    const id = typeof media === 'object' ? media?.id : media
+    const queryValue = typeof media === 'object' ? media?.q : ''
+    setSelectedAnimeId(id ? String(id) : null)
+    setQuery(id ? '' : queryValue || '')
+    setPage('anime')
+  }
+  const closeAnime = () => setSelectedAnimeId(null)
   const openPublicProfile = (username) => {
     const hash = getPublicProfileHash(username)
     if (!hash) return
@@ -107,7 +117,7 @@ export default function App() {
       <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
         <AppHeader query={query} setQuery={setQuery} />
             <div key={page} className="animate-page-enter space-y-7">
-        {page === 'anime' ? <AnimePage query={query} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
+        {page === 'anime' ? <AnimePage query={query} initialOpenId={selectedAnimeId} onCloseDetail={closeAnime} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
         <div className="flex flex-wrap items-end justify-between gap-6 animate-rise">
           <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
             <p className="mt-2 text-sm leading-6 text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
@@ -115,7 +125,7 @@ export default function App() {
             {tabs.map((t) => <button key={t} onClick={() => handleTabChange(t)} className={getHomeTabClass(t, tab)}>{t}</button>)}
           </div>
         </div>
-        {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero /><Library query={query} /><Because query={query} /><News query={query} onMore={() => setTab('Noticias')} /></>}
+        {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero onOpenDetail={openAnime} /><Library query={query} onMore={() => navigatePage('library')} /><Because query={query} /><News query={query} onMore={() => setTab('Noticias')} /></>}
         </>}
         </div>
       </main>

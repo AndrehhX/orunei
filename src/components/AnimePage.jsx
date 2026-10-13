@@ -16,9 +16,10 @@ const Select = ({ label, value, onChange, options }) => (
 )
 
 export function AnimeCard({ m, onOpen }) {
+  const open = () => onOpen(m.id)
   const bg = m.coverImage.color || '#6d5cff'
   return (
-    <article onClick={() => onOpen(m.id)} className="group cursor-pointer transition-transform duration-200 ease-out hover:-translate-y-1" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 420px' }}>
+    <article role="button" tabIndex="0" aria-label={`Ver ficha de ${title(m)}`} onClick={open} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open() } }} className="group cursor-pointer transition-transform duration-200 ease-out hover:-translate-y-1" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 420px' }}>
       <div className="relative aspect-[2/3] overflow-hidden rounded-2xl shadow-md transition-shadow duration-200 group-hover:shadow-xl" style={{ background: bg }}>
           <img src={m.coverImage.extraLarge} alt={title(m)} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105" />
           {m.averageScore > 0 && <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-bold text-white backdrop-blur"><Star size={11} className="fill-yellow-400 text-yellow-400" />{(m.averageScore / 10).toFixed(1)}</span>}
@@ -33,7 +34,7 @@ export function AnimeCard({ m, onOpen }) {
   )
 }
 
-export default function AnimePage({ query }) {
+export default function AnimePage({ query, initialOpenId = null, onCloseDetail }) {
   const [f, setF] = useState(init)
   const [items, setItems] = useState([])
   const [more, setMore] = useState(false)
@@ -41,20 +42,25 @@ export default function AnimePage({ query }) {
   const [state, setState] = useState('loading')
   const [open, setOpen] = useState(null)
   const req = useRef(0)
+  const abort = useRef(null)
   const set = (k) => (v) => setF((x) => ({ ...x, [k]: v }))
   const active = f.genres.length + (f.format ? 1 : 0) + (f.status ? 1 : 0) + (f.year ? 1 : 0) + (f.sort !== 'Popular' ? 1 : 0)
+  useEffect(() => { if (initialOpenId) setOpen(initialOpenId) }, [initialOpenId])
 
   const run = (p, append) => {
     const id = ++req.current
+    abort.current?.abort()
+    const controller = new AbortController()
+    abort.current = controller
     setState('loading')
-    searchAnime({ ...f, search: query.trim() }, p).then((r) => {
+    searchAnime({ ...f, search: query.trim() }, p, controller.signal).then((r) => {
       if (id !== req.current) return
       setItems((x) => (append ? [...x, ...r.items.filter((n) => !x.some((o) => o.id === n.id))] : r.items)); setMore(r.more); setPage(p); setState('ok')
-    }).catch(() => id === req.current && setState('error'))
+    }).catch((error) => { if (error.name !== 'AbortError' && id === req.current) setState('error') })
   }
-  useEffect(() => { const t = setTimeout(() => run(1, false), query ? 400 : 0); return () => clearTimeout(t) }, [f, query])
+  useEffect(() => { const t = setTimeout(() => run(1, false), query ? 400 : 0); return () => { clearTimeout(t); abort.current?.abort() } }, [f, query])
 
-  if (open) return <AnimeDetail id={open} onClose={() => setOpen(null)} onOpen={setOpen} />
+  if (open) return <AnimeDetail id={open} onClose={() => { setOpen(null); onCloseDetail?.() }} onOpen={setOpen} />
 
   return (
     <section className="space-y-5 pb-10">
