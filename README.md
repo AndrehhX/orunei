@@ -62,6 +62,9 @@ mascots follow your cursor, look down while you type your email, shut their eyes
 password and peek when you press the eye icon. Log out with the icon next to your name in the
 sidebar.
 
+The complete Supabase migration and two-account verification checklist is in
+`docs/SUPABASE_SETUP.md`.
+
 ## Animations
 Scroll-reveal (`Reveal.jsx`), spring easings, carousel crossfade, sliding tab/theme indicators. All disabled with `prefers-reduced-motion`.
 
