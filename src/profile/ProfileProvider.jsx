@@ -14,12 +14,12 @@ export function ProfileProvider({ children, user = {} }) {
 
   const saveProfile = useCallback((nextOrUpdater) => {
     const source = typeof nextOrUpdater === 'function' ? nextOrUpdater(profileRef.current) : nextOrUpdater
-    const next = normalizeProfile(source, user)
+    const next = normalizeProfile({ ...source, updatedAt: new Date().toISOString() }, user)
     profileRef.current = next
     setProfile(next)
     const result = writeProfileStorage(browserStorage(), next)
     setStorageError(result.ok ? '' : result.error)
-    return next
+    return result
   }, [user])
 
   const updateProfile = useCallback((patch) => saveProfile((current) => ({ ...current, ...(typeof patch === 'function' ? patch(current) : patch) })), [saveProfile])

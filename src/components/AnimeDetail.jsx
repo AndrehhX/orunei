@@ -3,6 +3,7 @@ import { X, Star, Play, ExternalLink, Heart, ChevronDown, MessageSquare, ThumbsU
 import { getAnime, ratingJobs, commentJobs, title, crunchy, clean, T, ago } from '../api/anime'
 import { AnimeCard } from './AnimePage'
 import { useRec } from '../rec/rec'
+import { useProfile } from '../profile/ProfileProvider'
 
 const TABS = ['Resumen', 'Episodios', 'Comunidad']
 const SRC = { 'AniList': 'bg-sky-500', 'Foro AniList': 'bg-indigo-500', 'MyAnimeList': 'bg-blue-700', 'Reddit': 'bg-orange-500' }
@@ -110,6 +111,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
   const [spoil, setSpoil] = useState(false)
   const [closing, setClosing] = useState(false)
   const rec = useRec()
+  const { recordActivity } = useProfile()
   const close = () => { setClosing(true); setTimeout(onClose, 260) }
 
   useEffect(() => { setM(null); setErr(false); setTab(0); getAnime(id).then(setM).catch(() => setErr(true)) }, [id])
@@ -148,7 +150,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                 <div className="mt-1 flex flex-wrap gap-2">
                   <a href={crunchy(m)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl bg-[#f47521] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:scale-95"><Play size={15} className="fill-white" />Ver en Crunchyroll</a>
                   {m.trailer?.site === 'youtube' && <a href={`https://youtu.be/${m.trailer.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 active:scale-95 dark:bg-white/10">Tráiler<ExternalLink size={13} /></a>}
-                  <button onClick={() => rec.likeMedia(m)} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ease-spring active:scale-90 ${liked ? 'bg-pink-500 text-white' : 'bg-white shadow-sm dark:bg-white/10'}`}><Heart size={15} className={liked ? 'fill-white' : ''} />{liked ? 'Te gusta' : 'Me gusta'}</button>
+                  <button onClick={() => { const next = !liked; rec.likeMedia(m); recordActivity('favorite', `${next ? 'Marcó' : 'Quitó'} “${title(m)}” ${next ? 'como favorito' : 'de favoritos'}`) }} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ease-spring active:scale-90 ${liked ? 'bg-pink-500 text-white' : 'bg-white shadow-sm dark:bg-white/10'}`}><Heart size={15} className={liked ? 'fill-white' : ''} />{liked ? 'Te gusta' : 'Me gusta'}</button>
                 </div>
               </div>
             </div>

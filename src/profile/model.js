@@ -2,6 +2,7 @@ export const PROFILE_KEY = 'orunei-profile-v1'
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 export const MAX_ACTIVITY = 50
 export const PROFILE_SECTIONS = ['overview', 'animelist', 'favorites', 'lists', 'activity']
+export const PRIVACY_SECTIONS = ['animeList', 'favorites', 'taste', 'activity', 'reviews', 'lists']
 const IMAGE_CONSTRAINTS = {
   avatar: { maxWidth: 512, maxHeight: 512, crop: 'square' },
   banner: { maxWidth: 1600, maxHeight: 900, crop: 'cover' },
@@ -20,11 +21,12 @@ export const DEFAULT_PROFILE = {
   pinnedSections: ['overview', 'animelist', 'favorites'],
   landingSection: 'overview',
   privacy: {
-    overview: 'private',
-    animelist: 'private',
+    animeList: 'private',
     favorites: 'private',
-    lists: 'private',
+    taste: 'private',
     activity: 'private',
+    reviews: 'private',
+    lists: 'private',
   },
   customLists: [],
   activity: [],
@@ -64,8 +66,9 @@ export function createProfile(user = {}) {
 }
 
 function normalizePrivacy(raw) {
-  return Object.fromEntries(PROFILE_SECTIONS.map((section) => {
-    const value = raw?.[section]
+  return Object.fromEntries(PRIVACY_SECTIONS.map((section) => {
+    const legacyKey = section === 'animeList' ? 'animelist' : null
+    const value = raw?.[section] ?? (legacyKey ? raw?.[legacyKey] : undefined)
     return [section, ['private', 'public', 'friends'].includes(value) ? value : DEFAULT_PROFILE.privacy[section]]
   }))
 }
@@ -81,6 +84,7 @@ function normalizeLists(raw) {
       id: text(list.id) || `list-${index + 1}`,
       title,
       description: text(list.description).slice(0, 160),
+      accent: /^#[0-9a-f]{6}$/i.test(text(list.accent)) ? list.accent : DEFAULT_PROFILE.accent,
       animeIds: [...new Set((Array.isArray(list.animeIds) ? list.animeIds : []).map(String))],
       createdAt: text(list.createdAt) || now,
       updatedAt: now,

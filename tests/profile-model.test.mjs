@@ -21,6 +21,7 @@ test('exposes the private profile storage contract and useful defaults', () => {
   assert.equal(profile.accent, DEFAULT_PROFILE.accent)
   assert.deepEqual(profile.pinnedSections, ['overview', 'animelist', 'favorites'])
   assert.deepEqual(profile.privacy, DEFAULT_PROFILE.privacy)
+  assert.deepEqual(Object.keys(profile.privacy), ['animeList', 'favorites', 'taste', 'activity', 'reviews', 'lists'])
   assert.deepEqual(profile.customLists, [])
   assert.deepEqual(profile.activity, [])
 })
@@ -29,7 +30,7 @@ test('normalizes malformed local data without losing the user identity', () => {
   const profile = normalizeProfile({
     displayName: 42,
     username: 'Bad Name!!',
-    privacy: { overview: 'public', favorites: 'nope' },
+    privacy: { animeList: 'public', favorites: 'nope' },
     pinnedSections: ['animelist', 'animelist', 'unknown'],
     customLists: [{ id: 'list-1', title: '  Mis favoritos  ', animeIds: ['1', 2, '1'] }, null],
     activity: [{ type: 'profile', label: 'Actualizó su perfil', at: '2026-01-01' }, { nope: true }],
@@ -37,11 +38,12 @@ test('normalizes malformed local data without losing the user identity', () => {
 
   assert.equal(profile.displayName, 'Andreh')
   assert.equal(profile.username, 'andreh')
-  assert.equal(profile.privacy.overview, 'public')
+  assert.equal(profile.privacy.animeList, 'public')
   assert.equal(profile.privacy.favorites, 'private')
   assert.deepEqual(profile.pinnedSections, ['animelist'])
   assert.equal(profile.customLists.length, 1)
   assert.equal(profile.customLists[0].title, 'Mis favoritos')
+  assert.equal(profile.customLists[0].accent, DEFAULT_PROFILE.accent)
   assert.deepEqual(profile.customLists[0].animeIds, ['1', '2'])
   assert.equal(profile.activity.length, 1)
 })

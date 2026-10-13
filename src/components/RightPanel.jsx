@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowRight, UserCheck, UserPlus, Flame } from 'lucide-react'
 import Poster from './Poster'
-import { similar, trends } from '../data'
+import { library, similar, trends } from '../data'
 import { useNews, NewsLink } from '../news'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
@@ -19,11 +19,11 @@ export default function RightPanel({ onSeeNews, onSeeProfile }) {
     <aside className="scroll-hide sticky top-0 hidden h-screen w-[300px] shrink-0 space-y-4 self-start overflow-y-auto py-5 pr-5 xl:block animate-fade">
       <div className="card p-3.5">
         <div className="mb-2 flex justify-between"><h3 className="font-bold">Tu perfil</h3><a href="#perfil" onClick={(e) => { e.preventDefault(); onSeeProfile?.() }} className="flex items-center gap-1 text-[11px] text-brand">Ver perfil <ArrowRight size={12} /></a></div>
-        <div className="h-16 rounded-lg bg-gradient-to-r from-[#3a2a6a] via-[#c06a9a] to-[#f4a6c1] bg-cover bg-center" style={profile.banner ? { backgroundImage: `url(${profile.banner})` } : undefined} />
+        <div className="relative h-16 overflow-hidden rounded-lg bg-gradient-to-r from-[#3a2a6a] via-[#c06a9a] to-[#f4a6c1]">{profile.banner && <img src={profile.banner} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="absolute inset-0 h-full w-full object-cover" />}</div>
         <div className="-mt-7 flex items-end gap-2 px-2"><div className="h-[68px] w-[68px] overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 dark:border-[#171723]">{profile.avatar && <img src={profile.avatar} alt="" className="h-full w-full object-cover" />}</div>
           <div className="pb-1 leading-tight"><p className="font-bold text-sm">{profile.displayName}</p><p className="text-xs text-slate-500">@{profile.username}</p></div></div>
         <div className="mt-3 grid grid-cols-3 divide-x divide-slate-200 dark:divide-white/10 text-center">
-          {[[String(0), 'Obras'], [String(profile.customLists.length), 'Listas'], [String(rec.count), 'Gustos']].map(([a, b]) => <div key={b}><p className="font-bold">{a}</p><p className="text-[11px] text-slate-500">{b}</p></div>)}
+          {[[String(library.length), 'Obras'], [String(profile.customLists.length), 'Listas'], [String(rec.count), 'Gustos']].map(([a, b]) => <div key={b}><p className="font-bold">{a}</p><p className="text-[11px] text-slate-500">{b}</p></div>)}
         </div>
       </div>
       <div className="card p-3.5">
