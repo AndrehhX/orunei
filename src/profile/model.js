@@ -164,6 +164,7 @@ export function normalizeProfile(raw, user = {}) {
   const pinned = [...new Set((Array.isArray(source.pinnedSections) ? source.pinnedSections : base.pinnedSections).filter((section) => PROFILE_SECTIONS.includes(section)))]
   return {
     ...base,
+    id: text(source.id) || text(user.id),
     displayName: text(source.displayName, fallbackIdentity.displayName).slice(0, 50) || fallbackIdentity.displayName,
     username,
     visibility: ['private', 'public'].includes(source.visibility) ? source.visibility : base.visibility,

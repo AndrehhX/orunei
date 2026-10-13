@@ -11,7 +11,7 @@ export default function ProfileComments({ profile, viewer = {} }) {
   const [editingBody, setEditingBody] = useState('')
   const isOwner = Boolean(viewer.isOwner || (viewer.id && viewer.profileId && viewer.id === viewer.profileId))
   const visibleComments = selectVisibleComments(profile, viewer, commentsProfileId === profile.id ? comments : [])
-  const canWrite = canComment(profile, viewer)
+  const canWrite = !viewer.preview && canComment(profile, viewer)
 
   useEffect(() => { loadComments(profile.id) }, [loadComments, profile.id])
 

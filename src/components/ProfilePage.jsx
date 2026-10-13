@@ -87,7 +87,7 @@ export default function ProfilePage({ onEdit }) {
   }
   const removeFromList = (list, animeId) => { updateCustomLists((lists) => removeAnimeFromList(lists, list.id, animeId)); recordActivity('list', `Quitó una obra de “${list.title}”`) }
 
-  if (publicView) return <PublicProfilePage profile={profile} viewer={{ id: 'public-preview', profileId: 'profile-owner', relationship: 'none' }} onBack={() => setPublicView(false)} />
+  if (publicView) return <PublicProfilePage profile={profile} viewer={{ id: 'public-preview', profileId: 'profile-owner', relationship: 'none', preview: true }} onBack={() => setPublicView(false)} />
 
   if (profileStatus === 'loading') return <div className="card grid min-h-64 place-items-center p-8 text-sm text-slate-500">Cargando tu perfil…</div>
 

@@ -54,6 +54,7 @@ test('normalizes remote profile columns into the existing profile contract', () 
     privacy: [{ section: 'animeList', visibility: 'public' }],
   }, { name: 'Fallback', email: 'fallback@example.com' })
   assert.equal(profile.displayName, 'Andreh')
+  assert.equal(profile.id, 'user-1')
   assert.equal(profile.avatar, 'https://cdn.example/avatar.jpg')
   assert.equal(profile.banner, 'https://cdn.example/banner.jpg')
   assert.equal(profile.privacy.animeList, 'public')
