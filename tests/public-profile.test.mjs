@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { selectVisibleProfile } from '../src/profile/publicProfile.js'
 
 const profile = {
@@ -30,4 +31,11 @@ test('accepted friend receives friends sections but pending visitor does not', (
   const pending = selectVisibleProfile(profile, { id: 'pending', profileId: 'owner', relationship: 'pending' })
   assert.deepEqual(friend.visibleSections, ['animeList', 'favorites', 'activity', 'reviews'])
   assert.deepEqual(pending.visibleSections, ['favorites', 'reviews'])
+})
+
+test('keeps profile comments in the page scope instead of the avatar component', () => {
+  const source = readFileSync(new URL('../src/components/PublicProfilePage.jsx', import.meta.url), 'utf8')
+  const avatarSource = source.slice(source.indexOf('function Avatar'), source.indexOf('function Banner'))
+  assert.doesNotMatch(avatarSource, /ProfileComments/)
+  assert.match(source, /active === 'overview' && <ProfileComments profile=\{profile\} viewer=\{viewer\} \/>/)
 })

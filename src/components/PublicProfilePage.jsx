@@ -24,7 +24,6 @@ const groups = [
 function Avatar({ profile }) {
   return <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 shadow-lg dark:border-[#171723] md:h-28 md:w-28">
     {profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} /> : <span className="grid h-full w-full place-items-center text-3xl font-bold text-white">{profile.displayName.slice(0, 1).toUpperCase()}</span>}
-    {active === 'overview' && <ProfileComments profile={profile} viewer={viewer} />}
   </div>
 }
 
@@ -90,6 +89,8 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
         <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-slate-200 rounded-2xl border border-slate-200/80 bg-slate-50/70 sm:grid-cols-4 sm:divide-y-0 dark:divide-white/10 dark:bg-white/5">{stats.map(([value, label]) => <div key={label} className="px-4 py-3 text-center"><p className="text-xl font-extrabold">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>)}</div>
       </div>
     </section>
+
+    {active === 'overview' && <ProfileComments profile={profile} viewer={viewer} />}
 
     <nav className="scroll-hide flex gap-1 overflow-x-auto rounded-2xl bg-white/70 p-1.5 shadow-sm dark:bg-white/5" aria-label="Secciones públicas del perfil">{availableTabs.map(([id, label, Icon]) => <button key={id} onClick={() => setActive(id)} aria-pressed={active === id} className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${active === id ? 'bg-brand text-white shadow-md shadow-brand/25' : 'text-slate-500 hover:bg-slate-100 hover:text-brand dark:hover:bg-white/10'}`}><Icon size={15} />{label}</button>)}</nav>
 
