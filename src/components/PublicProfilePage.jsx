@@ -54,6 +54,7 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
   const [active, setActive] = useState('overview')
   const [relationship, setRelationship] = useState(viewer.relationship || 'none')
   const [friendRequesting, setFriendRequesting] = useState(false)
+  const [friendError, setFriendError] = useState('')
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState('')
   useEffect(() => {
@@ -69,9 +70,11 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
   ]
   const requestFriendship = async () => {
     if (!onFriendRequest) return
+    setFriendError('')
     setFriendRequesting(true)
     const result = await onFriendRequest()
-    if (!result?.error) setRelationship('pending')
+    if (result?.error) setFriendError(result.error)
+    else setRelationship('pending')
     setFriendRequesting(false)
   }
   const copyProfileLink = async () => {
@@ -112,6 +115,7 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
         </div>
         {copyError && <p role="alert" className="mt-3 text-xs font-medium text-amber-600">{copyError}</p>}
         <div className="mt-4 max-w-2xl"><p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{profile.bio || 'Este perfil aún no tiene una bio pública.'}</p>{profile.status && <p className="mt-2 text-xs font-medium text-brand">{profile.status}</p>}</div>
+        {friendError && <p role="alert" className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600">{friendError}</p>}
         <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-slate-200 rounded-2xl border border-slate-200/80 bg-slate-50/70 sm:grid-cols-3 sm:divide-y-0 dark:divide-white/10 dark:bg-white/5">{stats.map(([value, label]) => <div key={label} className="px-4 py-3 text-center"><p className="text-xl font-extrabold">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>)}</div>
       </div>
     </section>
