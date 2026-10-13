@@ -5,5 +5,6 @@ import ErrorBoundary from './ErrorBoundary.jsx'
 import { NewsProvider } from './news.jsx'
 import { RecProvider } from './rec/rec.jsx'
 import { ImagesProvider } from './images.jsx'
+import { AuthProvider } from './auth/AuthProvider.jsx'
 import './index.css'
-ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><ImagesProvider><NewsProvider><RecProvider><App /></RecProvider></NewsProvider></ImagesProvider></ErrorBoundary>)
+ReactDOM.createRoot(document.getElementById('root')).render(<ErrorBoundary><AuthProvider><ImagesProvider><NewsProvider><RecProvider><App /></RecProvider></NewsProvider></ImagesProvider></AuthProvider></ErrorBoundary>)
