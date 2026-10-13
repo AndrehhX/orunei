@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { toItem, vectorize, update, recommend, topGenres, label, dot, norm, librarySignal, selectLatest, selectTrending } from './engine'
+import { toItem, vectorize, update, label, dot, norm, selectLatest, selectTrending } from './engine'
+import { buildRecommendationState, migrateTasteState } from './providerModel.js'
 
-const KEY = 'orunei-taste-v2', POOL = 'orunei-pool-v2'
+const KEY = 'orunei-taste-v3', LEGACY_KEY = 'orunei-taste-v2', POOL = 'orunei-pool-v3'
 const F = 'id title{romaji english} coverImage{extraLarge} bannerImage description(asHtml:false) genres tags{name rank isGeneralSpoiler} studios(isMain:true){nodes{name}} averageScore popularity trending seasonYear format'
 const pg = (a, page, sort) => `${a}: Page(page:${page}, perPage:30){ media(type:ANIME, sort:${sort}, isAdult:false){ ${F} } }`
 const QUERY = `query { ${pg('a', 1, 'POPULARITY_DESC')} ${pg('b', 1, 'TRENDING_DESC')} ${pg('c', 1, 'SCORE_DESC')} ${pg('d', 2, 'POPULARITY_DESC')} ${pg('e', 1, 'START_DATE_DESC')} }`
@@ -21,11 +22,16 @@ async function loadPool(force = false) {
   return items
 }
 
-const empty = { p: { w: {}, t: 0, n: 0 }, liked: [], hidden: [], news: [], librarySignature: '' }
+const empty = { version: 3, p: { w: {}, t: 0, n: 0 }, liked: [], hidden: [], news: [], library: [], librarySignature: '' }
 
 export function RecProvider({ children }) {
   const [pool, setPool] = useState([])
-  const [st, setSt] = useState(() => { try { return { ...empty, ...JSON.parse(localStorage.getItem(KEY)) } } catch { return empty } })
+  const [st, setSt] = useState(() => {
+    try {
+      const current = JSON.parse(localStorage.getItem(KEY) || 'null') || JSON.parse(localStorage.getItem(LEGACY_KEY) || 'null') || {}
+      return { ...empty, ...current, ...migrateTasteState(current), version: 3, library: Array.isArray(current.library) ? current.library : [] }
+    } catch { return empty }
+  })
   const [toast, setToast] = useState(null)
   const ref = useRef(st); ref.current = st
   const timer = useRef()
@@ -55,42 +61,32 @@ export function RecProvider({ children }) {
     if (!quiet) say(d, action)
   }, [])
 
-  const byId = useMemo(() => new Map(pool.map((i) => [i.id, i])), [pool])
+  const byId = useMemo(() => new Map(pool.map((i) => [String(i.id), i])), [pool])
   const find = (q) => { q = q.toLowerCase(); return pool.find((i) => i.alts.some((a) => a.startsWith(q) || a.includes(q))) }
 
-  const like = (id) => { const it = byId.get(id); if (!it) return; apply(it, 'like', { liked: [...ref.current.liked.filter((x) => x !== id), id] }) }
-  const dismiss = (id) => { const it = byId.get(id); if (!it) return; apply(it, 'dismiss', { hidden: [...ref.current.hidden, id] }) }
+  const like = (id) => { const it = byId.get(String(id)); if (!it) return; apply(it, 'like', { liked: [...ref.current.liked.filter((x) => String(x) !== String(id)), id] }) }
+  const dismiss = (id) => { const it = byId.get(String(id)); if (!it) return; apply(it, 'dismiss', { hidden: [...ref.current.hidden.filter((x) => String(x) !== String(id)), id] }) }
   const addByQuery = (q, on) => {
     const it = find(q); if (!it) return
-    const cur = ref.current, has = cur.liked.includes(it.id)
+    const cur = ref.current, has = cur.liked.some((id) => String(id) === String(it.id))
     if (on && !has) apply(it, 'add', { liked: [...cur.liked, it.id] })
-    if (!on && has) apply(it, 'unadd', { liked: cur.liked.filter((x) => x !== it.id) })
+    if (!on && has) apply(it, 'unadd', { liked: cur.liked.filter((id) => String(id) !== String(it.id)) })
   }
   const syncLibrary = useCallback((entries = []) => {
-    if (!pool.length) return
     const rows = Array.isArray(entries) ? entries : []
-    const signature = rows.map((entry) => `${entry.id}:${entry.status}:${entry.favorite ? '1' : '0'}`).join('|')
     const cur = ref.current
-    if (cur.librarySignature === signature) return
-    let p = cur.p
-    const liked = [...cur.liked]
-    rows.forEach((entry) => {
-      const query = String(entry.q || entry.t || '').toLowerCase()
-      const item = pool.find((candidate) => String(candidate.id) === String(entry.id) || candidate.alts.some((alt) => alt === query || alt.includes(query)))
-      if (item && !liked.includes(item.id)) {
-        const action = librarySignal(entry)
-        p = update(p, item, action).p
-        if (action !== 'click') liked.push(item.id)
-      }
-    })
-    setSt({ ...cur, p, liked, librarySignature: signature })
+    const likedItems = pool.filter((item) => cur.liked.some((id) => String(id) === String(item.id)))
+    const hiddenItems = pool.filter((item) => cur.hidden.some((id) => String(id) === String(item.id)))
+    const derived = buildRecommendationState({ entries: rows, explicitState: { likedIds: cur.liked, hiddenIds: cur.hidden, likedItems, hiddenItems }, pool })
+    if (cur.librarySignature === derived.signature && cur.library.length === rows.length) return
+    setSt({ ...cur, p: derived.profile, library: rows, librarySignature: derived.signature })
   }, [pool])
   // Like any anime from the catalogue (even outside the candidate pool): build its vector on the fly.
   const likeMedia = (m) => {
-    const cur = ref.current, has = cur.liked.includes(m.id)
+    const cur = ref.current, has = cur.liked.some((id) => String(id) === String(m.id))
     const base = toItem({ ...m, tags: (m.tags || []).filter((t) => !t.isMediaSpoiler) })
-    const v = byId.get(m.id)?.v || vectorize([base])[0].v
-    apply({ ...base, v }, has ? 'unlike' : 'like', { liked: has ? cur.liked.filter((x) => x !== m.id) : [...cur.liked, m.id] })
+    const v = byId.get(String(m.id))?.v || vectorize([base])[0].v
+    apply({ ...base, v }, has ? 'unlike' : 'like', { liked: has ? cur.liked.filter((id) => String(id) !== String(m.id)) : [...cur.liked, m.id] })
   }
   const likeNews = (n) => { // a liked post nudges the taste toward any anime it mentions
     const cur = ref.current, on = !cur.news.includes(n.id)
@@ -103,20 +99,25 @@ export function RecProvider({ children }) {
     else if (on) { setToast({ id: Date.now(), text: 'Guardado en tus noticias favoritas' }); clearTimeout(timer.current); timer.current = setTimeout(() => setToast(null), 2200) }
   }
 
-  const likedItems = useMemo(() => st.liked.map((id) => byId.get(id)).filter(Boolean), [st.liked, byId])
-  const recs = useMemo(() => pool.length ? recommend(pool, st.p, { exclude: new Set([...st.liked, ...st.hidden]), liked: likedItems, n: 8 }) : [], [pool, st, likedItems])
-  const genres = useMemo(() => topGenres(st.p), [st.p])
+  const recommendationState = useMemo(() => buildRecommendationState({
+    entries: st.library,
+    explicitState: { likedIds: st.liked, hiddenIds: st.hidden },
+    pool,
+  }), [pool, st.library, st.liked, st.hidden])
+  const likedItems = useMemo(() => pool.filter((item) => st.liked.some((id) => String(id) === String(item.id))), [st.liked, pool])
+  const recs = recommendationState.recs
+  const genres = useMemo(() => Object.entries(recommendationState.profile.w).filter(([key, value]) => key.startsWith('g:') && value > 0.05).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([key, value], _, rows) => ({ name: label(key), pct: Math.round((value / (rows[0]?.[1] || 1)) * 100) })), [recommendationState.profile])
   // How well another taste (a set of genres) matches this user's profile, 0..1
   const affinity = (gs) => {
-    if (!st.p.n) return null
+    if (!recommendationState.profile.n) return null
     const v = {}; gs.forEach((g) => (v['g:' + g] = 1 / Math.sqrt(gs.length)))
-    const wn = norm(st.p.w) || 1
-    return Math.max(0, Math.min(1, dot(st.p.w, v) / wn))
+    const wn = norm(recommendationState.profile.w) || 1
+    return Math.max(0, Math.min(1, dot(recommendationState.profile.w, v) / wn))
   }
 
   const latest = useMemo(() => selectLatest(pool), [pool])
   const trends = useMemo(() => selectTrending(pool), [pool])
-  const value = { ready: pool.length > 0, recs, latest, trends, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.includes(id), addByQuery, syncLibrary, affinity, isNewsLiked: (id) => st.news.includes(id) }
+  const value = { ready: pool.length > 0, recs, affinityRecs: recommendationState.affinityRecs, trendingRecs: recommendationState.trendingRecs, exploreRecs: recommendationState.exploreRecs, latest, trends, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', personalized: recommendationState.personalized, coldStart: recommendationState.coldStart, like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.some((value) => String(value) === String(id)), addByQuery, syncLibrary, affinity, isNewsLiked: (id) => st.news.includes(id) }
   return (
     <Ctx.Provider value={value}>
       {children}

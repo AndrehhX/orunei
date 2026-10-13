@@ -42,7 +42,7 @@ test('does not seed personalized recommendations with hardcoded anime', () => {
 test('refreshes the recommendation pool with recent AniList anime', () => {
   const recommendations = fs.readFileSync(new URL('../src/rec/rec.jsx', import.meta.url), 'utf8')
 
-  assert.match(recommendations, /orunei-pool-v2/)
+  assert.match(recommendations, /orunei-pool-v3/)
   assert.match(recommendations, /START_DATE_DESC/)
   assert.match(recommendations, /10 \* 6e4/)
 })

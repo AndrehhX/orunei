@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import * as engine from '../src/rec/engine.js'
+import { buildRecommendationState, migrateTasteState } from '../src/rec/providerModel.js'
 const { librarySignal, STATUS_WEIGHTS, buildTasteProfile, profileSignature, scoreCandidate, recommend } = engine
 
 const animeApi = fs.readFileSync(new URL('../src/api/anime.js', import.meta.url), 'utf8')
@@ -90,6 +91,61 @@ test('returns structured reasons for recommendations', () => {
   assert.equal(result.reasonKey, 'similar_to')
   assert.deepEqual(result.reasonData, { title: 'Tu drama favorito' })
   assert.match(result.reason, /Tu drama favorito/)
+})
+
+test('derives provider state idempotently and excludes every library entry', () => {
+  const pool = [
+    { id: 1, title: 'Ya agregada', score: 90, trend: 100, pop: 100, year: 2026, v: { 'g:Drama': 1 } },
+    { id: 2, title: 'También agregada', score: 88, trend: 80, pop: 90, year: 2026, v: { 'g:Action': 1 } },
+    { id: 3, title: 'Recomendable', score: 86, trend: 70, pop: 80, year: 2026, v: { 'g:Drama': 1 } },
+  ]
+  const input = {
+    entries: [{ id: 1, status: 'planned', genres: ['Drama'] }, { id: 2, status: 'completed', genres: ['Action'] }],
+    explicitState: { likedIds: [], hiddenIds: [] },
+    pool,
+    now: Date.parse('2026-02-01T00:00:00.000Z'),
+    year: 2026,
+  }
+
+  const first = buildRecommendationState(input)
+  const second = buildRecommendationState(input)
+
+  assert.deepEqual(first.profile, second.profile)
+  assert.deepEqual([...first.exclude].sort(), ['1', '2'])
+  assert.ok(first.recs.every((item) => !first.exclude.has(String(item.id))))
+  assert.equal(first.personalized, true)
+})
+
+test('replacing a library status does not accumulate the previous signal', () => {
+  const base = { id: 1, genres: ['Drama'], updatedAt: '2026-01-01T00:00:00.000Z' }
+  const now = Date.parse('2026-01-01T00:00:00.000Z')
+  const planned = buildRecommendationState({ entries: [{ ...base, status: 'planned' }], pool: [], now })
+  const completed = buildRecommendationState({ entries: [{ ...base, status: 'completed' }], pool: [], now })
+
+  assert.ok(completed.profile.w['g:Drama'] > planned.profile.w['g:Drama'])
+  assert.equal(completed.profile.w['g:Drama'], 1)
+})
+
+test('cold start returns live candidates without claiming personalization', () => {
+  const state = buildRecommendationState({
+    entries: [],
+    pool: [{ id: 9, title: 'Tendencia', score: 90, trend: 1000, pop: 1000, year: 2026, v: { 'g:Action': 1 } }],
+    year: 2026,
+  })
+
+  assert.equal(state.personalized, false)
+  assert.equal(state.coldStart, true)
+  assert.equal(state.recs[0].id, 9)
+  assert.equal(state.recs[0].reasonKey, 'trending')
+})
+
+test('migrates explicit interactions from the previous local version', () => {
+  assert.deepEqual(migrateTasteState({ liked: [1], hidden: [2], news: [3] }), {
+    version: 3,
+    liked: [1],
+    hidden: [2],
+    news: [3],
+  })
 })
 
 test('rotates the live hero selection through the refreshed anime pool', () => {
