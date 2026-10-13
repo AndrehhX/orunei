@@ -50,7 +50,7 @@ export default function ProfileEditor({ onClose }) {
     setSaving(false)
     onClose()
   }
-  const reset = () => setDraft((current) => ({ ...current, avatar: '', banner: '', accent: '#6d5cff', featuredAnimeId: '' }))
+  const reset = () => { setDraft((current) => ({ ...current, avatar: '', banner: '', accent: '#6d5cff', featuredAnimeId: '' })); setFileNames({ avatar: '', banner: '' }) }
   const resetImage = (kind) => { setDraft((current) => ({ ...current, [kind]: '' })); setFileNames((current) => ({ ...current, [kind]: '' })) }
 
   return <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 p-3 backdrop-blur-sm sm:p-6">

@@ -1,8 +1,10 @@
 const clean = (value, fallback = '') => typeof value === 'string' ? value.trim() : fallback
 
-export function createCustomList(title, description = '', at = new Date().toISOString(), accent = '#6d5cff') {
+export function createCustomList(title, description = '', at, accent = '#6d5cff') {
+  const timestamp = at || new Date().toISOString()
+  const generatedId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${timestamp}-${Math.random().toString(36).slice(2)}`
   const safeTitle = clean(title).slice(0, 60)
-  return { id: `list-${at}`, title: safeTitle, description: clean(description).slice(0, 160), accent: /^#[0-9a-f]{6}$/i.test(accent) ? accent : '#6d5cff', animeIds: [], createdAt: at, updatedAt: at }
+  return { id: at ? `list-${timestamp}` : `list-${generatedId}`, title: safeTitle, description: clean(description).slice(0, 160), accent: /^#[0-9a-f]{6}$/i.test(accent) ? accent : '#6d5cff', animeIds: [], createdAt: timestamp, updatedAt: timestamp }
 }
 
 export function updateCustomList(lists, id, patch, at = new Date().toISOString()) {
