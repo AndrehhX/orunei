@@ -29,6 +29,21 @@ test('creates a remote profile when the authenticated account has no profile row
   assert.equal(result.data.displayName, 'Andreh')
 })
 
+test('retries a colliding generated username with a stable account suffix', async () => {
+  const usernames = []
+  const result = await loadOrCreateRemoteProfile({
+    getOwnProfile: async () => ({ data: null, error: '' }),
+    saveProfile: async (_userId, profile) => {
+      usernames.push(profile.username)
+      return usernames.length === 1
+        ? { data: null, error: 'duplicate key value violates unique constraint "profiles_username_key"' }
+        : { data: profile, error: '' }
+    },
+  }, { id: 'ABCDEF12-3456', name: 'Andreh', email: 'andreh@example.com' })
+  assert.deepEqual(usernames, ['andreh', 'andreh-abcdef'])
+  assert.equal(result.data.username, 'andreh-abcdef')
+})
+
 test('clears profile state after sign out', () => {
   assert.deepEqual(clearProfileState(), { profile: null, status: 'signed-out', error: '' })
 })

@@ -12,7 +12,13 @@ export async function loadOrCreateRemoteProfile(repository, user = {}) {
   if (!repository || !user?.id) return { data: null, error: 'No hay una cuenta remota activa.' }
   const loaded = await repository.getOwnProfile(user.id)
   if (loaded?.data || loaded?.error) return loaded
-  const created = await repository.saveProfile(user.id, createProfile(user))
+  const initial = createProfile(user)
+  let created = await repository.saveProfile(user.id, initial)
+  if (created?.error && /duplicate|unique|profiles_username_key/i.test(created.error)) {
+    const suffix = String(user.id).replace(/[^a-z0-9]/gi, '').slice(0, 6).toLowerCase()
+    const base = initial.username.replace(/[^a-z0-9_.-]/gi, '').slice(0, 17)
+    if (suffix && base) created = await repository.saveProfile(user.id, { ...initial, username: `${base}-${suffix}`.slice(0, 24) })
+  }
   return { data: created?.data || null, error: created?.error || '' }
 }
 
