@@ -2,16 +2,25 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createProfileRepository, normalizeRemoteProfile } from '../src/profile/profileRepository.js'
 
-function makeClient({ profile, privacy = [], anime = [], uploadError = null }) {
+function makeClient({ profile, privacy = [], anime = [], lists = [], activity = [], uploadError = null }) {
   const calls = []
-  const builder = {
-    select() { return builder },
-    eq() { return builder },
-    upsert(payload) { calls.push({ type: 'upsert', payload }); return builder },
-    delete() { calls.push({ type: 'delete' }); return builder },
-    maybeSingle() { return Promise.resolve({ data: profile, error: null }) },
-    single() { return Promise.resolve({ data: profile, error: null }) },
-    then(resolve) { return Promise.resolve({ data: anime, error: null }).then(resolve) },
+  const tableData = { profile_anime: anime, profile_lists: lists, profile_activity: activity }
+  const builders = new Map()
+  const makeBuilder = (table) => {
+    let inserted = null
+    const builder = {
+      select() { return builder },
+      eq() { return builder },
+      order() { return builder },
+      upsert(payload) { calls.push({ type: 'upsert', payload }); return builder },
+      insert(payload) { inserted = { id: 'activity-new', ...payload, created_at: '2026-01-02T00:00:00.000Z' }; calls.push({ type: 'insert', payload }); return builder },
+      delete() { calls.push({ type: 'delete' }); return builder },
+      maybeSingle() { return Promise.resolve({ data: profile, error: null }) },
+      single() { return Promise.resolve({ data: inserted || (table === 'profiles' ? profile : tableData[table]?.at(-1) || null), error: null }) },
+      then(resolve) { return Promise.resolve({ data: tableData[table] || [], error: null }).then(resolve) },
+    }
+    builders.set(table, builder)
+    return builder
   }
   return {
     calls,
@@ -21,7 +30,7 @@ function makeClient({ profile, privacy = [], anime = [], uploadError = null }) {
         select() { return this },
         eq() { return Promise.resolve({ data: privacy, error: null }) },
       }
-      return builder
+      return builders.get(table) || makeBuilder(table)
     },
     storage: {
       from() {
@@ -91,4 +100,20 @@ test('loads and persists the account AnimeList through the remote repository', a
   assert.equal(saved.error, '')
   assert.equal(client.calls.some((call) => call.type === 'delete'), true)
   assert.equal(client.calls.some((call) => call.type === 'upsert'), true)
+})
+
+test('loads private lists and activity and writes new remote activity', async () => {
+  const client = makeClient({
+    profile: { id: 'user-1', display_name: 'Andreh', username: 'andreh' },
+    lists: [{ list_id: 'list-1', title: 'Favoritos', description: '', accent: '#6d5cff', anime_ids: ['101'], created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z' }],
+    activity: [{ id: 'activity-1', type: 'profile', label: 'Actualizó su perfil', created_at: '2026-01-01T00:00:00.000Z' }],
+  })
+  const repository = createProfileRepository(client)
+  const own = await repository.getOwnProfile('user-1')
+  assert.equal(own.data.customLists[0].title, 'Favoritos')
+  assert.equal(own.data.customLists[0].animeIds[0], '101')
+  assert.equal(own.data.activity[0].label, 'Actualizó su perfil')
+  const recorded = await repository.recordActivity('user-1', 'list', 'Creó una lista')
+  assert.equal(recorded.error, '')
+  assert.equal(recorded.data.label, 'Creó una lista')
 })

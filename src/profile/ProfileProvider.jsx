@@ -48,7 +48,12 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
         setStorageError(result.error)
         return { ok: false, error: result.error }
       }
-      const persisted = normalizeProfile({ ...result.data, animeList: result.data?.animeList ?? profileRef.current.animeList }, user)
+      const persisted = normalizeProfile({
+        ...result.data,
+        animeList: result.data?.animeList ?? profileRef.current.animeList,
+        customLists: result.data?.customLists ?? profileRef.current.customLists,
+        activity: result.data?.activity ?? profileRef.current.activity,
+      }, user)
       profileRef.current = persisted
       setProfile(persisted)
       setStorageError('')
@@ -79,11 +84,30 @@ export function ProfileProvider({ children, user = {}, repository = null }) {
 
   const updateProfile = useCallback((patch) => saveProfile((current) => ({ ...current, ...(typeof patch === 'function' ? patch(current) : patch) })), [saveProfile])
   const resetVisuals = useCallback(() => saveProfile((current) => ({ ...current, avatar: '', banner: '', accent: DEFAULT_PROFILE.accent, featuredAnimeId: '' })), [saveProfile])
-  const recordActivity = useCallback((type, label) => saveProfile((current) => ({ ...current, activity: [...current.activity, makeActivity(type, label)].slice(-MAX_ACTIVITY) })), [saveProfile])
-  const updateCustomLists = useCallback((nextOrUpdater) => saveProfile((current) => ({
-    ...current,
-    customLists: typeof nextOrUpdater === 'function' ? nextOrUpdater(current.customLists) : nextOrUpdater,
-  })), [saveProfile])
+  const recordActivity = useCallback(async (type, label) => {
+    if (remote) {
+      const result = await repository.recordActivity(user.id, type, label)
+      if (result.error) { setStorageError(result.error); return { ok: false, error: result.error } }
+      const nextActivity = [...profileRef.current.activity, result.data].filter(Boolean).slice(-MAX_ACTIVITY)
+      profileRef.current = { ...profileRef.current, activity: nextActivity }
+      setProfile(profileRef.current)
+      setStorageError('')
+      return { ok: true, error: '' }
+    }
+    return saveProfile((current) => ({ ...current, activity: [...current.activity, makeActivity(type, label)].slice(-MAX_ACTIVITY) }))
+  }, [remote, repository, saveProfile, user?.id])
+  const updateCustomLists = useCallback(async (nextOrUpdater) => {
+    const next = typeof nextOrUpdater === 'function' ? nextOrUpdater(profileRef.current.customLists) : nextOrUpdater
+    if (remote) {
+      const result = await repository.saveCustomLists(user.id, next)
+      if (result.error) { setStorageError(result.error); return { ok: false, error: result.error } }
+      profileRef.current = { ...profileRef.current, customLists: result.data || next }
+      setProfile(profileRef.current)
+      setStorageError('')
+      return { ok: true, error: '' }
+    }
+    return saveProfile((current) => ({ ...current, customLists: next }))
+  }, [remote, repository, saveProfile, user?.id])
   const updateAnimeList = useCallback(async (nextOrUpdater) => {
     const next = normalizeAnimeList(typeof nextOrUpdater === 'function' ? nextOrUpdater(profileRef.current.animeList) : nextOrUpdater)
     if (remote) {

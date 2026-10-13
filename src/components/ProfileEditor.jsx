@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { Check, Image, LockKeyhole, Palette, Shield, Upload, X } from 'lucide-react'
-import { library } from '../data'
 import { useProfile } from '../profile/ProfileProvider'
-import { makeActivity } from '../profile/model'
 
 const privacyLabels = { animeList: 'AnimeList', favorites: 'Favoritos', taste: 'Perfil de gustos', activity: 'Actividad', reviews: 'Reseñas (futuro)', lists: 'Listas' }
 const pinLabels = { overview: 'Resumen', animelist: 'AnimeList', favorites: 'Favoritos', lists: 'Listas', activity: 'Actividad' }
@@ -18,7 +16,8 @@ function UploadButton({ kind, onChange, current, fileName, onReset }) {
 }
 
 export default function ProfileEditor({ onClose }) {
-  const { profile, saveProfile, uploadProfileImage, storageError } = useProfile()
+  const { profile, saveProfile, recordActivity, uploadProfileImage, storageError } = useProfile()
+  const library = profile.animeList || []
   const [draft, setDraft] = useState(() => clone(profile))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -42,10 +41,16 @@ export default function ProfileEditor({ onClose }) {
   const togglePinned = (section) => setDraft((current) => ({ ...current, pinnedSections: current.pinnedSections.includes(section) ? current.pinnedSections.filter((item) => item !== section) : [...current.pinnedSections, section] }))
   const save = async () => {
     setSaving(true)
-    const result = await saveProfile((current) => ({ ...current, ...draft, activity: [...current.activity, makeActivity('profile', 'Actualizó su perfil')] }))
+    const result = await saveProfile((current) => ({ ...current, ...draft, activity: current.activity }))
     if (!result.ok) {
       setSaving(false)
       setError(result.error)
+      return
+    }
+    const activityResult = await recordActivity('profile', 'Actualizó su perfil')
+    if (!activityResult.ok) {
+      setSaving(false)
+      setError(activityResult.error)
       return
     }
     setSaving(false)

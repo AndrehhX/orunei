@@ -52,9 +52,36 @@ function resultError(error) {
   return error?.message || ''
 }
 
-async function readAnimeList(client, profileId) {
-  const { data, error } = await client.from('profile_anime').select('*').eq('profile_id', profileId)
-  return { data: error ? [] : normalizeAnimeList(data), error: resultError(error) }
+function normalizeRemoteLists(rows) {
+  const raw = (Array.isArray(rows) ? rows : []).map((row) => ({
+    id: row.list_id ?? row.id,
+    title: row.title,
+    description: row.description,
+    accent: row.accent,
+    animeIds: row.anime_ids,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }))
+  return normalizeProfile({ customLists: raw }).customLists
+}
+
+function normalizeRemoteActivity(rows) {
+  const raw = (Array.isArray(rows) ? rows : []).map((row) => ({ id: row.id, type: row.type, label: row.label, at: row.created_at }))
+  return normalizeProfile({ activity: raw }).activity
+}
+
+async function readCollections(client, profileId) {
+  const [animeResult, listsResult, activityResult] = await Promise.all([
+    client.from('profile_anime').select('*').eq('profile_id', profileId),
+    client.from('profile_lists').select('*').eq('profile_id', profileId),
+    client.from('profile_activity').select('*').eq('profile_id', profileId).order('created_at', { ascending: false }),
+  ])
+  return {
+    animeList: animeResult.error ? [] : normalizeAnimeList(animeResult.data),
+    customLists: listsResult.error ? [] : normalizeRemoteLists(listsResult.data),
+    activity: activityResult.error ? [] : normalizeRemoteActivity(activityResult.data),
+    error: resultError(animeResult.error) || resultError(listsResult.error) || resultError(activityResult.error),
+  }
 }
 
 export function createProfileRepository(client = supabase) {
@@ -65,8 +92,8 @@ export function createProfileRepository(client = supabase) {
       const { data, error } = await client.from('profiles').select('*').eq('id', userId).maybeSingle()
       if (error) return { data: null, error: resultError(error) }
       if (!data) return { data: null, error: '' }
-      const anime = await readAnimeList(client, userId)
-      return { data: normalizeRemoteProfile({ ...data, animeList: anime.data }, { id: userId }), error: anime.error }
+      const collections = await readCollections(client, userId)
+      return { data: normalizeRemoteProfile({ ...data, ...collections }, { id: userId }), error: collections.error }
     },
 
     async getPublicProfile(username, viewerId = null) {
@@ -75,9 +102,9 @@ export function createProfileRepository(client = supabase) {
       if (profileResult.error || !profileResult.data) return { data: null, error: resultError(profileResult.error) }
       if (profileResult.data.id !== viewerId && profileResult.data.profile_visibility === 'private') return { data: null, error: '' }
       const privacyResult = await client.from('profile_privacy').select('section, visibility').eq('profile_id', profileResult.data.id)
-      const anime = await readAnimeList(client, profileResult.data.id)
-      const row = { ...profileResult.data, privacy: privacyResult.data || [], animeList: anime.data }
-      return { data: normalizeRemoteProfile(row, { id: viewerId || '' }), error: resultError(privacyResult.error) || anime.error }
+      const collections = await readCollections(client, profileResult.data.id)
+      const row = { ...profileResult.data, privacy: privacyResult.data || [], ...collections }
+      return { data: normalizeRemoteProfile(row, { id: viewerId || '' }), error: resultError(privacyResult.error) || collections.error }
     },
 
     async saveProfile(userId, patch) {
@@ -103,6 +130,25 @@ export function createProfileRepository(client = supabase) {
         if (error) return { data: null, error: resultError(error) }
       }
       return { data: normalizeAnimeList(entries), error: '' }
+    },
+
+    async saveCustomLists(userId, lists) {
+      if (!client || !userId) return unavailable()
+      const normalized = normalizeRemoteLists(lists)
+      const { error: deleteError } = await client.from('profile_lists').delete().eq('profile_id', userId)
+      if (deleteError) return { data: null, error: resultError(deleteError) }
+      if (normalized.length) {
+        const rows = normalized.map((list) => ({ profile_id: userId, list_id: list.id, title: list.title, description: list.description, accent: list.accent, anime_ids: list.animeIds, created_at: list.createdAt, updated_at: list.updatedAt }))
+        const { error } = await client.from('profile_lists').upsert(rows, { onConflict: 'profile_id,list_id' })
+        if (error) return { data: null, error: resultError(error) }
+      }
+      return { data: normalized, error: '' }
+    },
+
+    async recordActivity(userId, type, label) {
+      if (!client || !userId) return unavailable()
+      const { data, error } = await client.from('profile_activity').insert({ profile_id: userId, type: text(type) || 'profile', label: text(label) }).select('*').single()
+      return { data: error ? null : normalizeRemoteActivity([data])[0] || null, error: resultError(error) }
     },
 
     async uploadProfileImage(userId, kind, file) {
