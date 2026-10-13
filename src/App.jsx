@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import Login from './components/Login'
 import AnimePage from './components/AnimePage'
@@ -16,6 +16,7 @@ import PublicProfileRoute from './components/PublicProfileRoute'
 import DevelopmentNotice from './components/DevelopmentNotice'
 import CustomCursor from './components/CustomCursor'
 import { getPageScrollReset } from './ui/pageNavigation.js'
+import { getHomeTabClass } from './ui/homeTabs.js'
 import { getDevelopmentNotice } from './developmentNotice'
 import { useAuth } from './auth/AuthProvider'
 import { createProfileRepository } from './profile/profileRepository'
@@ -45,9 +46,6 @@ export default function App() {
   const [editingProfile, setEditingProfile] = useState(false)
   const [selectedUsername, setSelectedUsername] = useState(initialProfileUsername)
   const [developmentNotice, setDevelopmentNotice] = useState(null)
-  const refs = useRef({})
-  const [ind, setInd] = useState({ l: 0, w: 0 })
-  useLayoutEffect(() => { const el = refs.current[tab]; if (el) setInd({ l: el.offsetLeft, w: el.offsetWidth }) }, [tab])
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
     localStorage.setItem('theme', dark ? 'dark' : 'light')
@@ -113,9 +111,8 @@ export default function App() {
         <div className="flex flex-wrap items-end justify-between gap-6 animate-rise">
           <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
             <p className="mt-2 text-sm leading-6 text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
-          <div className="relative flex rounded-full bg-white/80 dark:bg-white/5 p-1 text-sm">
-            <span className="absolute bottom-1 top-1 rounded-full bg-brand shadow-md shadow-brand/30 transition-all duration-300 ease-out" style={{ left: ind.l, width: ind.w }} />
-            {tabs.map((t) => <button key={t} ref={(el) => (refs.current[t] = el)} onClick={() => handleTabChange(t)} className={`relative rounded-full px-4 py-1.5 transition-colors duration-300 ${tab === t ? 'text-white' : 'text-slate-600 dark:text-slate-300 hover:text-brand'}`}>{t}</button>)}
+          <div className="flex rounded-full bg-white/80 p-1 text-sm dark:bg-white/5">
+            {tabs.map((t) => <button key={t} onClick={() => handleTabChange(t)} className={getHomeTabClass(t, tab)}>{t}</button>)}
           </div>
         </div>
         {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero /><Library query={query} /><Because query={query} /><News query={query} onMore={() => setTab('Noticias')} /></>}
