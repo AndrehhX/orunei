@@ -17,7 +17,7 @@ create table if not exists public.profiles (
 
 create table if not exists public.profile_privacy (
   profile_id uuid not null references public.profiles(id) on delete cascade,
-  section text not null check (section in ('animeList', 'favorites', 'taste', 'activity', 'reviews', 'lists')),
+  section text not null check (section in ('animeList', 'favorites', 'activity', 'lists')),
   visibility text not null default 'private' check (visibility in ('private', 'friends', 'public')),
   primary key (profile_id, section)
 );
