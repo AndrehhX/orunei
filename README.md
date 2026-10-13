@@ -7,6 +7,7 @@ Anime / movies / series discovery dashboard ("Para ti" view) built with **React 
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # production build in /dist
+npm test         # 55 domain and repository tests
 ```
 
 ## Structure
@@ -53,6 +54,11 @@ The private profile exposes each account's remote AnimeList grouped by status, F
 private custom lists with create/edit/delete and add/remove anime actions, and remote activity
 history. Malformed stored data is normalized back to safe defaults and persistence failures are
 shown as recoverable UI errors.
+
+The social area uses real Supabase data: search public profiles, send/accept/cancel friendship
+requests, open friend profiles, and read, publish, edit, or delete profile comments. Public
+profiles can be shared with a `#perfil/<username>` link; profile visibility and section privacy
+are enforced again by database RLS, not only by the interface.
 
 ## Login
 Sign up and sign in use Supabase Auth. Copy `.env.example` to `.env` and provide
