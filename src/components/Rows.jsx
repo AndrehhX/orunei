@@ -12,7 +12,7 @@ export const Title = ({ children, onClick }) => (
 const Dots = ({ onClick }) => <button onClick={(event) => { event.stopPropagation(); onClick?.() }} aria-label="Abrir biblioteca" className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/45 text-white opacity-80 transition hover:opacity-100"><MoreHorizontal size={14} /></button>
 
 const Empty = ({ q, message }) => <div className="col-span-full rounded-2xl border border-dashed border-slate-300/80 px-5 py-7 text-center text-sm leading-6 text-slate-500 dark:border-white/10">{message || `Sin resultados para “${q}”`}</div>
-const ok = (t, q) => t.toLowerCase().includes((q || '').toLowerCase())
+const ok = (t = '', q) => String(t).toLowerCase().includes((q || '').toLowerCase())
 export function Library({ query, onMore, onOpenAnime }) {
   const { profile } = useProfile()
   const source = Array.isArray(profile.animeList) ? profile.animeList : []
@@ -43,7 +43,7 @@ function RecCard({ i, rec, onOpenAnime }) {
         <Poster img={i.banner || i.img} grad="linear-gradient(135deg,#c9b7e6,#6f8a6b)" title={i.title} className="aspect-[3/2.1] rounded-xl shadow-sm group-hover:shadow-xl">
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <div className="absolute right-1.5 top-1.5 flex translate-y-1 gap-1 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-            <LikeBtn on={false} onClick={() => act(rec.like)} />
+            <LikeBtn on={rec.isLiked(i.id)} onClick={() => act(rec.like)} />
             <button onClick={(event) => { event.stopPropagation(); act(rec.dismiss) }} aria-label="No me interesa" className="grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:scale-110 hover:bg-red-500/80 active:scale-90"><X size={15} /></button>
           </div>
           <p className="absolute inset-x-0 bottom-0 p-2 text-[10px] font-medium leading-tight text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">{i.reason}</p>
@@ -54,6 +54,25 @@ function RecCard({ i, rec, onOpenAnime }) {
   )
 }
 
+function RecommendationSection({ title, items, query, rec, onOpenAnime, used, emptyMessage, reasonFallback }) {
+  const list = []
+  for (const item of items || []) {
+    const id = String(item.id)
+    if (used.has(id) || !ok(item.title || item.t, query)) continue
+    used.add(id)
+    list.push({ ...item, reason: item.reason || reasonFallback })
+    if (list.length === 6) break
+  }
+  if (!list.length && !emptyMessage) return null
+  return <section className="animate-fade">
+    <Title>{title}</Title>
+    <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
+      {!list.length && <Empty q={query} message={emptyMessage} />}
+      {list.map((item) => <RecCard key={`${title}-${item.id}`} i={item} rec={rec} onOpenAnime={onOpenAnime} />)}
+    </div>
+  </section>
+}
+
 export function Because({ query, onOpenAnime }) {
   const rec = useRec()
   const { profile } = useProfile()
@@ -62,24 +81,19 @@ export function Because({ query, onOpenAnime }) {
   useEffect(() => {
     if (rec.ready) rec.syncLibrary(profileLibrary)
   }, [rec.ready, rec.syncLibrary, librarySignature])
-  const live = profileLibrary.length > 0 && rec.ready
-  const list = live ? rec.recs.slice(0, 6).filter((a) => ok(a.title || a.t, query)) : []
-  const title = profileLibrary.length > 0 ? (rec.anchor ? `Porque te gusta ${rec.anchor}` : 'Recomendado para ti') : 'Recomendaciones para ti'
-  const emptyMessage = query
-    ? undefined
-    : profileLibrary.length === 0
-      ? 'Añade obras a tu AnimeList para recibir recomendaciones personalizadas.'
-      : rec.ready
-        ? 'Todavía no encontramos recomendaciones para tu perfil.'
-        : 'Estamos preparando recomendaciones para tu perfil…'
+  const used = new Set()
+  const libraryIds = new Set(profileLibrary.map((item) => String(item.id)))
+  const coldStart = rec.coldStart || !rec.personalized
+  const emptyMessage = query ? undefined : profileLibrary.length === 0 ? 'Añade obras a tu AnimeList para recibir recomendaciones personalizadas.' : rec.ready ? 'Todavía no encontramos recomendaciones para tu perfil.' : 'Estamos preparando recomendaciones para tu perfil…'
+  const latest = (rec.latest || []).filter((item) => !libraryIds.has(String(item.id))).map((item) => ({ ...item, reason: coldStart ? 'Una obra reciente para descubrir' : 'Una obra reciente para ampliar tu biblioteca' }))
   return (
-    <section>
-      <div key={title} className="animate-fade"><Title>{title}</Title></div>
-      <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
-        {!list.length && <Empty q={query} message={emptyMessage} />}
-        {list.map((a) => <RecCard key={a.id} i={a} rec={rec} onOpenAnime={onOpenAnime} />)}
-      </div>
-    </section>
+    <div className="space-y-7">
+      <RecommendationSection title={!coldStart ? (rec.anchor ? `Porque te gusta ${rec.anchor}` : 'Recomendado para ti') : 'Tendencias para descubrir'} items={rec.recs} query={query} rec={rec} onOpenAnime={onOpenAnime} used={used} emptyMessage={emptyMessage} reasonFallback={!coldStart ? 'Seleccionado según tu actividad' : 'Popular y en tendencia ahora'} />
+      <RecommendationSection title="Cerca de tus gustos" items={rec.affinityRecs} query={query} rec={rec} onOpenAnime={onOpenAnime} used={used} reasonFallback="Coincide con tus gustos" />
+      <RecommendationSection title={rec.personalized ? 'Tendencias compatibles' : 'Tendencias de hoy'} items={rec.trendingRecs} query={query} rec={rec} onOpenAnime={onOpenAnime} used={used} reasonFallback="Está en tendencia ahora" />
+      <RecommendationSection title="Descubre algo nuevo" items={rec.exploreRecs} query={query} rec={rec} onOpenAnime={onOpenAnime} used={used} reasonFallback="Algo nuevo que podría gustarte" />
+      <RecommendationSection title="Recién llegados" items={latest} query={query} rec={rec} onOpenAnime={onOpenAnime} used={used} reasonFallback="Una obra reciente para descubrir" />
+    </div>
   )
 }
 export function News({ query, onMore }) {
