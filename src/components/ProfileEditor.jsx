@@ -7,11 +7,11 @@ const pinLabels = { overview: 'Resumen', animelist: 'AnimeList', favorites: 'Fav
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
-function UploadButton({ kind, onChange, current, fileName, onReset }) {
+function UploadButton({ kind, onChange, current, fileName, onReset, uploading }) {
   const id = `profile-${kind}-upload`
   return <div className="flex items-center gap-3">
     <div className={`${kind === 'avatar' ? 'h-16 w-16 rounded-full' : 'h-16 w-28 rounded-xl'} relative overflow-hidden bg-gradient-to-br from-brand to-pink-400`}><img key={current || 'empty'} src={current || undefined} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="h-full w-full object-cover" /></div>
-    <div><label htmlFor={id} className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold transition hover:border-brand hover:text-brand dark:border-white/10"><Upload size={14} /> Subir {kind === 'avatar' ? 'avatar' : 'banner'}</label><input id={id} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={onChange} className="sr-only" /><p className="mt-1 max-w-[220px] truncate text-[10px] text-slate-500" title={fileName}>{fileName || 'Ninguna imagen seleccionada · máximo 5 MB'}</p>{current && <button onClick={onReset} className="mt-1 text-[10px] font-semibold text-slate-500 hover:text-red-500">Quitar imagen</button>}</div>
+    <div><label htmlFor={id} aria-disabled={uploading} className={`inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold transition hover:border-brand hover:text-brand dark:border-white/10 ${uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}><Upload size={14} /> {uploading ? 'Subiendo…' : `Subir ${kind === 'avatar' ? 'avatar' : 'banner'}`}</label><input id={id} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={onChange} disabled={uploading} className="sr-only" /><p aria-live="polite" className="mt-1 max-w-[220px] truncate text-[10px] text-slate-500" title={fileName}>{uploading ? `Subiendo ${kind === 'avatar' ? 'avatar' : 'banner'}…` : fileName || 'Ninguna imagen seleccionada · máximo 5 MB'}</p>{current && <button onClick={onReset} className="mt-1 text-[10px] font-semibold text-slate-500 hover:text-red-500">Quitar imagen</button>}</div>
   </div>
 }
 
@@ -21,12 +21,14 @@ export default function ProfileEditor({ onClose }) {
   const [draft, setDraft] = useState(() => clone(profile))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [uploadingKind, setUploadingKind] = useState('')
   const [fileNames, setFileNames] = useState({ avatar: '', banner: '' })
   const setField = (field) => (event) => setDraft((current) => ({ ...current, [field]: event.target.value }))
   const handleImage = (kind) => async (event) => {
     const file = event.target.files?.[0]
     if (!file) return
     setError('')
+    setUploadingKind(kind)
     try {
       const upload = await uploadProfileImage(kind, file)
       if (!upload.ok) throw new Error(upload.error)
@@ -35,6 +37,7 @@ export default function ProfileEditor({ onClose }) {
     } catch (uploadError) {
       setError(uploadError.message)
     } finally {
+      setUploadingKind('')
       event.target.value = ''
     }
   }
@@ -66,7 +69,7 @@ export default function ProfileEditor({ onClose }) {
         <div className="space-y-5">
           <section className="card p-5"><div className="mb-4 flex items-center gap-2"><Shield size={18} className="text-brand" /><div><h3 className="font-bold">Identidad</h3><p className="text-xs text-slate-500">Lo que verás en tu espacio privado.</p></div></div><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-semibold">Nombre visible<input value={draft.displayName} onChange={setField('displayName')} maxLength={50} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10" /></label><label className="text-xs font-semibold">Usuario<input value={draft.username} onChange={setField('username')} maxLength={24} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10" /></label></div><label className="mt-4 block text-xs font-semibold">Bio<textarea value={draft.bio} onChange={setField('bio')} maxLength={280} rows={3} className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 bg-transparent px-3 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10" /></label><label className="mt-4 block text-xs font-semibold">Estado<input value={draft.status} onChange={setField('status')} maxLength={100} placeholder="¿Qué estás viendo hoy?" className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10" /></label></section>
 
-          <section className="card p-5"><div className="mb-4 flex items-center gap-2"><Image size={18} className="text-brand" /><div><h3 className="font-bold">Apariencia</h3><p className="text-xs text-slate-500">Tus imágenes se guardan en tu cuenta cuando hay conexión.</p></div></div><div className="space-y-4"><UploadButton kind="avatar" current={draft.avatar} fileName={fileNames.avatar} onReset={() => resetImage('avatar')} onChange={handleImage('avatar')} /><UploadButton kind="banner" current={draft.banner} fileName={fileNames.banner} onReset={() => resetImage('banner')} onChange={handleImage('banner')} /></div><div className="mt-5 flex items-center justify-between gap-3"><label className="flex items-center gap-2 text-xs font-semibold">Color de acento<input type="color" value={draft.accent} onChange={setField('accent')} className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent p-0" /></label><button onClick={reset} className="text-xs font-semibold text-slate-500 transition hover:text-red-500">Restablecer apariencia</button></div></section>
+          <section className="card p-5"><div className="mb-4 flex items-center gap-2"><Image size={18} className="text-brand" /><div><h3 className="font-bold">Apariencia</h3><p className="text-xs text-slate-500">Tus imágenes se guardan en tu cuenta cuando hay conexión.</p></div></div><div className="space-y-4"><UploadButton kind="avatar" current={draft.avatar} fileName={fileNames.avatar} uploading={uploadingKind === 'avatar'} onReset={() => resetImage('avatar')} onChange={handleImage('avatar')} /><UploadButton kind="banner" current={draft.banner} fileName={fileNames.banner} uploading={uploadingKind === 'banner'} onReset={() => resetImage('banner')} onChange={handleImage('banner')} /></div><div className="mt-5 flex items-center justify-between gap-3"><label className="flex items-center gap-2 text-xs font-semibold">Color de acento<input type="color" value={draft.accent} onChange={setField('accent')} className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent p-0" /></label><button onClick={reset} className="text-xs font-semibold text-slate-500 transition hover:text-red-500">Restablecer apariencia</button></div></section>
 
           <section className="card p-5"><div className="mb-4 flex items-center gap-2"><Palette size={18} className="text-brand" /><div><h3 className="font-bold">Contenido del perfil</h3><p className="text-xs text-slate-500">Elige qué aparece primero y qué historia destacar.</p></div></div><label className="block text-xs font-semibold">Anime destacado<select value={draft.featuredAnimeId} onChange={setField('featuredAnimeId')} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none dark:border-white/10"><option value="">Usar mi favorito actual</option>{library.map((item) => <option key={item.q} value={item.q}>{item.t}</option>)}</select></label><label className="mt-4 block text-xs font-semibold">Sección al abrir<select value={draft.landingSection} onChange={setField('landingSection')} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none dark:border-white/10">{Object.entries(pinLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label><div className="mt-5"><p className="text-xs font-semibold">Secciones fijadas</p><div className="mt-2 flex flex-wrap gap-2">{Object.entries(pinLabels).map(([id, label]) => <label key={id} className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${draft.pinnedSections.includes(id) ? 'border-brand bg-brand/10 text-brand' : 'border-slate-200 text-slate-500 dark:border-white/10'}`}><input type="checkbox" checked={draft.pinnedSections.includes(id)} onChange={() => togglePinned(id)} className="sr-only" />{draft.pinnedSections.includes(id) && <Check size={13} />}{label}</label>)}</div></div></section>
 

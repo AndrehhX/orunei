@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { getImageConstraints, validateImageFile } from '../src/profile/model.js'
 
 test('exposes safe local image constraints for avatar and banner uploads', () => {
@@ -12,4 +13,12 @@ test('rejects oversized and unsupported profile images before browser processing
   assert.equal(validateImageFile({ type: 'image/webp', size: 5000 }, 'avatar').ok, true)
   assert.equal(validateImageFile({ type: 'image/svg+xml', size: 5000 }, 'banner').ok, false)
   assert.equal(validateImageFile({ type: 'image/png', size: 5 * 1024 * 1024 + 1 }, 'avatar').ok, false)
+})
+
+test('shows profile image upload progress instead of appearing inert', () => {
+  const editor = readFileSync(new URL('../src/components/ProfileEditor.jsx', import.meta.url), 'utf8')
+  assert.match(editor, /uploadingKind/)
+  assert.match(editor, /setUploadingKind\(kind\)/)
+  assert.match(editor, /disabled=\{uploading\}/)
+  assert.match(editor, /Subiendo/)
 })
