@@ -10,7 +10,7 @@ import { getProfileLayoutClasses } from '../ui/profileLayout.js'
 const Head = ({ children, onAll, href = '#amigos' }) => <div className="mb-3 flex items-center justify-between"><h3 className="font-bold">{children}</h3>{onAll && <a href={href} onClick={(e) => { e.preventDefault(); onAll?.() }} className="flex items-center gap-1 text-[11px] text-brand">Ver todo <ArrowRight size={12} /></a>}</div>
 const Avatar = ({ profile }) => <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-brand to-pink-400 text-white">{profile?.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : <UserRound size={15} />}</div>
 
-export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOpenProfile }) {
+export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOpenProfile, onOpenAnime }) {
   const { items, status: newsStatus } = useNews()
   const { profile } = useProfile()
   const { friends } = useSocial()
@@ -42,9 +42,9 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
       <div className="card p-4">
         <Head>Tendencias hoy</Head>
         {trends.map((t, i) => (
-          <div key={t.t} className="group flex cursor-pointer items-center gap-3 rounded-lg py-1.5 transition-transform duration-300 hover:translate-x-1">
+          <button key={t.t} type="button" onClick={() => onOpenAnime?.(t)} className="group flex w-full items-center gap-3 rounded-lg py-1.5 text-left transition-transform duration-300 hover:translate-x-1">
             <span className="w-3 text-sm font-bold">{i + 1}</span><Poster {...t} title="" className="h-[46px] w-[46px] shrink-0 rounded-lg" /><div className="min-w-0 leading-tight"><p className="truncate text-sm font-semibold">{t.t}</p><p className="text-[11px] text-slate-500">Anime · {t.y}</p></div><span className="ml-auto flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300"><Flame size={14} className="text-orange-500" />{t.v}</span>
-          </div>
+          </button>
         ))}
       </div>
       <div className="card p-4">
