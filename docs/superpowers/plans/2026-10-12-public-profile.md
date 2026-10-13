@@ -54,7 +54,7 @@
 
 **Interfaces:**
 - Produces `getOwnProfile(userId)`, `getPublicProfile(username, viewerId)`, `saveProfile(userId, patch)`, and `uploadProfileImage(userId, kind, file)`; each returns `{ data, error }`.
-- SQL creates `profiles`, `profile_privacy`, `profile_activity`, profile image bucket policies, and RLS for owner/public/friends reads.
+- SQL creates `profiles`, `profile_privacy`, `profile_activity`, profile image bucket policies, and RLS for owner/public identity reads plus friendship-based access to shared sections.
 
 - [ ] **Step 1: Write failing repository tests** for normalized own profile data, public filtering, and image upload error preservation.
 - [ ] **Step 2: Run the focused tests and verify they fail before the repository exists.**
