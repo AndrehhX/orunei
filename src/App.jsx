@@ -14,6 +14,7 @@ import FriendsPage from './components/FriendsPage'
 import PublicProfileRoute from './components/PublicProfileRoute'
 import DevelopmentNotice from './components/DevelopmentNotice'
 import CustomCursor from './components/CustomCursor'
+import { getPageScrollReset } from './ui/pageNavigation.js'
 import { getDevelopmentNotice } from './developmentNotice'
 import { useAuth } from './auth/AuthProvider'
 import { createProfileRepository } from './profile/profileRepository'
@@ -50,6 +51,10 @@ export default function App() {
     document.documentElement.classList.toggle('dark', dark)
     localStorage.setItem('theme', dark ? 'dark' : 'light')
   }, [dark])
+
+  useEffect(() => {
+    window.scrollTo(getPageScrollReset())
+  }, [page])
 
   useEffect(() => {
     const syncProfileHash = () => {

@@ -96,7 +96,7 @@ export default function ProfilePage({ onEdit }) {
     {storageError && <p role="alert" className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600">{storageError}</p>}
     <ProfileAnimeListManager visible={active === 'animelist'} />
     <section className="overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
-      <Banner src={profile.banner} className="h-36 bg-cover bg-center md:h-48" />
+      <Banner src={profile.banner} className="h-32 bg-cover bg-center sm:h-36 lg:h-44" />
       <div className="px-5 pb-5 md:px-8">
         <div className="-mt-12 flex flex-wrap items-end gap-4 md:-mt-14">
           <Avatar profile={profile} large />
