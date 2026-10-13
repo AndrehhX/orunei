@@ -37,3 +37,17 @@ test('rotates the live hero selection through the refreshed anime pool', () => {
   assert.deepEqual(first.map((item) => item.id), [1, 2])
   assert.deepEqual(next.map((item) => item.id), [2, 3])
 })
+
+test('ranks the live trends from AniList trending counts', () => {
+  assert.equal(typeof engine.selectTrending, 'function')
+  assert.equal(typeof engine.formatCount, 'function')
+
+  const ranked = engine.selectTrending([
+    { id: 1, trend: 1200, pop: 3000 },
+    { id: 2, trend: 18400, pop: 10000 },
+    { id: 3, trend: 16200, pop: 9000 },
+  ])
+
+  assert.deepEqual(ranked.map((item) => item.id), [2, 3, 1])
+  assert.equal(engine.formatCount(ranked[0].trend), '18.4K')
+})

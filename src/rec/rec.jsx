@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { toItem, vectorize, update, recommend, topGenres, label, dot, norm, librarySignal, selectLatest } from './engine'
+import { toItem, vectorize, update, recommend, topGenres, label, dot, norm, librarySignal, selectLatest, selectTrending } from './engine'
 
 const KEY = 'orunei-taste-v2', POOL = 'orunei-pool-v2'
 const F = 'id title{romaji english} coverImage{extraLarge} bannerImage description(asHtml:false) genres tags{name rank isGeneralSpoiler} studios(isMain:true){nodes{name}} averageScore popularity trending seasonYear format'
 const pg = (a, page, sort) => `${a}: Page(page:${page}, perPage:30){ media(type:ANIME, sort:${sort}, isAdult:false){ ${F} } }`
 const QUERY = `query { ${pg('a', 1, 'POPULARITY_DESC')} ${pg('b', 1, 'TRENDING_DESC')} ${pg('c', 1, 'SCORE_DESC')} ${pg('d', 2, 'POPULARITY_DESC')} ${pg('e', 1, 'START_DATE_DESC')} }`
-const Ctx = createContext({ ready: false, recs: [], latest: [], topGenres: [], count: 0, anchor: '', isNewsLiked: () => false, like() {}, dismiss() {}, likeMedia() {}, isLiked: () => false, likeNews() {}, addByQuery() {}, syncLibrary() {}, affinity: () => null })
+const Ctx = createContext({ ready: false, recs: [], latest: [], trends: [], topGenres: [], count: 0, anchor: '', isNewsLiked: () => false, like() {}, dismiss() {}, likeMedia() {}, isLiked: () => false, likeNews() {}, addByQuery() {}, syncLibrary() {}, affinity: () => null })
 export const useRec = () => useContext(Ctx)
 
 async function loadPool(force = false) {
@@ -115,7 +115,8 @@ export function RecProvider({ children }) {
   }
 
   const latest = useMemo(() => selectLatest(pool), [pool])
-  const value = { ready: pool.length > 0, recs, latest, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.includes(id), addByQuery, syncLibrary, affinity, isNewsLiked: (id) => st.news.includes(id) }
+  const trends = useMemo(() => selectTrending(pool), [pool])
+  const value = { ready: pool.length > 0, recs, latest, trends, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.includes(id), addByQuery, syncLibrary, affinity, isNewsLiked: (id) => st.news.includes(id) }
   return (
     <Ctx.Provider value={value}>
       {children}

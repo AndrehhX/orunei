@@ -63,6 +63,16 @@ test('bounds every live hero title before rendering it', () => {
   assert.match(hero, /line-clamp-2 h-\[48px\] overflow-hidden/)
 })
 
+test('renders the right-panel trends from the live recommendation pool', () => {
+  const rightPanel = fs.readFileSync(new URL('../src/components/RightPanel.jsx', import.meta.url), 'utf8')
+  const recommendations = fs.readFileSync(new URL('../src/rec/rec.jsx', import.meta.url), 'utf8')
+
+  assert.match(rightPanel, /useRec/)
+  assert.match(rightPanel, /liveTrends\.map/)
+  assert.doesNotMatch(rightPanel, /import \{ trends \} from '\.\.\/data'/)
+  assert.match(recommendations, /selectTrending\(pool\)/)
+})
+
 test('keeps only Anime and Noticias in the home filters', () => {
   const app = fs.readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
 

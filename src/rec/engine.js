@@ -14,6 +14,21 @@ export function selectLatest(pool = [], now = Date.now(), size = 4, windowMs = 1
   return Array.from({ length: visible }, (_, index) => sorted[(offset + index) % sorted.length])
 }
 
+export function selectTrending(pool = [], size = 5) {
+  return [...pool]
+    .filter((item) => Number(item.trend) > 0)
+    .sort((a, b) => (b.trend || 0) - (a.trend || 0) || (b.pop || 0) - (a.pop || 0))
+    .slice(0, size)
+}
+
+export function formatCount(value) {
+  const count = Number(value)
+  if (!Number.isFinite(count) || count <= 0) return '—'
+  if (count >= 1e6) return `${(count / 1e6).toFixed(1).replace(/\.0$/, '')}M`
+  if (count >= 1e3) return `${(count / 1e3).toFixed(1).replace(/\.0$/, '')}K`
+  return String(Math.round(count))
+}
+
 export const dot = (a, b) => { let s = 0; for (const k in a) if (b[k]) s += a[k] * b[k]; return s }
 export const norm = (a) => Math.sqrt(dot(a, a))
 

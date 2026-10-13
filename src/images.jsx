@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { hero, trending, library, because, trends, featured, news } from './data'
+import { hero, trending, library, because, featured, news } from './data'
 
 const Ctx = createContext({})
 export const useImages = () => useContext(Ctx)
 
-const queries = [...new Set([hero, trending, ...library, ...because, ...trends, ...featured, ...news].map((x) => x.q).filter(Boolean))]
+const queries = [...new Set([hero, trending, ...library, ...because, ...featured, ...news].map((x) => x.q).filter(Boolean))]
 const KEY = 'orunei-covers-v1'
 
 // One GraphQL request (aliased) to the public AniList API: no key needed.

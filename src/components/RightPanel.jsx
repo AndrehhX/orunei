@@ -1,7 +1,8 @@
 import { ArrowRight, Flame, Users, UserRound } from 'lucide-react'
 import Poster from './Poster'
-import { trends } from '../data'
 import { useNews, NewsLink } from '../news'
+import { useRec } from '../rec/rec'
+import { formatCount } from '../rec/engine.js'
 import { useProfile } from '../profile/ProfileProvider'
 import { selectTasteGenres } from '../profile/profileData'
 import { useSocial } from '../social/SocialProvider.jsx'
@@ -12,11 +13,13 @@ const Avatar = ({ profile }) => <div className="grid h-9 w-9 place-items-center 
 
 export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOpenProfile, onOpenAnime }) {
   const { items, status: newsStatus } = useNews()
+  const { ready: recReady, trends: liveTrends } = useRec()
   const { profile } = useProfile()
   const { friends } = useSocial()
   const profileAvatarClass = getProfileLayoutClasses().avatar
   const tasteGenres = selectTasteGenres(profile.animeList)
   const newsItems = newsStatus === 'loading' && !items.length ? [0, 1] : items.slice(2, 5)
+  const trendRows = liveTrends.map((item) => ({ ...item, q: item.title, t: item.title, y: item.year || '—', v: formatCount(item.trend), grad: 'linear-gradient(135deg,#d9405a,#2a0f3a)' }))
   return (
     <aside className="scroll-hide sticky top-0 hidden h-screen w-[328px] shrink-0 space-y-5 self-start overflow-y-auto py-5 pr-6 xl:block animate-fade">
       <div className="card p-4">
@@ -41,11 +44,12 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
       </div>
       <div className="card p-4">
         <Head>Tendencias hoy</Head>
-        {trends.map((t, i) => (
+        {!recReady && Array.from({ length: 5 }, (_, i) => <div key={i} className="my-2 flex h-[46px] animate-pulse items-center gap-3 rounded-lg bg-slate-200/60 dark:bg-white/5" />)}
+        {recReady && trendRows.length ? trendRows.map((t, i) => (
           <button key={t.t} type="button" onClick={() => onOpenAnime?.(t)} className="group flex w-full items-center gap-3 rounded-lg py-1.5 text-left transition-transform duration-300 hover:translate-x-1">
             <span className="w-3 text-sm font-bold">{i + 1}</span><Poster {...t} title="" className="h-[46px] w-[46px] shrink-0 rounded-lg" /><div className="min-w-0 leading-tight"><p className="truncate text-sm font-semibold">{t.t}</p><p className="text-[11px] text-slate-500">Anime · {t.y}</p></div><span className="ml-auto flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300"><Flame size={14} className="text-orange-500" />{t.v}</span>
           </button>
-        ))}
+        )) : recReady && <p className="py-2 text-xs text-slate-500">No hay tendencias disponibles ahora.</p>}
       </div>
       <div className="card p-4">
         <Head onAll={onSeeNews} href="#noticias">Noticias destacadas</Head>
