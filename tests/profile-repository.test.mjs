@@ -72,3 +72,10 @@ test('returns privacy rows with a public profile and preserves upload errors', a
   assert.equal(upload.data, null)
   assert.equal(upload.error, 'Storage quota')
 })
+
+test('does not resolve a private profile for an unrelated viewer', async () => {
+  const client = makeClient({ profile: { id: 'user-2', display_name: 'Mika', username: 'mika', profile_visibility: 'private' } })
+  const result = await createProfileRepository(client).getPublicProfile('mika', 'viewer-1')
+  assert.equal(result.data, null)
+  assert.equal(result.error, '')
+})

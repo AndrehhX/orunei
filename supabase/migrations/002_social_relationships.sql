@@ -56,6 +56,11 @@ create policy "requesters can cancel pending requests"
   to authenticated
   using (auth.uid() = requester_id and status = 'pending');
 
+create policy "participants can remove accepted friendships"
+  on public.friendships for delete
+  to authenticated
+  using ((auth.uid() = requester_id or auth.uid() = addressee_id) and status = 'accepted');
+
 create table if not exists public.profile_comments (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid not null references public.profiles(id) on delete cascade,
@@ -105,8 +110,8 @@ create policy "eligible viewers can create comments"
 create policy "authors can edit comments"
   on public.profile_comments for update
   to authenticated
-  using (author_id = auth.uid() or profile_id = auth.uid())
-  with check (author_id = auth.uid() or profile_id = auth.uid());
+  using (author_id = auth.uid())
+  with check (author_id = auth.uid());
 
 create policy "authors and owners can delete comments"
   on public.profile_comments for delete

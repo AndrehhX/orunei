@@ -18,8 +18,12 @@ export function createSocialRepository(client = supabase, userId = '') {
 
     async getFriendships(ownerId = userId) {
       if (!client || !ownerId) return unavailable()
-      const { data, error } = await client.from('friendships').select('*').or(`requester_id.eq.${ownerId},addressee_id.eq.${ownerId}`).order('updated_at', { ascending: false })
-      return { data: error ? [] : (data || []).map((row) => normalizeFriendship(row, ownerId)), error: resultError(error) }
+      const { data, error } = await client.from('friendships').select('*, requester:profiles!friendships_requester_id_fkey(*), addressee:profiles!friendships_addressee_id_fkey(*)').or(`requester_id.eq.${ownerId},addressee_id.eq.${ownerId}`).order('updated_at', { ascending: false })
+      return { data: error ? [] : (data || []).map((row) => {
+        const friendship = normalizeFriendship(row, ownerId)
+        const other = row.requester_id === ownerId ? row.addressee : row.requester
+        return { ...friendship, profile: other ? normalizeRemoteProfile(other, { id: other.id }) : null }
+      }), error: resultError(error) }
     },
 
     async sendFriendRequest(targetId) {
@@ -37,6 +41,12 @@ export function createSocialRepository(client = supabase, userId = '') {
     async cancelFriendRequest(id) {
       if (!client || !userId || !id) return unavailable()
       const { error } = await client.from('friendships').delete().eq('id', id).eq('requester_id', userId).eq('status', 'pending')
+      return { data: error ? null : true, error: resultError(error) }
+    },
+
+    async removeFriend(id) {
+      if (!client || !userId || !id) return unavailable()
+      const { error } = await client.from('friendships').delete().eq('id', id).or(`requester_id.eq.${userId},addressee_id.eq.${userId}`).eq('status', 'accepted')
       return { data: error ? null : true, error: resultError(error) }
     },
 

@@ -65,6 +65,7 @@ export function createProfileRepository(client = supabase) {
       if (!client || !username) return unavailable()
       const profileResult = await client.from('profiles').select('*').eq('username', username).maybeSingle()
       if (profileResult.error || !profileResult.data) return { data: null, error: resultError(profileResult.error) }
+      if (profileResult.data.id !== viewerId && profileResult.data.profile_visibility === 'private') return { data: null, error: '' }
       const privacyResult = await client.from('profile_privacy').select('section, visibility').eq('profile_id', profileResult.data.id)
       const row = { ...profileResult.data, privacy: privacyResult.data || [] }
       return { data: normalizeRemoteProfile(row, { id: viewerId || '' }), error: resultError(privacyResult.error) }

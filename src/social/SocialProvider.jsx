@@ -70,6 +70,13 @@ export function SocialProvider({ children }) {
     return result
   }, [refreshFriendships, repository])
 
+  const removeFriend = useCallback(async (id) => {
+    const result = await repository?.removeFriend(id) || { data: null, error: 'No hay una sesiÃ³n activa.' }
+    if (result.error) setError(result.error)
+    else await refreshFriendships()
+    return result
+  }, [refreshFriendships, repository])
+
   const createComment = useCallback(async (profileId, body) => {
     const previous = comments
     const result = await repository?.createComment(profileId, body) || { data: null, error: 'No hay una sesiÃ³n activa.' }
@@ -108,8 +115,8 @@ export function SocialProvider({ children }) {
     friends, incoming, outgoing, friendships, searchResults, comments, commentsProfileId,
     status: authStatus === 'misconfigured' ? 'misconfigured' : status, error,
     search, loadComments, refreshFriendships,
-    actions: { sendFriendRequest, respondToFriendRequest, cancelFriendRequest, createComment, updateComment, deleteComment },
-  }), [authStatus, comments, commentsProfileId, error, friends, friendships, incoming, loadComments, outgoing, refreshFriendships, search, searchResults, sendFriendRequest, respondToFriendRequest, cancelFriendRequest, createComment, updateComment, deleteComment, status])
+    actions: { sendFriendRequest, respondToFriendRequest, cancelFriendRequest, removeFriend, createComment, updateComment, deleteComment },
+  }), [authStatus, comments, commentsProfileId, error, friends, friendships, incoming, loadComments, outgoing, refreshFriendships, search, searchResults, sendFriendRequest, respondToFriendRequest, cancelFriendRequest, removeFriend, createComment, updateComment, deleteComment, status])
 
   return <SocialContext.Provider value={value}>{children}</SocialContext.Provider>
 }
