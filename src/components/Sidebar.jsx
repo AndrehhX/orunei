@@ -1,8 +1,8 @@
-import { Sparkles, Home, Search, Library, User, Users, Film, MonitorPlay, Gamepad2, Sun, Moon, LogOut } from 'lucide-react'
+import { Sparkles, Home, Library, User, Users, Film, MonitorPlay, Gamepad2, Sun, Moon, LogOut } from 'lucide-react'
 import { getMainDestination } from '../profile/navigation'
 import { useProfile } from '../profile/ProfileProvider'
 
-const main = [['Para ti', Home], ['Descubrir', Search], ['Biblioteca', Library], ['Perfil', User], ['Amigos', Users]]
+const main = [['Para ti', Home], ['Biblioteca', Library], ['Perfil', User], ['Amigos', Users]]
 const explore = [['Anime', Sparkles], ['Películas', Film], ['Series', MonitorPlay]]
 
 export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, onDevelopmentFeature }) {

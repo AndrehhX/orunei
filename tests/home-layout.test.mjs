@@ -62,6 +62,13 @@ test('keeps only Anime and Noticias in the home filters', () => {
   assert.match(app, /useState\('Anime'\)/)
 })
 
+test('removes the deprecated Descubrir item from the sidebar', () => {
+  const sidebar = fs.readFileSync(new URL('../src/components/Sidebar.jsx', import.meta.url), 'utf8')
+
+  assert.doesNotMatch(sidebar, /\['Descubrir', Search\]/)
+  assert.match(sidebar, /const main = \[\['Para ti', Home\], \['Biblioteca', Library\]/)
+})
+
 test('does not remount the whole page shell when switching home tabs', () => {
   const app = fs.readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
 
