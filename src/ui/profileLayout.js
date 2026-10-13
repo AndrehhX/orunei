@@ -7,3 +7,7 @@ export function getProfileLayoutClasses() {
     stats: 'mt-5 grid min-w-0 grid-cols-2 divide-x divide-y divide-slate-200 rounded-2xl border border-slate-200/80 bg-slate-50/70 sm:grid-cols-3 sm:divide-y-0',
   }
 }
+
+export function getPublicProfileAvatarClass() {
+  return getProfileLayoutClasses().avatar
+}

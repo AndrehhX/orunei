@@ -5,6 +5,7 @@ import ProfileComments from './ProfileComments'
 import { selectAnimeSections } from '../profile/profileData'
 import { selectVisibleProfile } from '../profile/publicProfile'
 import { getPublicProfileHash } from '../profile/navigation'
+import { getPublicProfileAvatarClass } from '../ui/profileLayout.js'
 
 const tabs = [
   ['overview', 'Resumen', Sparkles],
@@ -23,7 +24,7 @@ const groups = [
 ]
 
 function Avatar({ profile }) {
-  return <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 shadow-lg dark:border-[#171723] md:h-28 md:w-28">
+  return <div className={`h-24 w-24 shrink-0 ${getPublicProfileAvatarClass()} overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 shadow-lg dark:border-[#171723] md:h-28 md:w-28`}>
     {profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none' }} /> : <span className="grid h-full w-full place-items-center text-3xl font-bold text-white">{profile.displayName.slice(0, 1).toUpperCase()}</span>}
   </div>
 }
