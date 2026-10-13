@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Sparkles, Star, Plus, Check, ChevronLeft, ChevronRight, Bookmark, Info } from 'lucide-react'
 import Poster from './Poster'
 import { slides, trending } from '../data'
@@ -9,11 +9,29 @@ import { createLibraryEntry } from '../profile/model.js'
 export default function Hero() {
   const rec = useRec()
   const { profile, updateAnimeList, recordActivity } = useProfile()
+  const latest = rec.latest || []
+  const currentSlides = useMemo(() => latest.length >= 3 ? latest.map((item) => ({
+    title: item.title,
+    q: item.title,
+    img: item.img,
+    banner: item.banner,
+    meta: `${item.year || '—'} · Anime${item.genres?.length ? ` · ${item.genres.slice(0, 2).join(' · ')}` : ''}`,
+    desc: item.description || 'Descubre una nueva historia que acaba de llegar a Orunei.',
+    grad: 'linear-gradient(135deg,#1b1f4d,#c0627a)',
+  })) : slides, [latest])
+  const currentTrending = useMemo(() => latest[0] ? {
+    title: latest[0].title,
+    q: latest[0].title,
+    img: latest[0].img,
+    banner: latest[0].banner,
+    meta: `${latest[0].year || '—'} · Anime${latest[0].genres?.length ? ` · ${latest[0].genres.slice(0, 2).join(' · ')}` : ''}`,
+    rating: latest[0].score ? (latest[0].score / 10).toFixed(1) : '—',
+    grad: 'linear-gradient(135deg,#2a0f3a,#1f6b5a)',
+  } : trending, [latest])
   const [i, setI] = useState(0)
   const [pause, setPause] = useState(false)
   const [saved, setSaved] = useState({})
-  const [inTrend, setInTrend] = useState(false)
-  const go = (d) => setI((v) => (v + d + slides.length) % slides.length)
+  const go = (d) => setI((v) => (v + d + currentSlides.length) % currentSlides.length)
   const inLibrary = (slide) => profile.animeList.some((item) => item.q === slide.q || item.t === slide.title)
   const toggleLibrary = async (slide) => {
     const exists = inLibrary(slide)
@@ -26,12 +44,13 @@ export default function Hero() {
     if (pause) return
     const id = setInterval(() => go(1), 7000)
     return () => clearInterval(id)
-  }, [pause])
+  }, [pause, currentSlides.length])
+  useEffect(() => setI((value) => currentSlides.length ? value % currentSlides.length : 0), [currentSlides.length])
 
   return (
     <section className="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px] animate-rise">
       <div className="relative h-[360px] overflow-hidden rounded-2xl shadow-sm md:h-[340px] xl:h-[320px]" onMouseEnter={() => setPause(true)} onMouseLeave={() => setPause(false)}>
-        {slides.map((s, n) => {
+        {currentSlides.map((s, n) => {
           const on = n === i
           return (
             <Poster key={s.title} {...s} wide title={s.title}
@@ -59,18 +78,18 @@ export default function Hero() {
           ))}
         </div>
         <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
-          {slides.map((_, n) => <i key={n} className={`h-1.5 rounded-full bg-white transition-all duration-500 ${n === i ? 'w-5 opacity-100' : 'w-1.5 opacity-40'}`} />)}
+          {currentSlides.map((_, n) => <i key={n} className={`h-1.5 rounded-full bg-white transition-all duration-500 ${n === i ? 'w-5 opacity-100' : 'w-1.5 opacity-40'}`} />)}
         </div>
       </div>
-      <Poster {...trending} className="group hidden h-[360px] cursor-pointer rounded-2xl shadow-sm md:h-[340px] xl:h-[320px] md:block">
+      <Poster {...currentTrending} className="group hidden h-[360px] cursor-pointer rounded-2xl shadow-sm md:h-[340px] xl:h-[320px] md:block">
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20" />
         <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs text-white backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-          <h3 className="text-xl font-bold">{trending.title}</h3>
-          <p className="text-[11px] text-white/80">{trending.meta}</p>
-          <p className="mt-1 flex items-center gap-1 text-sm font-semibold"><Star size={14} className="fill-yellow-400 text-yellow-400" />{trending.rating}</p>
+          <h3 className="text-xl font-bold">{currentTrending.title}</h3>
+          <p className="text-[11px] text-white/80">{currentTrending.meta}</p>
+          <p className="mt-1 flex items-center gap-1 text-sm font-semibold"><Star size={14} className="fill-yellow-400 text-yellow-400" />{currentTrending.rating}</p>
         </div>
-        <button onClick={() => setInTrend((v) => !v)} aria-label="Agregar" className={`absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-full transition-all duration-300 hover:scale-110 active:scale-90 ${inTrend ? 'rotate-[360deg] bg-emerald-400 text-white' : 'bg-white text-black'}`}>{inTrend ? <Check size={18} /> : <Plus size={18} />}</button>
+        <button onClick={() => toggleLibrary(currentTrending)} aria-label="Agregar" className={`absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-full transition-all duration-300 hover:scale-110 active:scale-90 ${inLibrary(currentTrending) ? 'rotate-[360deg] bg-emerald-400 text-white' : 'bg-white text-black'}`}>{inLibrary(currentTrending) ? <Check size={18} /> : <Plus size={18} />}</button>
       </Poster>
     </section>
   )

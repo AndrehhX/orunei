@@ -46,3 +46,11 @@ test('refreshes the recommendation pool with recent AniList anime', () => {
   assert.match(recommendations, /START_DATE_DESC/)
   assert.match(recommendations, /10 \* 6e4/)
 })
+
+test('feeds the home hero with the latest live anime when available', () => {
+  const hero = fs.readFileSync(new URL('../src/components/Hero.jsx', import.meta.url), 'utf8')
+
+  assert.match(hero, /latest/)
+  assert.match(hero, /currentSlides/)
+  assert.match(hero, /currentTrending/)
+})

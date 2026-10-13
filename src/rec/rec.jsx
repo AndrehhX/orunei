@@ -2,10 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { toItem, vectorize, update, recommend, topGenres, label, dot, norm } from './engine'
 
 const KEY = 'orunei-taste-v2', POOL = 'orunei-pool-v2'
-const F = 'id title{romaji english} coverImage{extraLarge} bannerImage genres tags{name rank isGeneralSpoiler} studios(isMain:true){nodes{name}} averageScore popularity trending seasonYear format'
+const F = 'id title{romaji english} coverImage{extraLarge} bannerImage description(asHtml:false) genres tags{name rank isGeneralSpoiler} studios(isMain:true){nodes{name}} averageScore popularity trending seasonYear format'
 const pg = (a, page, sort) => `${a}: Page(page:${page}, perPage:30){ media(type:ANIME, sort:${sort}, isAdult:false){ ${F} } }`
 const QUERY = `query { ${pg('a', 1, 'POPULARITY_DESC')} ${pg('b', 1, 'TRENDING_DESC')} ${pg('c', 1, 'SCORE_DESC')} ${pg('d', 2, 'POPULARITY_DESC')} ${pg('e', 1, 'START_DATE_DESC')} }`
-const Ctx = createContext({ ready: false, recs: [], topGenres: [], count: 0, anchor: '', isNewsLiked: () => false, like() {}, dismiss() {}, likeMedia() {}, isLiked: () => false, likeNews() {}, addByQuery() {}, affinity: () => null })
+const Ctx = createContext({ ready: false, recs: [], latest: [], topGenres: [], count: 0, anchor: '', isNewsLiked: () => false, like() {}, dismiss() {}, likeMedia() {}, isLiked: () => false, likeNews() {}, addByQuery() {}, syncLibrary() {}, affinity: () => null })
 export const useRec = () => useContext(Ctx)
 
 async function loadPool(force = false) {
@@ -114,7 +114,8 @@ export function RecProvider({ children }) {
     return Math.max(0, Math.min(1, dot(st.p.w, v) / wn))
   }
 
-  const value = { ready: pool.length > 0, recs, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.includes(id), addByQuery, syncLibrary, affinity, isNewsLiked: (id) => st.news.includes(id) }
+  const latest = useMemo(() => [...pool].sort((a, b) => (b.year || 0) - (a.year || 0) || (b.trend || 0) - (a.trend || 0) || (b.pop || 0) - (a.pop || 0)).slice(0, 4), [pool])
+  const value = { ready: pool.length > 0, recs, latest, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.includes(id), addByQuery, syncLibrary, affinity, isNewsLiked: (id) => st.news.includes(id) }
   return (
     <Ctx.Provider value={value}>
       {children}
