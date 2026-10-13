@@ -2,6 +2,10 @@ export const PROFILE_KEY = 'orunei-profile-v1'
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 export const MAX_ACTIVITY = 50
 export const PROFILE_SECTIONS = ['overview', 'animelist', 'favorites', 'lists', 'activity']
+const IMAGE_CONSTRAINTS = {
+  avatar: { maxWidth: 512, maxHeight: 512, crop: 'square' },
+  banner: { maxWidth: 1600, maxHeight: 900, crop: 'cover' },
+}
 
 export const DEFAULT_PROFILE = {
   version: 1,
@@ -125,9 +129,48 @@ export function normalizeProfile(raw, user = {}) {
 
 export function validateImageFile(file, kind) {
   if (!['avatar', 'banner'].includes(kind)) return { ok: false, error: 'Tipo de imagen no válido.' }
-  if (!file || typeof file.type !== 'string' || !file.type.startsWith('image/')) return { ok: false, error: 'Selecciona una imagen válida.' }
+  if (!file || typeof file.type !== 'string' || !file.type.startsWith('image/') || file.type === 'image/svg+xml') return { ok: false, error: 'Selecciona una imagen válida.' }
   if (!Number.isFinite(file.size) || file.size > MAX_IMAGE_BYTES) return { ok: false, error: 'La imagen debe pesar menos de 5 MB.' }
   return { ok: true }
+}
+
+export function getImageConstraints(kind) {
+  return IMAGE_CONSTRAINTS[kind] ? { ...IMAGE_CONSTRAINTS[kind] } : null
+}
+
+export function readImageAsDataUrl(file, kind) {
+  const result = validateImageFile(file, kind)
+  if (!result.ok) return Promise.reject(new Error(result.error))
+  if (typeof FileReader === 'undefined' || typeof Image === 'undefined' || typeof document === 'undefined') return Promise.reject(new Error('La carga de imágenes solo está disponible en el navegador.'))
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(new Error('No se pudo leer la imagen.'))
+    reader.onload = () => {
+      const image = new Image()
+      image.onerror = () => reject(new Error('La imagen no se pudo procesar.'))
+      image.onload = () => {
+        const constraints = IMAGE_CONSTRAINTS[kind]
+        const sourceSide = kind === 'avatar' ? Math.min(image.width, image.height) : null
+        const scale = kind === 'avatar'
+          ? Math.min(1, constraints.maxWidth / sourceSide)
+          : Math.min(1, constraints.maxWidth / image.width, constraints.maxHeight / image.height)
+        const width = kind === 'avatar' ? Math.max(1, Math.round(sourceSide * scale)) : Math.max(1, Math.round(image.width * scale))
+        const height = kind === 'avatar' ? width : Math.max(1, Math.round(image.height * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = width; canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return reject(new Error('No se pudo preparar la imagen.'))
+        if (kind === 'avatar') {
+          const sx = (image.width - sourceSide) / 2
+          const sy = (image.height - sourceSide) / 2
+          ctx.drawImage(image, sx, sy, sourceSide, sourceSide, 0, 0, width, height)
+        } else ctx.drawImage(image, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', 0.86))
+      }
+      image.src = reader.result
+    }
+    reader.readAsDataURL(file)
+  })
 }
 
 export function makeActivity(type, label, at = new Date().toISOString()) {

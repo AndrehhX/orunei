@@ -9,6 +9,7 @@ import RightPanel from './components/RightPanel'
 import { Library, Because, News } from './components/Rows'
 import { ProfileProvider } from './profile/ProfileProvider'
 import ProfilePage from './components/ProfilePage'
+import ProfileEditor from './components/ProfileEditor'
 
 const tabs = ['Todo', 'Anime', 'Películas', 'Series', 'Noticias']
 
@@ -20,6 +21,7 @@ export default function App() {
   const [page, setPage] = useState('home')
   const [tab, setTab] = useState('Todo')
   const [query, setQuery] = useState('')
+  const [editingProfile, setEditingProfile] = useState(false)
   const refs = useRef({})
   const [ind, setInd] = useState({ l: 0, w: 0 })
   useLayoutEffect(() => { const el = refs.current[tab]; if (el) setInd({ l: el.offsetLeft, w: el.offsetWidth }) }, [tab])
@@ -41,7 +43,7 @@ export default function App() {
           <button className="relative ml-auto grid h-10 w-10 place-items-center rounded-full bg-white dark:bg-white/10 shadow-sm transition hover:scale-105" aria-label="Notificaciones"><Bell size={18} /><i className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" /></button>
           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-900" />
         </header>
-        {page === 'anime' ? <AnimePage query={query} /> : page === 'profile' ? <ProfilePage /> : <>
+        {page === 'anime' ? <AnimePage query={query} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : <>
         <div className="flex flex-wrap items-end justify-between gap-3 animate-rise">
           <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
             <p className="text-sm text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
@@ -54,6 +56,7 @@ export default function App() {
         </>}
       </main>
       {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => setPage('profile')} />}
+      {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}
     </div>
   )
   </ProfileProvider>

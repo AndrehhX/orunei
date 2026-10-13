@@ -1,0 +1,72 @@
+import { useState } from 'react'
+import { Check, Image, LockKeyhole, Palette, Shield, Upload, X } from 'lucide-react'
+import { library } from '../data'
+import { useProfile } from '../profile/ProfileProvider'
+import { makeActivity, normalizeProfile, readImageAsDataUrl } from '../profile/model'
+
+const privacyLabels = { overview: 'Resumen', animelist: 'AnimeList', favorites: 'Favoritos', lists: 'Listas', activity: 'Actividad' }
+const pinLabels = { overview: 'Resumen', animelist: 'AnimeList', favorites: 'Favoritos' }
+
+const clone = (value) => JSON.parse(JSON.stringify(value))
+
+function UploadButton({ kind, onChange, current }) {
+  const id = `profile-${kind}-upload`
+  return <div className="flex items-center gap-3">
+    <div className={`${kind === 'avatar' ? 'h-16 w-16 rounded-full' : 'h-16 w-28 rounded-xl'} overflow-hidden bg-gradient-to-br from-brand to-pink-400 bg-cover bg-center`} style={current ? { backgroundImage: `url(${current})` } : undefined} />
+    <div><label htmlFor={id} className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold transition hover:border-brand hover:text-brand dark:border-white/10"><Upload size={14} /> Subir {kind === 'avatar' ? 'avatar' : 'banner'}</label><input id={id} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={onChange} className="sr-only" /><p className="mt-1 text-[10px] text-slate-500">JPG, PNG o WebP · máximo 5 MB</p></div>
+  </div>
+}
+
+export default function ProfileEditor({ onClose }) {
+  const { profile, saveProfile, resetVisuals, storageError } = useProfile()
+  const [draft, setDraft] = useState(() => clone(profile))
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const setField = (field) => (event) => setDraft((current) => ({ ...current, [field]: event.target.value }))
+  const handleImage = (kind) => async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setError('')
+    try {
+      const dataUrl = await readImageAsDataUrl(file, kind)
+      setDraft((current) => ({ ...current, [kind]: dataUrl }))
+    } catch (uploadError) {
+      setError(uploadError.message)
+    } finally {
+      event.target.value = ''
+    }
+  }
+  const togglePinned = (section) => setDraft((current) => ({ ...current, pinnedSections: current.pinnedSections.includes(section) ? current.pinnedSections.filter((item) => item !== section) : [...current.pinnedSections, section] }))
+  const save = () => {
+    setSaving(true)
+    const clean = normalizeProfile(draft)
+    saveProfile((current) => ({ ...clean, activity: [...current.activity, makeActivity('profile', 'Actualizó su perfil')] }))
+    setSaving(false)
+    onClose()
+  }
+  const reset = () => {
+    resetVisuals()
+    setDraft((current) => ({ ...current, avatar: '', banner: '', accent: '#6d5cff', featuredAnimeId: '' }))
+  }
+
+  return <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 p-3 backdrop-blur-sm sm:p-6">
+    <div role="dialog" aria-modal="true" aria-labelledby="profile-editor-title" className="mx-auto max-w-5xl rounded-[28px] border border-white/80 bg-[#f8f8fc] shadow-2xl dark:border-white/10 dark:bg-[#11111c]">
+      <header className="sticky top-0 z-10 flex items-center justify-between rounded-t-[28px] border-b border-slate-200/80 bg-[#f8f8fc]/95 px-5 py-4 backdrop-blur dark:border-white/10 dark:bg-[#11111c]/95 sm:px-7"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Espacio privado</p><h2 id="profile-editor-title" className="text-xl font-extrabold">Personalizar perfil</h2></div><button onClick={onClose} aria-label="Cerrar editor" className="grid h-9 w-9 place-items-center rounded-full text-slate-500 transition hover:bg-slate-200 dark:hover:bg-white/10"><X size={18} /></button></header>
+      <div className="grid gap-5 p-5 sm:p-7 lg:grid-cols-[1fr_300px]">
+        <div className="space-y-5">
+          <section className="card p-5"><div className="mb-4 flex items-center gap-2"><Shield size={18} className="text-brand" /><div><h3 className="font-bold">Identidad</h3><p className="text-xs text-slate-500">Lo que verás en tu espacio privado.</p></div></div><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-semibold">Nombre visible<input value={draft.displayName} onChange={setField('displayName')} maxLength={50} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10" /></label><label className="text-xs font-semibold">Usuario<input value={draft.username} onChange={setField('username')} maxLength={24} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10" /></label></div><label className="mt-4 block text-xs font-semibold">Bio<textarea value={draft.bio} onChange={setField('bio')} maxLength={280} rows={3} className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 bg-transparent px-3 py-2.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10" /></label><label className="mt-4 block text-xs font-semibold">Estado<input value={draft.status} onChange={setField('status')} maxLength={100} placeholder="¿Qué estás viendo hoy?" className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:border-white/10" /></label></section>
+
+          <section className="card p-5"><div className="mb-4 flex items-center gap-2"><Image size={18} className="text-brand" /><div><h3 className="font-bold">Apariencia</h3><p className="text-xs text-slate-500">Usa imágenes locales; no se suben a ningún servidor.</p></div></div><div className="space-y-4"><UploadButton kind="avatar" current={draft.avatar} onChange={handleImage('avatar')} /><UploadButton kind="banner" current={draft.banner} onChange={handleImage('banner')} /></div><div className="mt-5 flex items-center justify-between gap-3"><label className="flex items-center gap-2 text-xs font-semibold">Color de acento<input type="color" value={draft.accent} onChange={setField('accent')} className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent p-0" /></label><button onClick={reset} className="text-xs font-semibold text-slate-500 transition hover:text-red-500">Restablecer apariencia</button></div></section>
+
+          <section className="card p-5"><div className="mb-4 flex items-center gap-2"><Palette size={18} className="text-brand" /><div><h3 className="font-bold">Contenido del perfil</h3><p className="text-xs text-slate-500">Elige qué aparece primero y qué historia destacar.</p></div></div><label className="block text-xs font-semibold">Anime destacado<select value={draft.featuredAnimeId} onChange={setField('featuredAnimeId')} className="mt-1.5 h-11 w-full rounded-xl border border-slate-200 bg-transparent px-3 text-sm outline-none dark:border-white/10"><option value="">Usar mi favorito actual</option>{library.map((item) => <option key={item.q} value={item.q}>{item.t}</option>)}</select></label><div className="mt-5"><p className="text-xs font-semibold">Secciones fijadas</p><div className="mt-2 flex flex-wrap gap-2">{Object.entries(pinLabels).map(([id, label]) => <label key={id} className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs font-medium transition ${draft.pinnedSections.includes(id) ? 'border-brand bg-brand/10 text-brand' : 'border-slate-200 text-slate-500 dark:border-white/10'}`}><input type="checkbox" checked={draft.pinnedSections.includes(id)} onChange={() => togglePinned(id)} className="sr-only" />{draft.pinnedSections.includes(id) && <Check size={13} />}{label}</label>)}</div></div></section>
+
+          <section className="card p-5"><div className="mb-4 flex items-center gap-2"><LockKeyhole size={18} className="text-brand" /><div><h3 className="font-bold">Privacidad</h3><p className="text-xs text-slate-500">Estas preferencias se guardan desde ya, aunque el perfil público llegará después.</p></div></div><div className="space-y-3">{Object.entries(privacyLabels).map(([id, label]) => <label key={id} className="flex items-center justify-between gap-4 rounded-xl bg-slate-50 px-3 py-2.5 text-xs dark:bg-white/5"><span className="font-medium">{label}</span><select value={draft.privacy[id]} onChange={(event) => setDraft((current) => ({ ...current, privacy: { ...current.privacy, [id]: event.target.value } }))} className="rounded-lg border border-slate-200 bg-transparent px-2 py-1.5 text-xs outline-none dark:border-white/10"><option value="private">Solo tú</option><option value="friends">Amigos (futuro)</option><option value="public">Perfil público (futuro)</option></select></label>)}</div></section>
+        </div>
+
+        <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start"><div className="card overflow-hidden" style={{ '--profile-accent': draft.accent }}><div className="h-24 bg-gradient-to-br from-brand to-pink-400 bg-cover bg-center" style={draft.banner ? { backgroundImage: `url(${draft.banner})` } : undefined} /><div className="px-4 pb-5"><div className="-mt-8"><div className="inline-block rounded-full bg-white p-1 dark:bg-[#171723]"><div className="h-16 w-16 overflow-hidden rounded-full bg-gradient-to-br from-slate-600 to-slate-900">{draft.avatar ? <img src={draft.avatar} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center text-xl font-bold text-white">{draft.displayName.slice(0, 1).toUpperCase()}</span>}</div></div></div><p className="mt-2 text-lg font-extrabold">{draft.displayName || 'Tu nombre'}</p><p className="text-xs text-slate-500">@{draft.username || 'usuario'}</p><p className="mt-3 text-xs leading-5 text-slate-500">{draft.bio || 'Tu bio aparecerá aquí.'}</p><div className="mt-4 rounded-xl bg-[var(--profile-accent)]/10 px-3 py-2 text-xs font-medium text-[var(--profile-accent)]">{draft.status || 'Tu estado aparecerá aquí.'}</div></div></div><div className="rounded-2xl border border-brand/20 bg-brand/5 p-4 text-xs leading-5 text-slate-600 dark:text-slate-300"><p className="flex items-center gap-2 font-semibold text-brand"><LockKeyhole size={14} /> Solo visible para ti</p><p className="mt-1">Tu perfil privado se guarda en este navegador.</p></div></aside>
+      </div>
+      {(error || storageError) && <p role="alert" className="mx-5 mb-3 rounded-xl bg-red-500/10 px-4 py-3 text-xs font-medium text-red-600 sm:mx-7">{error || storageError}</p>}
+      <footer className="flex justify-end gap-2 rounded-b-[28px] border-t border-slate-200/80 px-5 py-4 dark:border-white/10 sm:px-7"><button onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-100 dark:hover:bg-white/10">Cancelar</button><button onClick={save} disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand/20 transition hover:-translate-y-0.5 disabled:opacity-60">{saving ? 'Guardando…' : <><Check size={16} /> Guardar cambios</>}</button></footer>
+    </div>
+  </div>
+}
