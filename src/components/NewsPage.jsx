@@ -6,13 +6,16 @@ import { useNews, NewsLink } from '../news'
 import LikeBtn from './LikeBtn'
 import { useRec } from '../rec/rec'
 
+const PAGE_SIZE = 12
+
 export default function NewsPage({ query }) {
   const { items, status, reload } = useNews()
   const rec = useRec()
   const [src, setSrc] = useState('Todas')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const sources = ['Todas', ...new Set(items.map((n) => n.s))]
   const list = items.filter((n) => (src === 'Todas' || n.s === src) && n.t.toLowerCase().includes(query.toLowerCase()))
-  const [top, ...rest] = list
+  const [top, ...rest] = list.slice(0, visibleCount)
   const loading = status === 'loading'
 
   return (
@@ -66,6 +69,7 @@ export default function NewsPage({ query }) {
           </Reveal>
         ))}
       </div>
+      {list.length > visibleCount && <button onClick={() => setVisibleCount((count) => count + PAGE_SIZE)} className="mx-auto block rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:bg-white/10">Cargar más noticias</button>}
     </section>
   )
 }

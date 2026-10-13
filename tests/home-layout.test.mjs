@@ -61,3 +61,18 @@ test('keeps only Anime and Noticias in the home filters', () => {
   assert.match(app, /const tabs = \['Anime', 'Noticias'\]/)
   assert.match(app, /useState\('Anime'\)/)
 })
+
+test('does not remount the whole page shell when switching home tabs', () => {
+  const app = fs.readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+
+  assert.match(app, /<div key=\{page\} className="animate-page-enter space-y-7">/)
+  assert.doesNotMatch(app, /key=\{`\$\{page\}:\$\{tab\}`\}/)
+})
+
+test('renders the news feed progressively to avoid a large tab-switch spike', () => {
+  const newsPage = fs.readFileSync(new URL('../src/components/NewsPage.jsx', import.meta.url), 'utf8')
+
+  assert.match(newsPage, /const PAGE_SIZE = 12/)
+  assert.match(newsPage, /list\.slice\(0, visibleCount\)/)
+  assert.match(newsPage, /Cargar más noticias/)
+})
