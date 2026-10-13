@@ -45,7 +45,7 @@ function Restricted({ section }) {
   return <div className="card grid min-h-44 place-items-center border-dashed p-6 text-center"><div><LockKeyhole className="mx-auto text-slate-400" size={22} /><p className="mt-2 font-semibold">Este apartado es privado</p><p className="mt-1 text-sm text-slate-500">La persona propietaria no comparte {section} con este tipo de visitante.</p></div></div>
 }
 
-export default function PublicProfilePage({ profile, viewer = {}, library = profile.animeList || [], tasteCount = 0, onBack, onFriendRequest }) {
+export default function PublicProfilePage({ profile, viewer = {}, library = profile.animeList || [], tasteCount = null, onBack, onFriendRequest }) {
   const visibility = selectVisibleProfile(profile, viewer)
   const sections = useMemo(() => selectAnimeSections(library), [library])
   const visibleSectionKey = visibility.visibleSections.join('|')
@@ -63,7 +63,7 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
     [visibility.visibleSections.includes('animeList') ? sharedWorks : '—', 'Obras'],
     [visibility.visibleSections.includes('favorites') ? sections.favorites.length : '—', 'Favoritos'],
     [visibility.visibleSections.includes('lists') ? profile.customLists.length : '—', 'Listas'],
-    [visibility.visibleSections.includes('taste') ? tasteCount : '—', 'Gustos'],
+    [visibility.visibleSections.includes('taste') && Number.isFinite(tasteCount) ? tasteCount : '—', 'Gustos'],
   ]
   const requestFriendship = async () => {
     if (!onFriendRequest) return
