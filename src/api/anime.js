@@ -1,7 +1,7 @@
-import { timeAgo } from '../news'
-import { FORMATS, STATUS, SORTS, buildCatalogRequest } from './catalogQuery'
+import { timeAgo } from '../news.jsx'
+import { FORMATS, STATUS, SORTS, buildCatalogRequest } from './catalogQuery.js'
 
-export { FORMATS, STATUS, SORTS } from './catalogQuery'
+export { FORMATS, STATUS, SORTS } from './catalogQuery.js'
 // All sources are public + CORS-friendly: AniList (GraphQL), Jikan (MyAnimeList), Kitsu, Reddit, and OMDb (IMDb, optional key).
 const gql = async (query, variables, signal) => {
   const r = await fetch('https://graphql.anilist.co', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, variables }), signal })

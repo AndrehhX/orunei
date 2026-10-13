@@ -1,4 +1,4 @@
-import { getProfileStats } from './model.js'
+import { getProfileStats, TASTE_STATUSES } from './model.js'
 
 const sectionForStatus = (status = '') => {
   const value = status.toLowerCase()
@@ -25,7 +25,10 @@ export function selectProfileStats(library, tasteCount, profile) {
 }
 
 export function selectTasteGenres(library = [], limit = 5) {
-  const rows = Array.isArray(library) ? library : []
+  const rows = (Array.isArray(library) ? library : []).filter((item) => {
+    const status = String(item?.status || sectionForStatus(item?.s) || '').toLowerCase()
+    return TASTE_STATUSES.includes(status)
+  })
   const counts = new Map()
   rows.forEach((item) => {
     const uniqueGenres = [...new Set((Array.isArray(item?.genres) ? item.genres : []).map((genre) => String(genre).trim()).filter(Boolean))]

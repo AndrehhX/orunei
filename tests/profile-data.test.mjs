@@ -25,16 +25,21 @@ test('selects AnimeList sections from the real library statuses', () => {
 
 test('derives taste bars from the genres stored on the real AnimeList', () => {
   const tastes = selectTasteGenres([
-    { t: 'Your Name.', genres: ['Romance', 'Drama'] },
-    { t: 'A Silent Voice', genres: ['Romance', 'Drama'] },
-    { t: 'Frieren', genres: ['Fantasy'] },
+    { t: 'Your Name.', status: 'completed', genres: ['Romance', 'Drama'] },
+    { t: 'A Silent Voice', status: 'watching', genres: ['Romance', 'Drama'] },
+    { t: 'Frieren', status: 'planned', genres: ['Fantasy'] },
   ])
 
   assert.deepEqual(tastes, [
-    { name: 'Romance', count: 2, total: 3, pct: 100 },
-    { name: 'Drama', count: 2, total: 3, pct: 100 },
-    { name: 'Fantasy', count: 1, total: 3, pct: 50 },
+    { name: 'Romance', count: 2, total: 2, pct: 100 },
+    { name: 'Drama', count: 2, total: 2, pct: 100 },
   ])
+})
+
+test('does not use planned anime to infer tastes before the user watches them', () => {
+  assert.deepEqual(selectTasteGenres([
+    { t: 'Solo Leveling', status: 'planned', genres: ['Action', 'Fantasy'] },
+  ]), [])
 })
 
 test('selects stats and recent profile activity without inventing social counts', () => {

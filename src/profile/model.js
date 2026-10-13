@@ -10,6 +10,7 @@ const IMAGE_CONSTRAINTS = {
 const ANIME_STATUSES = ['watching', 'planned', 'paused', 'completed']
 const ANIME_STATUS_LABELS = { watching: 'Viendo', planned: 'Planeo ver', paused: 'En pausa', completed: 'Terminado' }
 const ANIME_STATUS_DOTS = { watching: 'bg-green-400', planned: 'bg-blue-500', paused: 'bg-yellow-400', completed: 'bg-emerald-500' }
+export const TASTE_STATUSES = ['watching', 'paused', 'completed']
 
 export const DEFAULT_PROFILE = {
   version: 1,
@@ -150,6 +151,18 @@ export function createLibraryEntry(media = {}) {
     genres: media.genres,
     grad: media.grad,
     status: 'planned',
+  })
+}
+
+export function markAnimeWatched(entry = {}, media = {}) {
+  const genresFromEntry = genres(entry.genres)
+  return normalizeAnimeEntry({
+    ...entry,
+    status: 'completed',
+    genres: genresFromEntry.length ? genresFromEntry : media.genres,
+    img: entry.img || media.coverImage?.extraLarge,
+    banner: entry.banner || media.bannerImage,
+    year: entry.year || media.seasonYear,
   })
 }
 

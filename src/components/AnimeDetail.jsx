@@ -5,6 +5,7 @@ import { AnimeCard } from './AnimePage'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
 import { createLibraryEntry } from '../profile/model.js'
+import { buildEpisodeCards } from '../api/episodeData.js'
 
 const TABS = ['Resumen', 'Episodios', 'Comunidad']
 const SRC = { 'AniList': 'bg-sky-500', 'Foro AniList': 'bg-indigo-500', 'MyAnimeList': 'bg-blue-700', 'Reddit': 'bg-orange-500' }
@@ -89,24 +90,21 @@ function Community({ m }) {
 }
 
 function Episodes({ m }) {
-  const eps = m.streamingEpisodes?.length ? m.streamingEpisodes : null
+  const eps = buildEpisodeCards(m)
   const url = crunchy(m)
-  if (eps) return (
+  if (eps.length) return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {eps.map((e, i) => (
         <a key={e.url + i} href={e.url} target="_blank" rel="noopener noreferrer" className="group card animate-rise overflow-hidden transition-all duration-500 ease-spring hover:-translate-y-1 hover:shadow-xl" style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}>
-          <div className="relative aspect-video overflow-hidden bg-slate-300 dark:bg-slate-800">{e.thumbnail && <img src={e.thumbnail} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />}
+          <div className="relative aspect-video overflow-hidden bg-slate-300 dark:bg-slate-800"><img src={e.thumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
             <span className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/40 group-hover:opacity-100"><Play size={30} className="fill-white text-white" /></span></div>
           <p className="line-clamp-2 p-2.5 text-xs font-semibold">{e.title}</p>
           <p className="px-2.5 pb-2.5 text-[10px] text-slate-500">Ver en {e.site} ↗</p>
         </a>))}
     </div>
   )
-  const n = Math.min(m.episodes || 12, 60)
   return (
-    <div className="space-y-3"><p className="text-sm text-slate-500">Elige un episodio para continuar en Crunchyroll.</p>
-      <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 md:grid-cols-10">
-        {Array.from({ length: n }, (_, i) => <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="animate-rise grid h-11 place-items-center rounded-xl bg-white text-sm font-bold shadow-sm transition-all duration-300 ease-spring hover:-translate-y-1 hover:bg-brand hover:text-white dark:bg-white/5" style={{ animationDelay: `${Math.min(i, 30) * 15}ms` }}>{i + 1}</a>)}</div></div>
+    <div className="space-y-3"><p className="text-sm text-slate-500">No hay enlaces individuales disponibles desde la fuente actual.</p><a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-xl bg-[#f47521] px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:-translate-y-0.5">Buscar todos los episodios en Crunchyroll <ExternalLink size={13} /></a></div>
   )
 }
 

@@ -5,6 +5,12 @@ const PROFILE_FIELDS = ['username', 'displayName', 'bio', 'status', 'visibility'
 
 const text = (value) => typeof value === 'string' ? value.trim() : ''
 
+export function buildProfileImagePath(userId, kind, fileName = '') {
+  const rawExtension = text(fileName).split('.').pop()?.toLowerCase() || 'jpg'
+  const extension = rawExtension === 'jpeg' ? 'jpg' : ['jpg', 'png', 'webp', 'gif'].includes(rawExtension) ? rawExtension : 'jpg'
+  return `${userId}/${kind}.${extension}`
+}
+
 function privacyObject(rows) {
   if (!Array.isArray(rows)) return rows || undefined
   return Object.fromEntries(rows.map((row) => [row.section, row.visibility]))
@@ -155,13 +161,13 @@ export function createProfileRepository(client = supabase) {
       if (!client || !userId || !file || !['avatar', 'banner'].includes(kind)) return unavailable()
       const validation = validateImageFile(file, kind)
       if (!validation.ok) return { data: null, error: validation.error }
-      const extension = text(file.name).split('.').pop()?.toLowerCase() || 'jpg'
-      const path = `${userId}/${kind}-${Date.now()}.${extension}`
+      const path = buildProfileImagePath(userId, kind, file.name)
       const bucket = client.storage.from('profile-media')
-      const uploadResult = await bucket.upload(path, file, { upsert: true, contentType: file.type || undefined })
+      const uploadResult = await bucket.upload(path, file, { upsert: true, cacheControl: '3600', contentType: file.type || undefined })
       if (uploadResult.error) return { data: null, error: resultError(uploadResult.error) }
       const publicResult = bucket.getPublicUrl(path)
-      return { data: publicResult.data?.publicUrl || '', error: '' }
+      const publicUrl = publicResult.data?.publicUrl || ''
+      return publicUrl ? { data: publicUrl, error: '' } : { data: null, error: 'Supabase no devolviÃ³ la URL de la imagen.' }
     },
   }
 }

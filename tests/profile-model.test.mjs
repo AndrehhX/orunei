@@ -8,6 +8,7 @@ import {
   makeActivity,
   normalizeAnimeEntry,
   normalizeProfile,
+  markAnimeWatched,
   toRemoteAnimeEntry,
   validateImageFile,
 } from '../src/profile/model.js'
@@ -54,6 +55,18 @@ test('normalizes and maps real AniList genres for remote AnimeList rows', () => 
   const entry = normalizeAnimeEntry({ id: 101, title: 'Frieren', genres: ['Fantasy', 'Drama', 'Fantasy'] })
   assert.deepEqual(entry.genres, ['Fantasy', 'Drama'])
   assert.deepEqual(toRemoteAnimeEntry('user-1', entry).genres, ['Fantasy', 'Drama'])
+})
+
+test('marks an anime as watched only through an explicit status change and keeps its metadata', () => {
+  const watched = markAnimeWatched({ id: '101', t: 'Frieren', status: 'planned', genres: [] }, {
+    genres: ['Fantasy', 'Drama'],
+    coverImage: { extraLarge: 'https://img.test/frieren.jpg' },
+  })
+
+  assert.equal(watched.status, 'completed')
+  assert.equal(watched.s, 'Terminado')
+  assert.deepEqual(watched.genres, ['Fantasy', 'Drama'])
+  assert.equal(watched.img, 'https://img.test/frieren.jpg')
 })
 
 test('validates image type and file size before reading a file', () => {

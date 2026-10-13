@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createProfileRepository, normalizeRemoteProfile } from '../src/profile/profileRepository.js'
+import { buildProfileImagePath, createProfileRepository, normalizeRemoteProfile } from '../src/profile/profileRepository.js'
 
 function makeClient({ profile, privacy = [], anime = [], lists = [], activity = [], uploadError = null }) {
   const calls = []
@@ -91,6 +91,11 @@ test('rejects invalid remote profile images before Storage upload', async () => 
   assert.equal(upload.data, null)
   assert.match(upload.error, /imagen válida/i)
   assert.equal(client.calls.some((call) => call.type === 'from' && call.table === 'profile-media'), false)
+})
+
+test('uses a stable owner-scoped path for profile images', () => {
+  assert.equal(buildProfileImagePath('user-1', 'avatar', 'portrait.PNG'), 'user-1/avatar.png')
+  assert.equal(buildProfileImagePath('user-1', 'banner', 'cover.webp'), 'user-1/banner.webp')
 })
 
 test('does not resolve a private profile for an unrelated viewer', async () => {
