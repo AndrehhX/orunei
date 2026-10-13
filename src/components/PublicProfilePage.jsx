@@ -45,12 +45,14 @@ function Restricted({ section }) {
   return <div className="card grid min-h-44 place-items-center border-dashed p-6 text-center"><div><LockKeyhole className="mx-auto text-slate-400" size={22} /><p className="mt-2 font-semibold">Este apartado es privado</p><p className="mt-1 text-sm text-slate-500">La persona propietaria no comparte {section} con este tipo de visitante.</p></div></div>
 }
 
-export default function PublicProfilePage({ profile, viewer = {}, library = defaultLibrary, tasteCount = 0, onBack }) {
+export default function PublicProfilePage({ profile, viewer = {}, library = defaultLibrary, tasteCount = 0, onBack, onFriendRequest }) {
   const visibility = selectVisibleProfile(profile, viewer)
   const sections = useMemo(() => selectAnimeSections(library), [library])
   const visibleSectionKey = visibility.visibleSections.join('|')
   const availableTabs = useMemo(() => tabs.filter(([id]) => id === 'overview' || visibility.visibleSections.includes(id)), [visibleSectionKey])
   const [active, setActive] = useState('overview')
+  const [relationship, setRelationship] = useState(viewer.relationship || 'none')
+  const [friendRequesting, setFriendRequesting] = useState(false)
   useEffect(() => {
     if (!availableTabs.some(([id]) => id === active)) setActive('overview')
   }, [active, availableTabs])
@@ -63,6 +65,13 @@ export default function PublicProfilePage({ profile, viewer = {}, library = defa
     [visibility.visibleSections.includes('lists') ? profile.customLists.length : '—', 'Listas'],
     [visibility.visibleSections.includes('taste') ? tasteCount : '—', 'Gustos'],
   ]
+  const requestFriendship = async () => {
+    if (!onFriendRequest) return
+    setFriendRequesting(true)
+    const result = await onFriendRequest()
+    if (!result?.error) setRelationship('pending')
+    setFriendRequesting(false)
+  }
 
   return <div className="space-y-5 pb-10 animate-fade">
     <section className="overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
@@ -71,7 +80,10 @@ export default function PublicProfilePage({ profile, viewer = {}, library = defa
         <div className="-mt-12 flex flex-wrap items-end gap-4 md:-mt-14">
           <Avatar profile={profile} />
           <div className="min-w-[180px] flex-1 pb-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">{profile.displayName}</h1><span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-1 text-[10px] font-semibold text-brand"><Eye size={11} /> Perfil público</span></div><p className="text-sm text-slate-500">@{profile.username}</p></div>
-          {onBack && <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200"><ArrowLeft size={15} /> Volver</button>}
+          <div className="flex flex-wrap gap-2">
+            {!visibility.canEdit && onFriendRequest && <button onClick={requestFriendship} disabled={friendRequesting || relationship !== 'none'} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{friendRequesting ? 'Enviando…' : relationship === 'pending' ? 'Solicitud enviada' : relationship === 'accepted' ? 'Amigos' : 'Agregar amigo'}</button>}
+            {onBack && <button onClick={onBack} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200"><ArrowLeft size={15} /> Volver</button>}
+          </div>
         </div>
         <div className="mt-4 max-w-2xl"><p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{profile.bio || 'Este perfil aún no tiene una bio pública.'}</p>{profile.status && <p className="mt-2 text-xs font-medium text-brand">{profile.status}</p>}</div>
         <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-slate-200 rounded-2xl border border-slate-200/80 bg-slate-50/70 sm:grid-cols-4 sm:divide-y-0 dark:divide-white/10 dark:bg-white/5">{stats.map(([value, label]) => <div key={label} className="px-4 py-3 text-center"><p className="text-xl font-extrabold">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>)}</div>
