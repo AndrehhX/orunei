@@ -7,6 +7,7 @@ import Sidebar from './components/Sidebar'
 import Hero from './components/Hero'
 import RightPanel from './components/RightPanel'
 import { Library, Because, News } from './components/Rows'
+import { ProfileProvider } from './profile/ProfileProvider'
 
 const tabs = ['Todo', 'Anime', 'Películas', 'Series', 'Noticias']
 
@@ -28,6 +29,7 @@ export default function App() {
 
   if (!user) return <Login onLogin={login} dark={dark} setDark={setDark} />
   return (
+  <ProfileProvider user={user}>
     <div className="mx-auto flex animate-fade min-h-screen max-w-[1536px]">
       <Sidebar dark={dark} setDark={setDark} user={user} onLogout={logout} page={page} setPage={setPage} />
       <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
@@ -38,7 +40,7 @@ export default function App() {
           <button className="relative ml-auto grid h-10 w-10 place-items-center rounded-full bg-white dark:bg-white/10 shadow-sm transition hover:scale-105" aria-label="Notificaciones"><Bell size={18} /><i className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" /></button>
           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-slate-600 to-slate-900" />
         </header>
-        {page === 'anime' ? <AnimePage query={query} /> : <>
+        {page === 'anime' ? <AnimePage query={query} /> : page === 'profile' ? <div className="card p-8"><h1 className="text-3xl font-extrabold">Perfil privado</h1><p className="mt-2 text-sm text-slate-500">Aquí podrás personalizar tu espacio en Orunei.</p></div> : <>
         <div className="flex flex-wrap items-end justify-between gap-3 animate-rise">
           <div><h1 className="text-4xl font-extrabold tracking-tight">Para ti</h1>
             <p className="text-sm text-slate-500">Descubre nuevas historias, mantente al día y explora contenido basado en tus gustos.</p></div>
@@ -50,7 +52,9 @@ export default function App() {
         {tab === 'Noticias' ? <NewsPage query={query} /> : <><Hero /><Library query={query} /><Because query={query} /><News query={query} onMore={() => setTab('Noticias')} /></>}
         </>}
       </main>
-      {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} />}
+      {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => setPage('profile')} />}
     </div>
+  )
+  </ProfileProvider>
   )
 }
