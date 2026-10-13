@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
 import { getProfileLayoutClasses, getPublicProfileAvatarClass } from '../src/ui/profileLayout.js'
 
 test('keeps the private profile header inside its available width', () => {
@@ -14,4 +15,10 @@ test('keeps the private profile header inside its available width', () => {
 
 test('keeps the public profile avatar above the banner layer', () => {
   assert.equal(getPublicProfileAvatarClass(), 'relative z-20')
+})
+
+test('keeps the right profile card avatar above its banner layer', () => {
+  const rightPanel = fs.readFileSync(new URL('../src/components/RightPanel.jsx', import.meta.url), 'utf8')
+
+  assert.match(rightPanel, /getProfileLayoutClasses\(\)\.avatar/)
 })

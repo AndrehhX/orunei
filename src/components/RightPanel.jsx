@@ -5,6 +5,7 @@ import { useNews, NewsLink } from '../news'
 import { useProfile } from '../profile/ProfileProvider'
 import { selectTasteGenres } from '../profile/profileData'
 import { useSocial } from '../social/SocialProvider.jsx'
+import { getProfileLayoutClasses } from '../ui/profileLayout.js'
 
 const Head = ({ children, onAll, href = '#amigos' }) => <div className="mb-3 flex items-center justify-between"><h3 className="font-bold">{children}</h3>{onAll && <a href={href} onClick={(e) => { e.preventDefault(); onAll?.() }} className="flex items-center gap-1 text-[11px] text-brand">Ver todo <ArrowRight size={12} /></a>}</div>
 const Avatar = ({ profile }) => <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-brand to-pink-400 text-white">{profile?.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : <UserRound size={15} />}</div>
@@ -13,6 +14,7 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
   const { items, status: newsStatus } = useNews()
   const { profile } = useProfile()
   const { friends } = useSocial()
+  const profileAvatarClass = getProfileLayoutClasses().avatar
   const tasteGenres = selectTasteGenres(profile.animeList)
   const newsItems = newsStatus === 'loading' && !items.length ? [0, 1] : items.slice(2, 5)
   return (
@@ -20,7 +22,7 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
       <div className="card p-4">
         <div className="mb-2 flex justify-between"><h3 className="font-bold">Tu perfil</h3><a href="#perfil" onClick={(e) => { e.preventDefault(); onSeeProfile?.() }} className="flex items-center gap-1 text-[11px] text-brand">Ver perfil <ArrowRight size={12} /></a></div>
         <div className="relative h-16 overflow-hidden rounded-lg bg-gradient-to-r from-[#3a2a6a] via-[#c06a9a] to-[#f4a6c1]">{profile.banner && <img src={profile.banner} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} className="absolute inset-0 h-full w-full object-cover" />}</div>
-        <div className="-mt-7 flex items-end gap-2 px-2"><div className="h-[68px] w-[68px] overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 dark:border-[#171723]">{profile.avatar && <img src={profile.avatar} alt="" className="h-full w-full object-cover" />}</div>
+        <div className="-mt-7 flex items-end gap-2 px-2"><div className={`${profileAvatarClass} h-[68px] w-[68px] overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-slate-600 to-slate-900 dark:border-[#171723]`}>{profile.avatar && <img src={profile.avatar} alt="" className="h-full w-full object-cover" />}</div>
           <div className="pb-1 leading-tight"><p className="font-bold text-sm">{profile.displayName}</p><p className="text-xs text-slate-500">@{profile.username}</p></div></div>
         <div className="mt-3 grid grid-cols-3 divide-x divide-slate-200 dark:divide-white/10 text-center">
           {[[String(profile.animeList?.length || 0), 'Obras'], [String(profile.customLists.length), 'Listas'], [String(tasteGenres.length), 'Géneros']].map(([a, b]) => <div key={b}><p className="font-bold">{a}</p><p className="text-[11px] text-slate-500">{b}</p></div>)}
