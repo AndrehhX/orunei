@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Activity, ArrowDown, ArrowUp, BookOpen, Check, ChevronRight, Heart, List, LockKeyhole, Pencil, PlayCircle, Plus, Sparkles, Trash2, X } from 'lucide-react'
+import { Activity, ArrowDown, ArrowUp, BookOpen, Check, ChevronRight, Eye, Heart, List, LockKeyhole, Pencil, PlayCircle, Plus, Sparkles, Trash2, X } from 'lucide-react'
 import Poster from './Poster'
+import PublicProfilePage from './PublicProfilePage'
 import { library } from '../data'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
@@ -55,6 +56,7 @@ export default function ProfilePage({ onEdit }) {
   const { profile, updateCustomLists, recordActivity } = useProfile()
   const rec = useRec()
   const [active, setActive] = useState(profile.landingSection || 'overview')
+  const [publicView, setPublicView] = useState(false)
   const [newListTitle, setNewListTitle] = useState('')
   const [newListDescription, setNewListDescription] = useState('')
   const [listAnimeDraft, setListAnimeDraft] = useState({})
@@ -82,6 +84,8 @@ export default function ProfilePage({ onEdit }) {
   }
   const removeFromList = (list, animeId) => { updateCustomLists((lists) => removeAnimeFromList(lists, list.id, animeId)); recordActivity('list', `Quitó una obra de “${list.title}”`) }
 
+  if (publicView) return <PublicProfilePage profile={profile} viewer={{ id: 'public-preview', profileId: 'profile-owner', relationship: 'none' }} onBack={() => setPublicView(false)} />
+
   return <div className="space-y-5 pb-10 animate-fade">
     <section className="overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
       <Banner src={profile.banner} className="h-36 bg-cover bg-center md:h-48" />
@@ -89,7 +93,10 @@ export default function ProfilePage({ onEdit }) {
         <div className="-mt-12 flex flex-wrap items-end gap-4 md:-mt-14">
           <Avatar profile={profile} large />
           <div className="min-w-[180px] flex-1 pb-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">{profile.displayName}</h1><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600"><LockKeyhole size={11} /> Solo tú</span></div><p className="text-sm text-slate-500">@{profile.username}</p></div>
-          {onEdit && <button onClick={onEdit} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand dark:bg-white dark:text-slate-900"><Pencil size={15} /> Editar perfil</button>}
+          <div className="flex flex-wrap gap-2">
+            {onEdit && <button onClick={onEdit} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand dark:bg-white dark:text-slate-900"><Pencil size={15} /> Editar perfil</button>}
+            <button onClick={() => setPublicView(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200"><Eye size={15} /> Vista pÃºblica</button>
+          </div>
         </div>
         <div className="mt-4 max-w-2xl"><p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{profile.bio || 'Añade una bio para contar qué historias te acompañan.'}</p>{profile.status && <p className="mt-2 text-xs font-medium text-brand">{profile.status}</p>}</div>
         <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-slate-200 rounded-2xl border border-slate-200/80 bg-slate-50/70 sm:grid-cols-4 sm:divide-y-0 dark:divide-white/10 dark:bg-white/5">
