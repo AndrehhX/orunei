@@ -6,6 +6,7 @@ import ProfileAnimeListManager from './ProfileAnimeListManager'
 import { useProfile } from '../profile/ProfileProvider'
 import { selectAnimeSections, selectProfileStats, selectRecentActivity, selectTasteGenres } from '../profile/profileData'
 import { addAnimeToList, createCustomList, deleteCustomList, moveCustomList, removeAnimeFromList, updateCustomList } from '../profile/profileLists'
+import { getProfileLayoutClasses } from '../ui/profileLayout.js'
 
 const tabs = [
   ['overview', 'Resumen', Sparkles],
@@ -65,6 +66,7 @@ export default function ProfilePage({ onEdit }) {
   const tasteGenres = useMemo(() => selectTasteGenres(profileLibrary), [profileLibrary])
   const stats = selectProfileStats(profileLibrary, tasteGenres.length, profile)
   const activity = selectRecentActivity(profile, profileLibrary)
+  const layout = getProfileLayoutClasses()
   const featured = profileLibrary.find((item) => item.q === profile.featuredAnimeId) || profileLibrary.find((item) => item.favorite) || profileLibrary[0]
   const changeAnime = (id, patch) => updateAnimeList((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item))
   const createList = async () => {
@@ -92,22 +94,22 @@ export default function ProfilePage({ onEdit }) {
 
   if (profileStatus === 'loading') return <div className="card grid min-h-64 place-items-center p-8 text-sm text-slate-500">Cargando tu perfil…</div>
 
-  return <div className="space-y-5 pb-10 animate-fade">
+  return <div className={`${layout.shell} space-y-5 pb-10 animate-fade`}>
     {storageError && <p role="alert" className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600">{storageError}</p>}
     <ProfileAnimeListManager visible={active === 'animelist'} />
     <section className="overflow-hidden rounded-[26px] border border-white/80 bg-white/90 shadow-sm dark:border-white/5 dark:bg-[#171723]">
       <Banner src={profile.banner} className="h-32 bg-cover bg-center sm:h-36 lg:h-44" />
-      <div className="px-5 pb-5 md:px-8">
-        <div className="-mt-12 flex flex-wrap items-end gap-4 md:-mt-14">
+      <div className="min-w-0 px-5 pb-5 md:px-8">
+        <div className="-mt-12 flex min-w-0 flex-wrap items-end gap-4 md:-mt-14">
           <Avatar profile={profile} large />
-          <div className="min-w-[180px] flex-1 pb-1"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">{profile.displayName}</h1><span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600"><LockKeyhole size={11} /> Solo tú</span></div><p className="text-sm text-slate-500">@{profile.username}</p></div>
-          <div className="flex flex-wrap gap-2">
+          <div className={layout.identity}><div className="flex min-w-0 flex-wrap items-center gap-2"><h1 className="min-w-0 break-words text-2xl font-extrabold tracking-tight md:text-3xl">{profile.displayName}</h1><span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600"><LockKeyhole size={11} /> Solo tú</span></div><p className="truncate text-sm text-slate-500">@{profile.username}</p></div>
+          <div className={layout.actions}>
             {onEdit && <button onClick={onEdit} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-brand dark:bg-white dark:text-slate-900"><Pencil size={15} /> Editar perfil</button>}
             <button onClick={() => setPublicView(true)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand dark:border-white/10 dark:text-slate-200"><Eye size={15} /> Vista pública</button>
           </div>
         </div>
         <div className="mt-4 max-w-2xl"><p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{profile.bio || 'Añade una bio para contar qué historias te acompañan.'}</p>{profile.status && <p className="mt-2 text-xs font-medium text-brand">{profile.status}</p>}</div>
-        <div className="mt-5 grid grid-cols-2 divide-x divide-y divide-slate-200 rounded-2xl border border-slate-200/80 bg-slate-50/70 sm:grid-cols-3 sm:divide-y-0 dark:divide-white/10 dark:bg-white/5">
+        <div className={`${layout.stats} dark:divide-white/10 dark:bg-white/5`}>
           {[[stats.works, 'Obras'], [stats.favorites, 'Favoritos'], [stats.lists, 'Listas']].map(([value, label]) => <div key={label} className="px-4 py-3 text-center"><p className="text-xl font-extrabold">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>)}
         </div>
       </div>
