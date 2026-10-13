@@ -58,7 +58,6 @@ export default function App() {
       {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => setPage('profile')} />}
       {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}
     </div>
-  )
   </ProfileProvider>
   )
 }
