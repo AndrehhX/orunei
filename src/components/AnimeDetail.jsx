@@ -123,7 +123,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode }) {
                     }`}>
                       <Play size={26} className="fill-white text-white drop-shadow" />
                     </span>
-                    <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white backdrop-blur-sm">
+                    <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded bg-black/85 text-[10px] font-bold text-white">
                       EP {epNum}
                     </span>
                   </div>

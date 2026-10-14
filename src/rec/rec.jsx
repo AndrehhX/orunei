@@ -102,7 +102,7 @@ export function RecProvider({ children }) {
 
   const latest = useMemo(() => selectLatest(pool), [pool])
   const trends = useMemo(() => selectTrending(pool), [pool])
-  const value = { ready: pool.length > 0, recs, affinityRecs: recommendationState.affinityRecs, trendingRecs: recommendationState.trendingRecs, exploreRecs: recommendationState.exploreRecs, latest, trends, topGenres: genres, count: st.liked.length, anchor: likedItems.at(-1)?.title || '', personalized: recommendationState.personalized, coldStart: recommendationState.coldStart, like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.some((value) => String(value) === String(id)), addByQuery, syncLibrary, affinity, isNewsLiked: (id) => st.news.includes(id) }
+  const value = { ready: pool.length > 0, recs, affinityRecs: recommendationState.affinityRecs, trendingRecs: recommendationState.trendingRecs, exploreRecs: recommendationState.exploreRecs, latest, trends, topGenres: genres, count: st.liked.length, anchor: recommendationState.anchor || likedItems.at(-1)?.title || '', personalized: recommendationState.personalized, coldStart: recommendationState.coldStart, like, dismiss, likeNews, likeMedia, isLiked: (id) => st.liked.some((value) => String(value) === String(id)), addByQuery, syncLibrary, affinity, isNewsLiked: (id) => st.news.includes(id) }
   return (
     <Ctx.Provider value={value}>
       {children}

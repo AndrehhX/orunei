@@ -5,10 +5,10 @@ const CACHE_TTL = 10 * 60e3
 const ENDPOINT = 'https://graphql.anilist.co'
 const FIELDS = 'id title{romaji english} coverImage{extraLarge} bannerImage description(asHtml:false) genres tags{name rank isGeneralSpoiler} studios(isMain:true){nodes{name}} averageScore popularity trending seasonYear format'
 
-const page = (name, sort) => `${name}: Page(page:1, perPage:30){ media(type:ANIME, sort:${sort}, isAdult:false){ ${FIELDS} } }`
+const page = (name, sort, perPage = 50) => `${name}: Page(page:1, perPage:${perPage}){ media(type:ANIME, sort:${sort}, isAdult:false){ ${FIELDS} } }`
 const queryFor = (genres) => {
   const relatedFilter = genres.length ? `genre_in:${JSON.stringify(genres)}, ` : ''
-  return `query { ${page('popular', 'POPULARITY_DESC')} ${page('trending', 'TRENDING_DESC')} ${page('score', 'SCORE_DESC')} ${page('recent', 'START_DATE_DESC')} related: Page(page:1, perPage:30){ media(type:ANIME, ${relatedFilter}sort:POPULARITY_DESC, isAdult:false){ ${FIELDS} } } }`
+  return `query { ${page('popular', 'POPULARITY_DESC', 50)} ${page('trending', 'TRENDING_DESC', 50)} ${page('score', 'SCORE_DESC', 50)} ${page('recent', 'START_DATE_DESC', 50)} related: Page(page:1, perPage:50){ media(type:ANIME, ${relatedFilter}sort:POPULARITY_DESC, isAdult:false){ ${FIELDS} } } }`
 }
 
 const readCache = (storage) => {

@@ -33,7 +33,7 @@ export function formatCount(value) {
 export const dot = (a, b) => { let s = 0; for (const k in a) if (b[k]) s += a[k] * b[k]; return s }
 export const norm = (a) => Math.sqrt(dot(a, a))
 
-const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, Number.isFinite(value) ? value : min))
+export const clamp = (value, min = 0, max = 1) => Math.max(min, Math.min(max, Number.isFinite(value) ? value : min))
 const timestamp = (value, fallback) => {
   const parsed = typeof value === 'number' ? value : Date.parse(value || '')
   return Number.isFinite(parsed) ? parsed : fallback
@@ -146,14 +146,16 @@ export function update(p, item, action, now = Date.now()) {
 export function scoreCandidate(item, p, context = {}) {
   const profileNorm = norm(p?.w || {}) || 1
   const itemNorm = norm(item?.v || {}) || 1
-  const affinity = clamp(dot(p?.w || {}, item?.v || {}) / (profileNorm * itemNorm))
+  const rawAffinity = dot(p?.w || {}, item?.v || {}) / (profileNorm * itemNorm)
+  const affinity = clamp(rawAffinity)
   const quality = clamp(((item?.score || 0) - 60) / 35)
   const trend = clamp(Math.log10(1 + Math.max(0, item?.trend || 0)) / 2.2)
   const popularity = clamp(Math.log10(1 + Math.max(0, item?.pop || 0)) / 5.5)
   const currentYear = context.year || new Date().getFullYear()
   const freshness = Math.exp(-Math.max(0, currentYear - (item?.year || currentYear)) / 8)
   const exploration = context.exploration ?? (affinity < 0.25 ? 1 : 0)
-  const score = 0.45 * affinity + 0.18 * quality + 0.12 * trend + 0.1 * popularity + 0.1 * freshness + 0.05 * clamp(exploration)
+  const penalty = rawAffinity < 0 ? rawAffinity * 0.35 : 0
+  const score = Math.max(0, 0.45 * affinity + 0.18 * quality + 0.12 * trend + 0.1 * popularity + 0.1 * freshness + 0.05 * clamp(exploration) + penalty)
   return { score, components: { affinity, quality, trend, popularity, freshness } }
 }
 
