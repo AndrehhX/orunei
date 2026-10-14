@@ -374,6 +374,11 @@ export function streamMiddleware(req, res, next) {
   const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = reqUrl.pathname;
 
+  if (pathname === '/favicon.ico') {
+    res.writeHead(204);
+    return res.end();
+  }
+
   if (!pathname.startsWith('/api/stream/')) {
     return next();
   }
