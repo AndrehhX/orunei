@@ -91,61 +91,96 @@ function Community({ m }) {
   )
 }
 
-function Episodes({ m, onPlayEpisode }) {
+function Episodes({ m, onPlayEpisode, currentEpisode }) {
   const eps = buildEpisodeCards(m)
   const count = m.episodes || eps.length || 0
 
   if (eps.length) {
     return (
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {eps.map((e, i) => (
-          <button
-            key={e.url + i}
-            type="button"
-            onClick={() => onPlayEpisode?.(i + 1)}
-            className="group card text-left animate-rise overflow-hidden transition-all duration-500 ease-spring hover:-translate-y-1 hover:shadow-xl cursor-pointer"
-            style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
-          >
-            <div className="relative aspect-video overflow-hidden bg-slate-300 dark:bg-slate-800">
-              <img src={e.thumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
-              <span className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/40 group-hover:opacity-100">
-                <Play size={30} className="fill-white text-white drop-shadow" />
-              </span>
-            </div>
-            <p className="line-clamp-2 p-2.5 text-xs font-semibold">{e.title}</p>
-            <p className="px-2.5 pb-2.5 text-[10px] text-brand font-semibold">Reproducir episodio ▸</p>
-          </button>
-        ))}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+          <span>{eps.length} episodios disponibles</span>
+          <span className="text-[11px] text-brand">Audio Japonés · Subtítulos ES/EN</span>
+        </div>
+        <div className="max-h-[380px] overflow-y-auto pr-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {eps.map((e, i) => {
+              const epNum = i + 1
+              const isCurrent = currentEpisode === epNum
+              return (
+                <button
+                  key={e.url + i}
+                  type="button"
+                  onClick={() => onPlayEpisode?.(epNum)}
+                  className={`group card text-left overflow-hidden transition-all duration-300 cursor-pointer ${
+                    isCurrent ? 'ring-2 ring-brand shadow-lg bg-brand/5 dark:bg-brand/10' : 'hover:-translate-y-0.5 hover:shadow-md'
+                  }`}
+                >
+                  <div className="relative aspect-video overflow-hidden bg-slate-300 dark:bg-slate-800">
+                    <img src={e.thumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <span className={`absolute inset-0 grid place-items-center transition-all ${
+                      isCurrent ? 'bg-brand/40 opacity-100' : 'bg-black/0 opacity-0 group-hover:bg-black/40 group-hover:opacity-100'
+                    }`}>
+                      <Play size={26} className="fill-white text-white drop-shadow" />
+                    </span>
+                    <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white backdrop-blur-sm">
+                      EP {epNum}
+                    </span>
+                  </div>
+                  <div className="p-2.5">
+                    <p className="line-clamp-1 text-xs font-semibold">{e.title}</p>
+                    <p className="mt-0.5 text-[10px] font-semibold text-brand">
+                      {isCurrent ? '▶ En reproducción' : 'Reproducir episodio ▸'}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
     )
   }
 
   if (count > 0) {
-    const fallbackThumb = m.bannerImage || m.coverImage?.extraLarge || ''
     const epArray = Array.from({ length: Math.min(count, 100) }, (_, idx) => idx + 1)
     return (
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {epArray.map((num, i) => (
-          <button
-            key={num}
-            type="button"
-            onClick={() => onPlayEpisode?.(num)}
-            className="group card text-left animate-rise overflow-hidden transition-all duration-500 ease-spring hover:-translate-y-1 hover:shadow-xl cursor-pointer"
-            style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
-          >
-            <div className="relative aspect-video overflow-hidden bg-slate-300 dark:bg-slate-800">
-              <img src={fallbackThumb} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-75" />
-              <span className="absolute inset-0 grid place-items-center bg-black/20 group-hover:bg-black/50 transition-all duration-300">
-                <Play size={28} className="fill-white text-white drop-shadow" />
-              </span>
-              <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/75 text-[10px] font-bold text-white backdrop-blur-sm">
-                EP {num}
-              </span>
-            </div>
-            <p className="p-2.5 text-xs font-semibold truncate">Episodio {num}</p>
-            <p className="px-2.5 pb-2.5 text-[10px] text-brand font-semibold">Audio JP · Sub ES ▸</p>
-          </button>
-        ))}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+          <span>{count} episodios{count > 100 ? ' (mostrando primeros 100)' : ''}</span>
+          <span className="text-[11px] text-brand">Audio Japonés · Subtítulos ES/EN</span>
+        </div>
+        <div className="max-h-[380px] overflow-y-auto pr-2">
+          <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {epArray.map((num) => {
+              const isCurrent = currentEpisode === num
+              return (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => onPlayEpisode?.(num)}
+                  className={`group card text-left overflow-hidden transition-all duration-200 cursor-pointer p-2.5 flex items-center gap-2.5 ${
+                    isCurrent
+                      ? 'ring-2 ring-brand bg-brand/10 dark:bg-brand/20 shadow-md'
+                      : 'hover:bg-slate-100 dark:hover:bg-white/5 hover:border-brand/40'
+                  }`}
+                >
+                  <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg font-bold text-xs transition ${
+                    isCurrent ? 'bg-brand text-white shadow-sm' : 'bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 group-hover:bg-brand group-hover:text-white'
+                  }`}>
+                    {isCurrent ? <Play size={12} className="fill-white" /> : num}
+                  </div>
+                  <div className="min-w-0 flex-1 leading-tight">
+                    <p className="text-xs font-semibold truncate">Episodio {num}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
+                      {isCurrent ? 'En reproducción' : 'Audio JP · Sub ES'}
+                    </p>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
     )
   }
@@ -237,6 +272,12 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
 
+  useEffect(() => {
+    if (playingEpisode) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [playingEpisode])
+
   const accent = m?.coverImage.color || '#6d5cff'
   const next = m?.nextAiringEpisode
   const liked = m && rec.isLiked(m.id)
@@ -256,6 +297,20 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
         <button onClick={close} className="inline-flex items-center gap-2 rounded-xl bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-x-0.5 hover:text-brand dark:bg-white/10 dark:text-slate-200"><ArrowLeft size={16} />Volver al catálogo</button>
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Ficha del anime</span>
       </div>
+
+      {playingEpisode && m && (
+        <div id="player-theater-top" className="animate-fade scroll-mt-4">
+          <AnimePlayer
+            animeTitle={title(m)}
+            miruroId={miruroId}
+            initialEpisode={playingEpisode}
+            totalEpisodes={m.episodes || 0}
+            onClose={() => setPlayingEpisode(null)}
+            onEpisodeChange={(nextEp) => setPlayingEpisode(nextEp)}
+          />
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-3xl bg-[#f4f4fb] dark:bg-[#0e0e17]">
         {err && <p className="p-16 text-center text-slate-500">No pudimos cargar esta ficha. <button onClick={close} className="font-semibold text-brand underline">Volver</button></p>}
         {!m && !err && <div className="space-y-4 p-6"><div className="h-64 animate-pulse rounded-2xl bg-slate-200/70 dark:bg-white/5" /><div className="h-8 w-1/2 animate-pulse rounded bg-slate-200/70 dark:bg-white/5" /></div>}
@@ -320,23 +375,12 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                   </div>
                   <dl className="card h-fit divide-y divide-slate-200/70 p-1 text-sm dark:divide-white/10">{info.map(([k, v]) => <div key={k} className="flex justify-between gap-3 px-3 py-2.5"><dt className="text-slate-500">{k}</dt><dd className="text-right font-semibold">{v}</dd></div>)}</dl>
                 </div>)}
-              {tab === 1 && <Episodes m={m} onPlayEpisode={(ep) => setPlayingEpisode(ep)} />}
+              {tab === 1 && <Episodes m={m} onPlayEpisode={(ep) => setPlayingEpisode(ep)} currentEpisode={playingEpisode} />}
               {tab === 2 && <Community m={m} />}
             </div>
           </div>
         </>)}
       </div>
-
-      {playingEpisode && m && (
-        <AnimePlayer
-          animeTitle={title(m)}
-          miruroId={miruroId}
-          initialEpisode={playingEpisode}
-          totalEpisodes={m.episodes || 0}
-          onClose={() => setPlayingEpisode(null)}
-          onEpisodeChange={(nextEp) => setPlayingEpisode(nextEp)}
-        />
-      )}
     </div>
   )
 }
