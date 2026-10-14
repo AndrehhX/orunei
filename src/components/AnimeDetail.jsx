@@ -6,6 +6,8 @@ import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
 import { createLibraryEntry } from '../profile/model.js'
 import { buildEpisodeCards } from '../api/episodeData.js'
+import AnimePlayer from './AnimePlayer'
+import { getMiruroId } from '../api/streamAdapter'
 
 const TABS = ['Resumen', 'Episodios', 'Comunidad']
 const SRC = { 'AniList': 'bg-sky-500', 'Foro AniList': 'bg-indigo-500', 'MyAnimeList': 'bg-blue-700', 'Reddit': 'bg-orange-500' }
@@ -89,22 +91,78 @@ function Community({ m }) {
   )
 }
 
-function Episodes({ m }) {
+function Episodes({ m, onPlayEpisode }) {
   const eps = buildEpisodeCards(m)
+  const count = m.episodes || eps.length || 0
+
+  if (eps.length) {
+    return (
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {eps.map((e, i) => (
+          <button
+            key={e.url + i}
+            type="button"
+            onClick={() => onPlayEpisode?.(i + 1)}
+            className="group card text-left animate-rise overflow-hidden transition-all duration-500 ease-spring hover:-translate-y-1 hover:shadow-xl cursor-pointer"
+            style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
+          >
+            <div className="relative aspect-video overflow-hidden bg-slate-300 dark:bg-slate-800">
+              <img src={e.thumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+              <span className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/40 group-hover:opacity-100">
+                <Play size={30} className="fill-white text-white drop-shadow" />
+              </span>
+            </div>
+            <p className="line-clamp-2 p-2.5 text-xs font-semibold">{e.title}</p>
+            <p className="px-2.5 pb-2.5 text-[10px] text-brand font-semibold">Reproducir episodio ▸</p>
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  if (count > 0) {
+    const fallbackThumb = m.bannerImage || m.coverImage?.extraLarge || ''
+    const epArray = Array.from({ length: Math.min(count, 100) }, (_, idx) => idx + 1)
+    return (
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {epArray.map((num, i) => (
+          <button
+            key={num}
+            type="button"
+            onClick={() => onPlayEpisode?.(num)}
+            className="group card text-left animate-rise overflow-hidden transition-all duration-500 ease-spring hover:-translate-y-1 hover:shadow-xl cursor-pointer"
+            style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
+          >
+            <div className="relative aspect-video overflow-hidden bg-slate-300 dark:bg-slate-800">
+              <img src={fallbackThumb} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-75" />
+              <span className="absolute inset-0 grid place-items-center bg-black/20 group-hover:bg-black/50 transition-all duration-300">
+                <Play size={28} className="fill-white text-white drop-shadow" />
+              </span>
+              <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/75 text-[10px] font-bold text-white backdrop-blur-sm">
+                EP {num}
+              </span>
+            </div>
+            <p className="p-2.5 text-xs font-semibold truncate">Episodio {num}</p>
+            <p className="px-2.5 pb-2.5 text-[10px] text-brand font-semibold">Audio JP · Sub ES ▸</p>
+          </button>
+        ))}
+      </div>
+    )
+  }
+
   const url = crunchy(m)
-  if (eps.length) return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {eps.map((e, i) => (
-        <a key={e.url + i} href={e.url} target="_blank" rel="noopener noreferrer" className="group card animate-rise overflow-hidden transition-all duration-500 ease-spring hover:-translate-y-1 hover:shadow-xl" style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}>
-          <div className="relative aspect-video overflow-hidden bg-slate-300 dark:bg-slate-800"><img src={e.thumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
-            <span className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/40 group-hover:opacity-100"><Play size={30} className="fill-white text-white" /></span></div>
-          <p className="line-clamp-2 p-2.5 text-xs font-semibold">{e.title}</p>
-          <p className="px-2.5 pb-2.5 text-[10px] text-slate-500">Ver en {e.site} ↗</p>
-        </a>))}
-    </div>
-  )
   return (
-    <div className="space-y-3"><p className="text-sm text-slate-500">No hay enlaces individuales disponibles desde la fuente actual.</p><a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-xl bg-[#f47521] px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:-translate-y-0.5">Buscar todos los episodios en Crunchyroll <ExternalLink size={13} /></a></div>
+    <div className="space-y-3">
+      <p className="text-sm text-slate-500">No hay episodios listados directamente para este título.</p>
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => onPlayEpisode?.(1)} className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:-translate-y-0.5 active:scale-95">
+          <Play size={13} className="fill-white" /> Probar reproducción (Episodio 1)
+        </button>
+        <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-[#f47521] px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-orange-500/20 transition hover:-translate-y-0.5">
+          Buscar en Crunchyroll <ExternalLink size={13} />
+        </a>
+      </div>
+    </div>
   )
 }
 
@@ -116,11 +174,28 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
   const [descriptionLanguage, setDescriptionLanguage] = useState(savedDescriptionLanguage)
   const [localizedDescription, setLocalizedDescription] = useState('')
   const [descriptionState, setDescriptionState] = useState('idle')
+  const [miruroId, setMiruroId] = useState(null)
+  const [playingEpisode, setPlayingEpisode] = useState(null)
   const rec = useRec()
   const { profile, updateAnimeList, recordActivity } = useProfile()
   const close = () => onClose()
 
-  useEffect(() => { setM(null); setErr(false); setTab(0); getAnime(id).then(setM).catch(() => setErr(true)) }, [id])
+  useEffect(() => {
+    setM(null)
+    setErr(false)
+    setTab(0)
+    setPlayingEpisode(null)
+    setMiruroId(null)
+    getAnime(id).then(setM).catch(() => setErr(true))
+  }, [id])
+
+  useEffect(() => {
+    if (m) {
+      getMiruroId(m.id, title(m)).then((resId) => {
+        setMiruroId(resId)
+      })
+    }
+  }, [m])
   useEffect(() => {
     if (!m) return undefined
     const original = clean(m.description)
@@ -198,7 +273,17 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                 <div className="flex flex-wrap gap-1.5">{m.genres.map((g) => <span key={g} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: accent }}>{g}</span>)}</div>
                 {next && <p className="text-xs font-semibold text-emerald-600">Ep. {next.episode} · en {Math.max(1, Math.round((next.airingAt * 1000 - Date.now()) / 864e5))} días</p>}
                 <div className="mt-1 flex flex-wrap gap-2">
-                  <a href={crunchy(m)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl bg-[#f47521] px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-orange-500/30 transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:scale-95"><Play size={15} className="fill-white" />Ver en Crunchyroll</a>
+                  <button
+                    type="button"
+                    onClick={() => setPlayingEpisode(1)}
+                    className="flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand/30 transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:scale-95"
+                  >
+                    <Play size={15} className="fill-white" />
+                    Reproducir Ep. 1
+                  </button>
+                  <a href={crunchy(m)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 active:scale-95 dark:bg-white/10">
+                    Crunchyroll<ExternalLink size={13} />
+                  </a>
                   {m.trailer?.site === 'youtube' && <a href={`https://youtu.be/${m.trailer.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 active:scale-95 dark:bg-white/10">Tráiler<ExternalLink size={13} /></a>}
                   <button onClick={toggleLibrary} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ease-spring active:scale-90 ${inLibrary ? 'bg-emerald-500 text-white' : 'bg-white shadow-sm dark:bg-white/10'}`}><BookOpen size={15} />{inLibrary ? <><Check size={14} />En biblioteca</> : 'Agregar a biblioteca'}</button>
                   <button onClick={() => { const next = !liked; rec.likeMedia(m); recordActivity('favorite', `${next ? 'Marcó' : 'Quitó'} “${title(m)}” ${next ? 'como favorito' : 'de favoritos'}`) }} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ease-spring active:scale-90 ${liked ? 'bg-pink-500 text-white' : 'bg-white shadow-sm dark:bg-white/10'}`}><Heart size={15} className={liked ? 'fill-white' : ''} />{liked ? 'Te gusta' : 'Me gusta'}</button>
@@ -235,12 +320,23 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                   </div>
                   <dl className="card h-fit divide-y divide-slate-200/70 p-1 text-sm dark:divide-white/10">{info.map(([k, v]) => <div key={k} className="flex justify-between gap-3 px-3 py-2.5"><dt className="text-slate-500">{k}</dt><dd className="text-right font-semibold">{v}</dd></div>)}</dl>
                 </div>)}
-              {tab === 1 && <Episodes m={m} />}
+              {tab === 1 && <Episodes m={m} onPlayEpisode={(ep) => setPlayingEpisode(ep)} />}
               {tab === 2 && <Community m={m} />}
             </div>
           </div>
         </>)}
       </div>
+
+      {playingEpisode && m && (
+        <AnimePlayer
+          animeTitle={title(m)}
+          miruroId={miruroId}
+          initialEpisode={playingEpisode}
+          totalEpisodes={m.episodes || 0}
+          onClose={() => setPlayingEpisode(null)}
+          onEpisodeChange={(nextEp) => setPlayingEpisode(nextEp)}
+        />
+      )}
     </div>
   )
 }
