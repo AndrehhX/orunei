@@ -94,22 +94,66 @@ function Community({ m }) {
 function Episodes({ m, onPlayEpisode, currentEpisode }) {
   const eps = buildEpisodeCards(m)
   const count = m.episodes || eps.length || 0
+  const totalEpisodes = Math.max(count, eps.length, 0)
+  const PAGE_SIZE = 50
 
-  if (eps.length) {
+  const initialPage = currentEpisode ? Math.floor((currentEpisode - 1) / PAGE_SIZE) : 0
+  const [page, setPage] = useState(initialPage)
+
+  useEffect(() => {
+    if (currentEpisode && currentEpisode > 0) {
+      setPage(Math.floor((currentEpisode - 1) / PAGE_SIZE))
+    }
+  }, [currentEpisode])
+
+  if (totalEpisodes > 0) {
+    const totalPages = Math.ceil(totalEpisodes / PAGE_SIZE)
+    const startEp = page * PAGE_SIZE + 1
+    const endEp = Math.min((page + 1) * PAGE_SIZE, totalEpisodes)
+    const currentSlice = Array.from({ length: endEp - startEp + 1 }, (_, idx) => startEp + idx)
+
     return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-          <span>{eps.length} episodios disponibles</span>
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-500">
+          <span>{totalEpisodes} episodios disponibles</span>
           <span className="text-[11px] text-brand">Audio Japonés · Subtítulos ES/EN</span>
         </div>
-        <div className="max-h-[380px] overflow-y-auto pr-2">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {eps.map((e, i) => {
-              const epNum = i + 1
-              const isCurrent = currentEpisode === epNum
+
+        {totalPages > 1 && (
+          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+            {Array.from({ length: totalPages }, (_, idx) => {
+              const pStart = idx * PAGE_SIZE + 1
+              const pEnd = Math.min((idx + 1) * PAGE_SIZE, totalEpisodes)
+              const isActive = idx === page
               return (
                 <button
-                  key={e.url + i}
+                  key={idx}
+                  type="button"
+                  onClick={() => setPage(idx)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    isActive
+                      ? 'bg-brand text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-white/10'
+                  }`}
+                >
+                  {pStart} - {pEnd}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="max-h-[460px] overflow-y-auto pr-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {currentSlice.map((epNum) => {
+              const isCurrent = currentEpisode === epNum
+              const meta = eps[epNum - 1]
+              const epTitle = meta?.title || `Episodio ${epNum}`
+              const thumbnail = meta?.thumbnail || m.coverImage?.extraLarge || m.bannerImage || ''
+
+              return (
+                <button
+                  key={epNum}
                   type="button"
                   onClick={() => onPlayEpisode?.(epNum)}
                   className={`group card text-left overflow-hidden transition-all duration-300 cursor-pointer ${
@@ -117,7 +161,11 @@ function Episodes({ m, onPlayEpisode, currentEpisode }) {
                   }`}
                 >
                   <div className="relative aspect-video overflow-hidden bg-slate-300 dark:bg-slate-800">
-                    <img src={e.thumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    {thumbnail ? (
+                      <img src={thumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                      <div className="h-full w-full bg-slate-800 flex items-center justify-center text-slate-500 text-xs">Sin vista previa</div>
+                    )}
                     <span className={`absolute inset-0 grid place-items-center transition-all ${
                       isCurrent ? 'bg-brand/40 opacity-100' : 'bg-black/0 opacity-0 group-hover:bg-black/40 group-hover:opacity-100'
                     }`}>
@@ -128,7 +176,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode }) {
                     </span>
                   </div>
                   <div className="p-2.5">
-                    <p className="line-clamp-1 text-xs font-semibold">{e.title}</p>
+                    <p className="line-clamp-1 text-xs font-semibold">{epTitle}</p>
                     <p className="mt-0.5 text-[10px] font-semibold text-brand">
                       {isCurrent ? '▶ En reproducción' : 'Reproducir episodio ▸'}
                     </p>
@@ -142,48 +190,6 @@ function Episodes({ m, onPlayEpisode, currentEpisode }) {
     )
   }
 
-  if (count > 0) {
-    const epArray = Array.from({ length: Math.min(count, 100) }, (_, idx) => idx + 1)
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-          <span>{count} episodios{count > 100 ? ' (mostrando primeros 100)' : ''}</span>
-          <span className="text-[11px] text-brand">Audio Japonés · Subtítulos ES/EN</span>
-        </div>
-        <div className="max-h-[380px] overflow-y-auto pr-2">
-          <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {epArray.map((num) => {
-              const isCurrent = currentEpisode === num
-              return (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => onPlayEpisode?.(num)}
-                  className={`group card text-left overflow-hidden transition-all duration-200 cursor-pointer p-2.5 flex items-center gap-2.5 ${
-                    isCurrent
-                      ? 'ring-2 ring-brand bg-brand/10 dark:bg-brand/20 shadow-md'
-                      : 'hover:bg-slate-100 dark:hover:bg-white/5 hover:border-brand/40'
-                  }`}
-                >
-                  <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg font-bold text-xs transition ${
-                    isCurrent ? 'bg-brand text-white shadow-sm' : 'bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 group-hover:bg-brand group-hover:text-white'
-                  }`}>
-                    {isCurrent ? <Play size={12} className="fill-white" /> : num}
-                  </div>
-                  <div className="min-w-0 flex-1 leading-tight">
-                    <p className="text-xs font-semibold truncate">Episodio {num}</p>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate">
-                      {isCurrent ? 'En reproducción' : 'Audio JP · Sub ES'}
-                    </p>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   const url = crunchy(m)
   return (

@@ -53,6 +53,12 @@ export async function getEpisodePlayback(miruroId, episodeNum = 1) {
     if (data.proxiedStreamUrl?.startsWith('/api/stream/')) {
       data.proxiedStreamUrl = `${STREAM_BASE}${data.proxiedStreamUrl}`;
     }
+    if (Array.isArray(data.servers)) {
+      data.servers = data.servers.map((srv) => ({
+        ...srv,
+        proxiedStreamUrl: srv.proxiedStreamUrl?.startsWith('/api/stream/') ? `${STREAM_BASE}${srv.proxiedStreamUrl}` : srv.proxiedStreamUrl
+      }));
+    }
     if (Array.isArray(data.subtitles?.tracks)) {
       data.subtitles.tracks = data.subtitles.tracks.map((tr) => ({
         ...tr,
