@@ -1,10 +1,18 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeAuthUser, REGISTER_USERNAME_PLACEHOLDER } from '../src/auth/authModel.js'
+import { cleanAuthEmail, normalizeAuthUser, REGISTER_USERNAME_PLACEHOLDER } from '../src/auth/authModel.js'
 
 test('uses a neutral username example in registration', () => {
   assert.equal(REGISTER_USERNAME_PLACEHOLDER, 'ej. mika_anime')
   assert.notEqual(REGISTER_USERNAME_PLACEHOLDER, 'dereck')
+})
+
+test('cleanAuthEmail trims whitespace and lowercases mobile keyboard input', () => {
+  assert.equal(cleanAuthEmail('  Usuario@Gmail.Com  '), 'usuario@gmail.com')
+  assert.equal(cleanAuthEmail('test@gmail.com '), 'test@gmail.com')
+  assert.equal(cleanAuthEmail(''), '')
+  assert.equal(cleanAuthEmail(null), '')
+  assert.equal(cleanAuthEmail(undefined), '')
 })
 
 test('normalizes Supabase identity metadata for the app shell', () => {

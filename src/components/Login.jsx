@@ -130,16 +130,23 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
   const [notice, setNotice] = useState('')
   const [shake, setShake] = useState(0)
   const [state, setState] = useState('idle')
-  const set = (key) => (event) => { setF({ ...f, [key]: event.target.value }); setErr(''); setNotice('') }
+  const handleEmailBlur = () => {
+    setF((prev) => ({ ...prev, email: (prev.email || '').trim().toLowerCase() }))
+  }
 
   const submit = async (event) => {
     event.preventDefault()
     if (authStatus === 'misconfigured') return fail(authError || 'Configura Supabase para activar las cuentas reales.')
-    if (reg && f.name.trim().length < 2) return fail('Dime tu nombre de usuario')
-    if (!/^\S+@\S+\.\S+$/.test(f.email)) return fail('Ese correo no parece válido')
-    if (f.pass.length < 6) return fail('La contraseña necesita al menos 6 caracteres')
+    
+    const cleanEmail = (f.email || '').trim().toLowerCase()
+    const cleanName = (f.name || '').trim()
+    const cleanPass = f.pass
+
+    if (reg && cleanName.length < 2) return fail('Dime tu nombre de usuario')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return fail('Ese correo no parece válido')
+    if (cleanPass.length < 6) return fail('La contraseña necesita al menos 6 caracteres')
     setState('loading')
-    const result = reg ? await onSignUp({ email: f.email.trim(), password: f.pass, name: f.name.trim() }) : await onSignIn({ email: f.email.trim(), password: f.pass })
+    const result = reg ? await onSignUp({ email: cleanEmail, password: cleanPass, name: cleanName }) : await onSignIn({ email: cleanEmail, password: cleanPass })
     if (result?.error) {
       setState('idle')
       return fail(result.error)
@@ -198,10 +205,34 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
 
               <form key={shake} onSubmit={submit} noValidate className={`space-y-5 ${shake ? 'animate-shake' : 'animate-rise'}`}>
                 <div className={`grid transition-all duration-500 ease-smooth ${reg ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-                  <div className="overflow-hidden"><div className="pb-1"><Field icon={User} label="Usuario" value={f.name} onChange={set('name')} placeholder={REGISTER_USERNAME_PLACEHOLDER} autoComplete="username" tabIndex={reg ? 0 : -1} /></div></div>
+                  <div className="overflow-hidden"><div className="pb-1"><Field icon={User} label="Usuario" value={f.name} onChange={set('name')} placeholder={REGISTER_USERNAME_PLACEHOLDER} autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck="false" tabIndex={reg ? 0 : -1} /></div></div>
                 </div>
-                <Field icon={Mail} label="Correo" type="email" value={f.email} onChange={set('email')} placeholder="tu@correo.com" autoComplete="email" />
-                <Field icon={Lock} label="Contraseña" type={show ? 'text' : 'password'} value={f.pass} onChange={set('pass')} placeholder="••••••••" autoComplete={reg ? 'new-password' : 'current-password'}>
+                <Field
+                  icon={Mail}
+                  label="Correo"
+                  type="email"
+                  value={f.email}
+                  onChange={set('email')}
+                  onBlur={handleEmailBlur}
+                  placeholder="tu@correo.com"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  inputMode="email"
+                />
+                <Field
+                  icon={Lock}
+                  label="Contraseña"
+                  type={show ? 'text' : 'password'}
+                  value={f.pass}
+                  onChange={set('pass')}
+                  placeholder="••••••••"
+                  autoComplete={reg ? 'new-password' : 'current-password'}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
+                >
                   <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setShow(!show)} aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'} className="text-slate-400 transition hover:text-brand">{show ? <EyeOff size={17} /> : <Eye size={17} />}</button>
                 </Field>
                 <div className="flex min-h-5 items-center justify-between text-xs text-slate-500 dark:text-slate-400">

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { normalizeAuthUser } from './authModel'
+import { cleanAuthEmail, normalizeAuthUser } from './authModel'
 import { supabase, supabaseConfig } from './supabaseClient'
 
 const AuthContext = createContext(null)
@@ -35,13 +35,15 @@ export function AuthProvider({ children }) {
 
   const signIn = useCallback(async ({ email, password }) => {
     if (!supabase) return { data: null, error: supabaseConfig.error }
-    const result = await supabase.auth.signInWithPassword({ email, password })
+    const cleanEmail = cleanAuthEmail(email)
+    const result = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
     return { data: result.data, error: result.error?.message || '' }
   }, [])
 
   const signUp = useCallback(async ({ email, password, name }) => {
     if (!supabase) return { data: null, error: supabaseConfig.error }
-    const result = await supabase.auth.signUp({ email, password, options: { data: { name } } })
+    const cleanEmail = cleanAuthEmail(email)
+    const result = await supabase.auth.signUp({ email: cleanEmail, password, options: { data: { name: (name || '').trim() } } })
     return { data: result.data, error: result.error?.message || '' }
   }, [])
 
