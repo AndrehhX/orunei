@@ -18,6 +18,33 @@ const savedDescriptionLanguage = () => {
   try { return localStorage.getItem(DESCRIPTION_LANGUAGE_KEY) === 'en' ? 'en' : 'es' } catch { return 'es' }
 }
 
+function formatAiringCountdown(airingAt) {
+  if (!airingAt) return ''
+  const diffMs = airingAt * 1000 - Date.now()
+  if (diffMs <= 0) return 'en cualquier momento'
+
+  const diffHours = Math.floor(diffMs / 36e5)
+  const diffDays = Math.floor(diffMs / 864e5)
+
+  if (diffDays === 0) {
+    if (diffHours <= 1) return 'en menos de 1 hora'
+    return `en ${diffHours} ${diffHours === 1 ? 'hora' : 'horas'}`
+  }
+  if (diffDays === 1) {
+    return 'mañana'
+  }
+  if (diffDays >= 14) {
+    const weeks = Math.floor(diffDays / 7)
+    const remDays = diffDays % 7
+    return remDays > 0 ? `en ${weeks} semanas y ${remDays} días` : `en ${weeks} semanas`
+  }
+  if (diffDays >= 7) {
+    const remDays = diffDays % 7
+    return remDays > 0 ? `en 1 semana y ${remDays} días` : 'en 1 semana'
+  }
+  return `en ${diffDays} días`
+}
+
 function Ratings({ m }) {
   const [r, setR] = useState({})
   useEffect(() => {
@@ -112,8 +139,30 @@ function Episodes({ m, onPlayEpisode, currentEpisode }) {
     const endEp = Math.min((page + 1) * PAGE_SIZE, totalEpisodes)
     const currentSlice = Array.from({ length: endEp - startEp + 1 }, (_, idx) => startEp + idx)
 
+    const next = m?.nextAiringEpisode
+
     return (
       <div className="space-y-4">
+        {next && (
+          <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-transparent border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 shadow-sm animate-rise">
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              <div>
+                <p className="text-sm sm:text-base font-extrabold text-emerald-700 dark:text-emerald-300">
+                  Próximo estreno: Episodio {next.episode}
+                </p>
+                <p className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                  Se estrena {formatAiringCountdown(next.airingAt)}
+                </p>
+              </div>
+            </div>
+            <Clock size={22} className="text-emerald-500/80 shrink-0 hidden sm:block" />
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-500">
           <span>{totalEpisodes} episodios disponibles</span>
           <span className="text-[11px] text-brand">Audio Japonés · Subtítulos ES/EN</span>
@@ -191,9 +240,26 @@ function Episodes({ m, onPlayEpisode, currentEpisode }) {
   }
 
 
+  const next = m?.nextAiringEpisode
   const url = crunchy(m)
   return (
     <div className="space-y-3">
+      {next && (
+        <div className="flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-transparent border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 shadow-sm animate-rise">
+          <span className="relative flex h-3 w-3 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+          </span>
+          <div>
+            <p className="text-sm sm:text-base font-extrabold text-emerald-700 dark:text-emerald-300">
+              Próximo estreno: Episodio {next.episode}
+            </p>
+            <p className="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+              Se estrena {formatAiringCountdown(next.airingAt)}
+            </p>
+          </div>
+        </div>
+      )}
       <p className="text-sm text-slate-500">No hay episodios listados directamente para este título.</p>
       <div className="flex flex-wrap gap-2">
         <button onClick={() => onPlayEpisode?.(1)} className="inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:-translate-y-0.5 active:scale-95">
@@ -380,7 +446,18 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                 <h2 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">{title(m)}</h2>
                 <p className="text-sm text-slate-500">{m.title?.native || ''}{m.title?.native && m.title?.romaji ? ' · ' : ''}{m.title?.romaji && m.title?.romaji !== title(m) ? m.title.romaji : ''}</p>
                 <div className="flex flex-wrap gap-1.5">{(m.genres || []).map((g) => <span key={g} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: accent }}>{g}</span>)}</div>
-                {next && <p className="text-xs font-semibold text-emerald-600">Ep. {next.episode} · en {Math.max(1, Math.round((next.airingAt * 1000 - Date.now()) / 864e5))} días</p>}
+                {next && (
+                  <div className="my-1.5 inline-flex flex-wrap items-center gap-2.5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 px-4 py-2.5 border border-emerald-500/35 text-emerald-800 dark:text-emerald-200 shadow-sm w-fit backdrop-blur-md animate-rise">
+                    <span className="relative flex h-3 w-3 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    <Clock size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="text-sm sm:text-base font-extrabold tracking-tight">
+                      Episodio {next.episode} · Se estrena {formatAiringCountdown(next.airingAt)}
+                    </span>
+                  </div>
+                )}
                 <div className="mt-1 flex flex-wrap gap-2">
                   <button
                     type="button"
