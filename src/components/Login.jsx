@@ -151,7 +151,29 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
     }
   }
 
-  const fail = (message) => { setErr(message); setNotice(''); setShake((value) => value + 1) }
+  const translateAuthError = (err) => {
+    if (!err) return 'Ocurrió un error inesperado al procesar la solicitud.'
+    const msg = typeof err === 'string' ? err : err.message || ''
+    const lower = msg.toLowerCase()
+    if (lower.includes('rate limit') || lower.includes('over_email_send_rate_limit') || lower.includes('limit exceeded')) {
+      return 'Límite de envíos por hora alcanzado en el servidor de correo. Intenta iniciar sesión si ya te registraste, o espera unos minutos.'
+    }
+    if (lower.includes('user already registered') || lower.includes('already exists')) {
+      return 'Este correo ya tiene una cuenta registrada. Inicia sesión directamente.'
+    }
+    if (lower.includes('invalid login credentials') || lower.includes('invalid credentials')) {
+      return 'Correo o contraseña incorrectos.'
+    }
+    if (lower.includes('email not confirmed')) {
+      return 'Debes confirmar tu correo electrónico antes de ingresar.'
+    }
+    if (lower.includes('signup requires a valid password') || lower.includes('password should be at least')) {
+      return 'La contraseña debe tener al menos 6 caracteres.'
+    }
+    return msg
+  }
+
+  const fail = (message) => { setErr(translateAuthError(message)); setNotice(''); setShake((value) => value + 1) }
 
   return (
     <>
