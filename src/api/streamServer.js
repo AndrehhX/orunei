@@ -1,7 +1,21 @@
 import { URL } from 'url';
 
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0';
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 const MIRURO_BASE = 'https://barelystarted.miruro.tv';
+
+const BROWSER_HEADERS = {
+  'User-Agent': USER_AGENT,
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Language': 'es-419,es;q=0.9,en;q=0.8',
+  'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Windows"',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+  'Upgrade-Insecure-Requests': '1'
+};
 
 /**
  * Resuelve el ID interno de Miruro a partir del ID de AniList y título.
@@ -15,7 +29,7 @@ export async function resolveMiruroId(anilistId, animeTitle) {
     const searchUrl = `${MIRURO_BASE}/search?q=${encodeURIComponent(query)}`;
     const resp = await fetch(searchUrl, {
       headers: {
-        'User-Agent': USER_AGENT,
+        ...BROWSER_HEADERS,
         'Referer': `${MIRURO_BASE}/`
       }
     });
@@ -119,7 +133,7 @@ export async function resolveEpisode(miruroId, episodeNum = 1) {
 
   const response = await fetch(endpoint, {
     headers: {
-      'User-Agent': USER_AGENT,
+      ...BROWSER_HEADERS,
       'Referer': `${MIRURO_BASE}/`
     }
   });
