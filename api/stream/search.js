@@ -19,10 +19,22 @@ export default async function handler(req, res) {
   }
 
   try {
+    const searchUrl = `https://barelystarted.miruro.tv/search?q=${encodeURIComponent(title || '')}`;
+    const testResp = await fetch(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
+        'Referer': 'https://barelystarted.miruro.tv/'
+      }
+    });
+    if (!testResp.ok) {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ error: `Miruro devolvió HTTP ${testResp.status} a Vercel`, status: testResp.status }));
+    }
+
     const miruroId = await resolveMiruroId(id, title);
     if (!miruroId) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'No se encontro Miruro ID para este anime' }));
+      return res.end(JSON.stringify({ error: 'No se encontro Miruro ID para este anime en Miruro' }));
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ miruroId }));
