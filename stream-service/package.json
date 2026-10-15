@@ -1,0 +1,13 @@
+{
+  "name": "orunei-stream-service",
+  "version": "1.0.0",
+  "description": "Servidor multimedia independiente para streaming de video y subtitulos de Orunei",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

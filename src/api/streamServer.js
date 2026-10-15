@@ -268,14 +268,72 @@ function rewriteM3U8(content, baseUrl, referer, origin, proxyBase = '/api/stream
   return rewritten.join('\n');
 }
 
+const ALLOWED_CDN_DOMAINS = [
+  'keeply.top',
+  'ultracloud.cc',
+  'megaplay.buzz',
+  'miruro.tv',
+  'bunnycdn.com',
+  'rabbitstream.net',
+  'dokicloud.one',
+  'mcloud.to',
+  'vizcloud.online',
+  'rapid-cloud.co'
+];
+
 /**
- * Manejador del proxy de streaming para Vite middleware.
+ * Valida que el URL solicitado pertenezca a los CDNs autorizados y protege contra SSRF.
+ */
+export function isAuthorizedCdnUrl(urlStr) {
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== 'https:') return false;
+
+    const hostname = parsed.hostname.toLowerCase();
+    // Bloquear explícitamente localhost y rangos privados / cloud metadata (SSRF)
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('172.16.') ||
+      hostname.startsWith('172.17.') ||
+      hostname.startsWith('172.18.') ||
+      hostname.startsWith('172.19.') ||
+      hostname.startsWith('172.2') ||
+      hostname.startsWith('172.3') ||
+      hostname.startsWith('169.254.')
+    ) {
+      return false;
+    }
+
+    return ALLOWED_CDN_DOMAINS.some(
+      (d) => hostname === d || hostname.endsWith(`.${d}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Manejador del proxy de streaming para Vite middleware o servidor Node.js independiente.
  */
 export async function handleProxyRequest(req, res, targetUrl, referer = '', origin = '') {
   if (!targetUrl) {
-    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     return res.end(JSON.stringify({ error: 'Falta parametro url' }));
   }
+
+  if (!isAuthorizedCdnUrl(targetUrl)) {
+    res.writeHead(403, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    return res.end(JSON.stringify({ error: 'Destino no autorizado por la política de seguridad del proxy (SSRF Protection)' }));
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  req.on('close', () => controller.abort());
 
   const upstreamHeaders = {
     'User-Agent': USER_AGENT
@@ -291,7 +349,8 @@ export async function handleProxyRequest(req, res, targetUrl, referer = '', orig
   try {
     const upstreamResp = await fetch(targetUrl, {
       method: req.method,
-      headers: upstreamHeaders
+      headers: upstreamHeaders,
+      signal: controller.signal
     });
 
     if (!upstreamResp.ok && upstreamResp.status !== 206) {
@@ -300,8 +359,7 @@ export async function handleProxyRequest(req, res, targetUrl, referer = '', orig
         'Access-Control-Allow-Origin': '*'
       });
       return res.end(JSON.stringify({
-        error: `Error del CDN proveedor: HTTP ${upstreamResp.status} ${upstreamResp.statusText}`,
-        upstreamUrl: targetUrl
+        error: `Error del CDN proveedor: HTTP ${upstreamResp.status} ${upstreamResp.statusText}`
       }));
     }
 
@@ -358,12 +416,14 @@ export async function handleProxyRequest(req, res, targetUrl, referer = '', orig
     return res.end();
   } catch (err) {
     if (!res.headersSent) {
-      res.writeHead(502, {
+      res.writeHead(err.name === 'AbortError' ? 499 : 502, {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
       });
-      res.end(JSON.stringify({ error: err.message, targetUrl }));
+      res.end(JSON.stringify({ error: err.name === 'AbortError' ? 'Petición cancelada o tiempo de espera agotado' : 'Error en la conexión con el servidor multimedia' }));
     }
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
