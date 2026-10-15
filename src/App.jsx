@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Sparkles, Sun, Moon } from 'lucide-react'
 import Login from './components/Login'
 import Sidebar from './components/Sidebar'
+import MobileNav from './components/MobileNav'
 import Hero from './components/Hero'
 import RightPanel from './components/RightPanel'
 import { Library, Because, News } from './components/Rows'
@@ -46,14 +47,38 @@ function GlobalTasteSync() {
 
 const tabs = ['Anime', 'Noticias']
 
-function AppHeader({ query, setQuery }) {
+function AppHeader({ query, setQuery, onOpenProfile, dark, setDark }) {
   const { profile } = useProfile()
-  return <header className="flex items-center gap-4 animate-fade">
-    <label className="flex h-11 flex-1 max-w-[540px] items-center gap-3 rounded-xl bg-slate-200/60 dark:bg-white/5 px-4 text-slate-500 transition focus-within:bg-white dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-brand/40">
-      <Search size={18} /><input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-sm outline-none" placeholder="Buscar anime, películas, series..." />
-    </label>
-    <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-slate-600 to-slate-900 text-sm font-bold text-white">{profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : profile.displayName.slice(0, 1).toUpperCase()}</div>
-  </header>
+  return (
+    <header className="flex items-center gap-2.5 sm:gap-4 animate-fade">
+      <div className="flex lg:hidden items-center gap-1.5 shrink-0">
+        <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand text-xs font-black text-white shadow-md shadow-brand/30">O</span>
+        <span className="text-base font-bold tracking-tight bg-gradient-to-r from-brand to-purple-400 bg-clip-text text-transparent">Orunei</span>
+      </div>
+      <label className="flex h-10 sm:h-11 flex-1 max-w-[540px] items-center gap-2.5 sm:gap-3 rounded-xl bg-slate-200/60 dark:bg-white/5 px-3 sm:px-4 text-slate-500 transition focus-within:bg-white dark:focus-within:bg-white/10 focus-within:ring-2 focus-within:ring-brand/40">
+        <Search size={18} className="shrink-0" />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-xs sm:text-sm outline-none" placeholder="Buscar anime, películas, series..." />
+      </label>
+      {setDark && (
+        <button
+          type="button"
+          onClick={() => setDark(!dark)}
+          aria-label={dark ? 'Modo claro' : 'Modo oscuro'}
+          className="lg:hidden grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-slate-200/80 bg-white/70 text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 active:scale-95"
+        >
+          {dark ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onOpenProfile}
+        aria-label="Ver perfil"
+        className="grid h-9 w-9 sm:h-10 sm:w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-slate-600 to-slate-900 text-xs sm:text-sm font-bold text-white transition hover:ring-2 hover:ring-brand/50 active:scale-95"
+      >
+        {profile.avatar ? <img src={profile.avatar} alt="" className="h-full w-full object-cover" /> : profile.displayName.slice(0, 1).toUpperCase()}
+      </button>
+    </header>
+  )
 }
 
 export default function App() {
@@ -137,8 +162,14 @@ export default function App() {
       <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
         <CustomCursor />
         <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
-        <main className="min-w-0 flex-1 space-y-6 px-4 py-4 lg:px-5">
-          <AppHeader query={query} setQuery={setQuery} />
+        <main className="min-w-0 flex-1 space-y-6 px-4 py-4 pb-24 lg:pb-8 lg:px-5">
+          <AppHeader
+            query={query}
+            setQuery={setQuery}
+            onOpenProfile={() => navigatePage('profile')}
+            dark={dark}
+            setDark={setDark}
+          />
           <div key={page} className="animate-page-enter space-y-7">
             {page === 'anime' ? <AnimePage query={query} initialOpenId={selectedAnimeId} onCloseDetail={closeAnime} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
             <div className="flex flex-wrap items-end justify-between gap-6 animate-rise">
@@ -154,6 +185,7 @@ export default function App() {
         </main>
         {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => navigatePage('profile')} onSeeFriends={() => navigatePage('friends')} onOpenProfile={openPublicProfile} onOpenAnime={openAnime} />}
         {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}
+        <MobileNav page={page} setPage={navigatePage} />
         <DevelopmentNotice notice={developmentNotice} onClose={() => setDevelopmentNotice(null)} />
       </div>
     </Suspense>

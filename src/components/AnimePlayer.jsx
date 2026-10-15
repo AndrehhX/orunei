@@ -390,13 +390,13 @@ export default function AnimePlayer({
 
         {/* Aviso flotante de carga lenta con opción de cambio inmediato de servidor */}
         {bufferNotice && servers.length > 1 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2.5 px-4 py-2 rounded-xl bg-black/90 backdrop-blur-md border border-amber-500/40 text-amber-200 text-xs shadow-2xl animate-rise">
-            <span>¿La carga va lenta o pausada?</span>
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex max-w-[92%] sm:max-w-none items-center justify-between gap-2.5 px-3 sm:px-4 py-2 rounded-xl bg-black/90 backdrop-blur-md border border-amber-500/40 text-amber-200 text-xs shadow-2xl animate-rise">
+            <span className="truncate">¿Carga lenta o pausada?</span>
             <button
               onClick={switchToNextServer}
-              className="px-3 py-1 rounded-lg bg-brand hover:brightness-110 font-bold text-white transition active:scale-95 shadow-md shadow-brand/30"
+              className="shrink-0 px-3 py-1 rounded-lg bg-brand hover:brightness-110 font-bold text-white transition active:scale-95 shadow-md shadow-brand/30"
             >
-              Cambiar a {servers[(selectedServerIndex + 1) % servers.length]?.name || 'otro servidor'} ▸
+              Cambiar servidor ▸
             </button>
           </div>
         )}
@@ -427,13 +427,13 @@ export default function AnimePlayer({
       </div>
 
       {/* Barra de controles, servidores, subtítulos y calidades */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-t border-white/10 bg-[#161824]/95 backdrop-blur-md text-sm text-white">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3 sm:px-6 py-2.5 sm:py-3 border-t border-white/10 bg-[#161824]/95 backdrop-blur-md text-sm text-white">
         {/* Navegación anterior / siguiente */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between sm:justify-start gap-2">
           <button
             onClick={handlePrevEp}
             disabled={episode <= 1 || loading}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 hover:border-white/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 hover:border-white/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
           >
             <ChevronLeft size={16} />
             Anterior
@@ -442,7 +442,7 @@ export default function AnimePlayer({
           <button
             onClick={handleNextEp}
             disabled={(totalEpisodes && episode >= totalEpisodes) || loading}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 hover:border-white/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 hover:border-white/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
           >
             Siguiente
             <ChevronRight size={16} />
@@ -450,21 +450,21 @@ export default function AnimePlayer({
         </div>
 
         {/* Menús de Servidor, Subtítulos y Calidad */}
-        <div className="flex items-center gap-2.5 relative">
+        <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 relative flex-wrap sm:flex-nowrap">
           {/* Selector de Servidor (cuando hay múltiples disponibles) */}
           {servers.length > 1 && (
             <div className="relative">
               <button
                 onClick={() => { setShowServerMenu(!showServerMenu); setShowSubMenu(false); setShowSettings(false); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 text-slate-200 transition active:scale-95 shadow-sm"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 text-slate-200 transition active:scale-95 shadow-sm"
                 title="Cambiar servidor de transmisión"
               >
-                <Server size={14} className="text-brand" />
-                <span className="truncate max-w-[130px] sm:max-w-none">{activeServer?.name || 'Servidor'}</span>
+                <Server size={14} className="text-brand shrink-0" />
+                <span className="truncate max-w-[85px] sm:max-w-[130px]">{activeServer?.name || 'Servidor'}</span>
               </button>
 
               {showServerMenu && (
-                <div className="absolute bottom-full right-0 mb-2 w-56 rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
+                <div className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
                   <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                     Servidores disponibles ({servers.length})
                   </div>
@@ -489,15 +489,16 @@ export default function AnimePlayer({
           <div className="relative">
             <button
               onClick={() => { setShowSubMenu(!showSubMenu); setShowServerMenu(false); setShowSettings(false); }}
-              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${selectedSub !== 'off' ? 'bg-brand text-white border-brand shadow-[0_0_15px_rgba(109,92,255,0.4)]' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${selectedSub !== 'off' ? 'bg-brand text-white border-brand shadow-[0_0_15px_rgba(109,92,255,0.4)]' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
               title="Seleccionar subtítulos"
             >
-              <Subtitles size={15} />
-              <span>Subtítulos: {selectedSub === 'off' ? 'Off' : subTracks.find((s) => s.lang === selectedSub)?.label || selectedSub}</span>
+              <Subtitles size={15} className="shrink-0" />
+              <span className="hidden sm:inline">Subtítulos: </span>
+              <span className="truncate max-w-[80px] sm:max-w-none">{selectedSub === 'off' ? 'Off' : subTracks.find((s) => s.lang === selectedSub)?.label || selectedSub}</span>
             </button>
 
             {showSubMenu && (
-              <div className="absolute bottom-full right-0 mb-2 w-56 rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
+              <div className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
                 <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                   Pistas disponibles
                 </div>
@@ -530,15 +531,15 @@ export default function AnimePlayer({
             <div className="relative">
               <button
                 onClick={() => { setShowSettings(!showSettings); setShowServerMenu(false); setShowSubMenu(false); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition active:scale-95"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition active:scale-95"
                 title="Calidad de video"
               >
-                <Settings size={15} />
-                <span>{currentQuality === -1 ? 'Auto' : qualities.find((q) => q.index === currentQuality)?.label || 'Auto'}</span>
+                <Settings size={15} className="shrink-0" />
+                <span className="truncate max-w-[50px] sm:max-w-none">{currentQuality === -1 ? 'Auto' : qualities.find((q) => q.index === currentQuality)?.label || 'Auto'}</span>
               </button>
 
               {showSettings && (
-                <div className="absolute bottom-full right-0 mb-2 w-44 rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
+                <div className="absolute bottom-full right-0 mb-2 w-44 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
                   <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                     Calidad de transmisión
                   </div>
