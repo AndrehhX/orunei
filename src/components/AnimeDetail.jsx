@@ -299,7 +299,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
       </div>
 
       {playingEpisode && m && (
-        <div id="player-theater-top" className="animate-fade scroll-mt-4">
+        <div id="player-theater-top" className="animate-slideDown scroll-mt-4">
           <AnimePlayer
             animeTitle={title(m)}
             miruroId={miruroId}
@@ -313,7 +313,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
 
       <div className="overflow-hidden rounded-3xl bg-[#f4f4fb] dark:bg-[#0e0e17]">
         {err && <p className="p-16 text-center text-slate-500">No pudimos cargar esta ficha. <button onClick={close} className="font-semibold text-brand underline">Volver</button></p>}
-        {!m && !err && <div className="space-y-4 p-6"><div className="h-64 animate-pulse rounded-2xl bg-slate-200/70 dark:bg-white/5" /><div className="h-8 w-1/2 animate-pulse rounded bg-slate-200/70 dark:bg-white/5" /></div>}
+        {!m && !err && <div className="space-y-4 p-6"><div className="h-64 skeleton-shimmer rounded-2xl" /><div className="h-8 w-1/2 skeleton-shimmer rounded" /></div>}
         {m && (<>
           <header className="relative h-[280px] overflow-hidden" style={{ background: accent }}>
             {(m.bannerImage || m.coverImage.extraLarge) && <img src={m.bannerImage || m.coverImage.extraLarge} alt="" decoding="async" className="h-full w-full object-cover" />}

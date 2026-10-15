@@ -295,14 +295,14 @@ export default function AnimePlayer({
             </button>
 
             {showSubMenu && (
-              <div className="absolute bottom-full right-0 mb-2 w-56 rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-fade">
+              <div className="absolute bottom-full right-0 mb-2 w-56 rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
                 <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                   Pistas disponibles
                 </div>
                 <div className="mt-1 flex flex-col gap-0.5 max-h-48 overflow-y-auto">
                   <button
                     onClick={() => { setSelectedSub('off'); setShowSubMenu(false); }}
-                    className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition ${selectedSub === 'off' ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
+                    className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all duration-200 active:scale-95 ${selectedSub === 'off' ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
                   >
                     <span>Desactivado (Off)</span>
                     {selectedSub === 'off' && <Check size={14} />}
@@ -312,7 +312,7 @@ export default function AnimePlayer({
                     <button
                       key={tr.lang}
                       onClick={() => { setSelectedSub(tr.lang); setShowSubMenu(false); }}
-                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition ${selectedSub === tr.lang ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
+                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all duration-200 active:scale-95 ${selectedSub === tr.lang ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
                     >
                       <span className="truncate">{tr.label}</span>
                       {selectedSub === tr.lang && <Check size={14} />}
@@ -328,7 +328,7 @@ export default function AnimePlayer({
             <div className="relative">
               <button
                 onClick={() => { setShowSettings(!showSettings); setShowSubMenu(false); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition active:scale-95"
                 title="Calidad de video"
               >
                 <Settings size={15} />
@@ -336,7 +336,7 @@ export default function AnimePlayer({
               </button>
 
               {showSettings && (
-                <div className="absolute bottom-full right-0 mb-2 w-44 rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-fade">
+                <div className="absolute bottom-full right-0 mb-2 w-44 rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
                   <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                     Calidad de transmisión
                   </div>
