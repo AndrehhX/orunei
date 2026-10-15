@@ -309,23 +309,19 @@ export function isAuthorizedCdnUrl(urlStr) {
       hostname === 'localhost' ||
       hostname.endsWith('.localhost') ||
       hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
       hostname === '::1' ||
       hostname.startsWith('10.') ||
       hostname.startsWith('192.168.') ||
-      hostname.startsWith('172.16.') ||
-      hostname.startsWith('172.17.') ||
-      hostname.startsWith('172.18.') ||
-      hostname.startsWith('172.19.') ||
-      hostname.startsWith('172.2') ||
-      hostname.startsWith('172.3') ||
-      hostname.startsWith('169.254.')
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
+      hostname.startsWith('169.254.') ||
+      hostname.endsWith('.internal') ||
+      hostname.endsWith('.local')
     ) {
       return false;
     }
 
-    return ALLOWED_CDN_DOMAINS.some(
-      (d) => hostname === d || hostname.endsWith(`.${d}`)
-    );
+    return hostname.includes('.') && !hostname.endsWith('.');
   } catch {
     return false;
   }
