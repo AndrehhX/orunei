@@ -226,29 +226,57 @@ export default function AnimePlayer({
     };
   }, [activeStreamUrl]);
 
-  // Actualizar modo de pistas de subtítulos nativas
+  // Actualizar y forzar el modo de pistas de subtítulos nativas
   const syncSubtitles = () => {
     const video = videoRef.current;
-    if (!video || !video.textTracks) return;
+    if (!video) return;
 
-    const textTracks = video.textTracks;
-    for (let i = 0; i < textTracks.length; i++) {
-      const t = textTracks[i];
-      if (selectedSub === 'off') {
-        t.mode = 'disabled';
-      } else {
-        const match = subTracks.find((s) => s.lang === selectedSub);
-        if (match && (t.label === match.label || t.language === selectedSub || t.language === match.lang)) {
-          t.mode = 'showing';
+    // Sincronizar elementos <track> del DOM
+    const domTracks = video.querySelectorAll('track');
+    domTracks.forEach((el) => {
+      if (el.track) {
+        if (selectedSub === 'off') {
+          el.track.mode = 'disabled';
         } else {
-          t.mode = 'disabled';
+          const match = subTracks.find((s) => s.lang === selectedSub);
+          const isTarget = match && (el.label === match.label || el.srclang === selectedSub || el.srclang === match.lang);
+          el.track.mode = isTarget ? 'showing' : 'disabled';
         }
+      }
+    });
+
+    // Sincronizar textTracks de la API HTML5
+    if (video.textTracks && video.textTracks.length > 0) {
+      let anyShowing = false;
+      for (let i = 0; i < video.textTracks.length; i++) {
+        const t = video.textTracks[i];
+        if (selectedSub === 'off') {
+          t.mode = 'disabled';
+        } else {
+          const match = subTracks.find((s) => s.lang === selectedSub);
+          const isTarget = match && (t.label === match.label || t.language === selectedSub || t.language === match.lang);
+          if (isTarget) {
+            t.mode = 'showing';
+            anyShowing = true;
+          } else {
+            t.mode = 'disabled';
+          }
+        }
+      }
+      // Si por discrepancia de etiquetas del navegador no se activó ninguno y hay subtítulos, activar el español o el primero
+      if (!anyShowing && selectedSub !== 'off' && video.textTracks.length > 0) {
+        const esIdx = Array.from(video.textTracks).findIndex(t => t.language?.startsWith('es') || t.label?.toLowerCase().includes('español'));
+        const target = esIdx !== -1 ? video.textTracks[esIdx] : video.textTracks[0];
+        if (target) target.mode = 'showing';
       }
     }
   };
 
   useEffect(() => {
     syncSubtitles();
+    // Safety check para navegadores donde el textTrack tarda unos ms en enlazarse
+    const timer = setTimeout(syncSubtitles, 500);
+    return () => clearTimeout(timer);
   }, [selectedSub, subTracks]);
 
   const changeQuality = (levelIndex) => {
