@@ -97,21 +97,30 @@ export default function AnimePlayer({
         setPlaybackData(data);
         setLoading(false);
 
-        // Configurar subtítulos disponibles
-        const tracks = data.subtitles?.tracks || [];
+        // Configurar subtítulos disponibles con IDs únicos
+        const rawTracks = data.subtitles?.tracks || [];
+        const tracks = rawTracks.map((t, idx) => ({
+          ...t,
+          id: t.id || `sub-${t.lang || 'es'}-${idx}`
+        }));
         setSubTracks(tracks);
 
         // Seleccionar automáticamente español si existe
         const defaultSub = tracks.find((t) => t.lang?.startsWith('es')) || tracks[0];
         if (defaultSub) {
-          setSelectedSub(defaultSub.lang);
+          setSelectedSub(defaultSub.id);
         } else {
           setSelectedSub('off');
         }
       })
       .catch((err) => {
         if (isCancelled) return;
-        setError(err.message || 'Error al obtener el flujo de reproducción.');
+        const msg = err.message || '';
+        if (msg.includes('502') || msg.includes('504') || msg.includes('Bad Gateway')) {
+          setError('Los servidores de fuentes están procesando este episodio (502 Bad Gateway). Esto suele ocurrir en episodios de reciente emisión mientras se generan los flujos. Pulsa "Reintentar" para reconectar.');
+        } else {
+          setError(msg || 'Error al obtener el flujo de reproducción.');
+        }
         setLoading(false);
       });
 
@@ -161,6 +170,8 @@ export default function AnimePlayer({
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
+        enableWebVTT: false, // Desactivar WebVTT nativo en Hls.js para evitar subtítulos duplicados
+        renderTextTracksNatively: false, // Prevenir creación automática de TextTracks duplicados por Hls
         maxBufferLength: 60,
         maxMaxBufferLength: 120,
         maxBufferSize: 60 * 1000 * 1000,
@@ -172,6 +183,11 @@ export default function AnimePlayer({
         levelLoadingMaxRetry: 3
       });
       hlsRef.current = hls;
+
+      // Mantener canal de subtítulos de Hls.js desactivado para no colisionar con los tracks de la app
+      try {
+        hls.subtitleTrack = -1;
+      } catch (_) {}
 
       hls.loadSource(activeStreamUrl);
       hls.attachMedia(video);
@@ -227,48 +243,77 @@ export default function AnimePlayer({
     };
   }, [activeStreamUrl]);
 
-  // Actualizar y forzar el modo de pistas de subtítulos nativas
+  // Actualizar y forzar el modo de pistas de subtítulos nativas de manera estrictamente unívoca
   const syncSubtitles = () => {
     const video = videoRef.current;
     if (!video) return;
 
-    // Sincronizar elementos <track> del DOM
+    // Asegurar que Hls.js nunca active un subtítulo interno
+    if (hlsRef.current) {
+      try {
+        hlsRef.current.subtitleTrack = -1;
+      } catch (_) {}
+    }
+
+    // Modo desactivado (Off): apagar absolutamente todas las pistas del DOM y textTracks
+    if (selectedSub === 'off') {
+      const domTracks = video.querySelectorAll('track');
+      domTracks.forEach((el) => {
+        if (el.track) el.track.mode = 'disabled';
+      });
+      if (video.textTracks) {
+        for (let i = 0; i < video.textTracks.length; i++) {
+          video.textTracks[i].mode = 'disabled';
+        }
+      }
+      return;
+    }
+
+    // Buscar la pista seleccionada por su ID único o por idioma
+    const targetTrack = subTracks.find((s) => (s.id && s.id === selectedSub) || s.lang === selectedSub);
+    if (!targetTrack) return;
+
+    let domShowing = false;
+
+    // 1. Sincronizar elementos <track> del DOM: exactamente uno activo, los demás en disabled
     const domTracks = video.querySelectorAll('track');
     domTracks.forEach((el) => {
       if (el.track) {
-        if (selectedSub === 'off') {
-          el.track.mode = 'disabled';
+        const isMatch = !domShowing && (
+          (el.dataset?.subId && targetTrack.id && el.dataset.subId === targetTrack.id) ||
+          el.src === targetTrack.src ||
+          (el.label === targetTrack.label && el.srclang === targetTrack.lang)
+        );
+        if (isMatch) {
+          el.track.mode = 'showing';
+          domShowing = true;
         } else {
-          const match = subTracks.find((s) => s.lang === selectedSub);
-          const isTarget = match && (el.label === match.label || el.srclang === selectedSub || el.srclang === match.lang);
-          el.track.mode = isTarget ? 'showing' : 'disabled';
+          el.track.mode = 'disabled';
         }
       }
     });
 
-    // Sincronizar textTracks de la API HTML5
+    // 2. Sincronizar textTracks de la API HTML5
+    // Asegurar que solo la pista correspondiente quede en 'showing' y ninguna otra
     if (video.textTracks && video.textTracks.length > 0) {
-      let anyShowing = false;
       for (let i = 0; i < video.textTracks.length; i++) {
         const t = video.textTracks[i];
-        if (selectedSub === 'off') {
-          t.mode = 'disabled';
+        if (domShowing) {
+          // Si el DOM ya activó la pista deseada, mantenerla activa si coincide la etiqueta, y apagar cualquier otra
+          if (t.label === targetTrack.label && t.mode === 'showing') {
+            // Mantener showing
+          } else {
+            t.mode = 'disabled';
+          }
         } else {
-          const match = subTracks.find((s) => s.lang === selectedSub);
-          const isTarget = match && (t.label === match.label || t.language === selectedSub || t.language === match.lang);
-          if (isTarget) {
+          const isMatch = (t.label === targetTrack.label) || (t.language === targetTrack.lang);
+          if (isMatch) {
             t.mode = 'showing';
-            anyShowing = true;
+            domShowing = true;
           } else {
             t.mode = 'disabled';
           }
         }
-      }
-      // Si por discrepancia de etiquetas del navegador no se activó ninguno y hay subtítulos, activar el español o el primero
-      if (!anyShowing && selectedSub !== 'off' && video.textTracks.length > 0) {
-        const esIdx = Array.from(video.textTracks).findIndex(t => t.language?.startsWith('es') || t.label?.toLowerCase().includes('español'));
-        const target = esIdx !== -1 ? video.textTracks[esIdx] : video.textTracks[0];
-        if (target) target.mode = 'showing';
       }
     }
   };
@@ -415,12 +460,12 @@ export default function AnimePlayer({
         >
           {subTracks.map((tr) => (
             <track
-              key={tr.lang + tr.src}
+              key={tr.id || (tr.lang + tr.src)}
+              data-sub-id={tr.id}
               kind="subtitles"
               label={tr.label}
               srcLang={tr.lang}
               src={tr.src}
-              default={tr.default}
             />
           ))}
         </video>
@@ -494,7 +539,7 @@ export default function AnimePlayer({
             >
               <Subtitles size={15} className="shrink-0" />
               <span className="hidden sm:inline">Subtítulos: </span>
-              <span className="truncate max-w-[80px] sm:max-w-none">{selectedSub === 'off' ? 'Off' : subTracks.find((s) => s.lang === selectedSub)?.label || selectedSub}</span>
+              <span className="truncate max-w-[80px] sm:max-w-none">{selectedSub === 'off' ? 'Off' : (subTracks.find((s) => s.id === selectedSub || s.lang === selectedSub)?.label || 'Español')}</span>
             </button>
 
             {showSubMenu && (
@@ -513,12 +558,12 @@ export default function AnimePlayer({
 
                   {subTracks.map((tr) => (
                     <button
-                      key={tr.lang}
-                      onClick={() => { setSelectedSub(tr.lang); setShowSubMenu(false); }}
-                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all duration-200 active:scale-95 ${selectedSub === tr.lang ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
+                      key={tr.id || tr.lang}
+                      onClick={() => { setSelectedSub(tr.id || tr.lang); setShowSubMenu(false); }}
+                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all duration-200 active:scale-95 ${(selectedSub === tr.id || selectedSub === tr.lang) ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
                     >
                       <span className="truncate">{tr.label}</span>
-                      {selectedSub === tr.lang && <Check size={14} />}
+                      {(selectedSub === tr.id || selectedSub === tr.lang) && <Check size={14} />}
                     </button>
                   ))}
                 </div>

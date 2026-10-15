@@ -129,17 +129,52 @@ function categorizeSubtitles(subtitlesList) {
  * Consulta la API de Miruro y selecciona stream y subtitulos segun la logica de ani-neko.
  */
 export async function resolveEpisode(miruroId, episodeNum = 1) {
-  const endpoint = `${MIRURO_BASE}/api/sources?id=${encodeURIComponent(miruroId)}&n=${encodeURIComponent(episodeNum)}`;
+  const maxRetries = 3;
+  let response = null;
+  let lastError = null;
 
-  const response = await fetch(endpoint, {
-    headers: {
-      ...BROWSER_HEADERS,
-      'Referer': `${MIRURO_BASE}/`
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const isRetry = attempt > 0;
+    const cacheBuster = isRetry ? `&_t=${Date.now()}` : '';
+    const endpoint = `${MIRURO_BASE}/api/sources?id=${encodeURIComponent(miruroId)}&n=${encodeURIComponent(episodeNum)}${cacheBuster}`;
+
+    try {
+      response = await fetch(endpoint, {
+        headers: {
+          ...BROWSER_HEADERS,
+          'Referer': `${MIRURO_BASE}/`,
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      if (response.ok) {
+        break;
+      }
+
+      const status = response.status;
+      if ([502, 503, 504, 429].includes(status)) {
+        lastError = new Error(`Error en API Miruro: HTTP ${status} ${response.statusText || 'Bad Gateway'}`);
+        if (attempt < maxRetries) {
+          const delay = (attempt + 1) * 900 + Math.floor(Math.random() * 400);
+          console.warn(`[StreamServer] Error HTTP ${status} en Miruro (ep ${episodeNum}). Reintentando intento ${attempt + 2}/${maxRetries + 1} en ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+      } else {
+        throw new Error(`Error en API Miruro: HTTP ${status} ${response.statusText}`);
+      }
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxRetries) {
+        const delay = (attempt + 1) * 900;
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
     }
-  });
+  }
 
-  if (!response.ok) {
-    throw new Error(`Error en API Miruro: HTTP ${response.status} ${response.statusText}`);
+  if (!response || !response.ok) {
+    throw lastError || new Error(`Error en API Miruro: no fue posible obtener respuesta`);
   }
 
   const data = await response.json();
@@ -216,7 +251,8 @@ export async function resolveEpisode(miruroId, episodeNum = 1) {
   const proxyBase = '/api/stream/proxy';
   const proxiedStreamUrl = `${proxyBase}?url=${encodeURIComponent(selectedStream.url)}&referer=${encodeURIComponent(referer)}&origin=${encodeURIComponent(origin)}`;
 
-  const buildProxiedTrack = (sub, isDefault = false) => ({
+  const buildProxiedTrack = (sub, idx, isDefault = false) => ({
+    id: `sub-${sub.langCode}-${idx}`,
     label: sub.cleanLabel,
     lang: sub.langCode,
     src: `${proxyBase}?url=${encodeURIComponent(sub.file)}&referer=${encodeURIComponent(referer)}&origin=${encodeURIComponent(origin)}`,
@@ -225,10 +261,10 @@ export async function resolveEpisode(miruroId, episodeNum = 1) {
 
   const formattedTracks = [];
   selectedSubs.spanish.forEach((sub, idx) => {
-    formattedTracks.push(buildProxiedTrack(sub, idx === 0));
+    formattedTracks.push(buildProxiedTrack(sub, idx, idx === 0));
   });
   if (selectedSubs.english.length > 0) {
-    formattedTracks.push(buildProxiedTrack(selectedSubs.english[0], formattedTracks.length === 0));
+    formattedTracks.push(buildProxiedTrack(selectedSubs.english[0], formattedTracks.length, formattedTracks.length === 0));
   }
 
   return {

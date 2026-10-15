@@ -41,13 +41,40 @@ export async function getEpisodePlayback(miruroId, episodeNum = 1) {
     throw new Error('Miruro ID no disponible');
   }
 
-  const url = `${STREAM_BASE}/api/stream/resolve?id=${encodeURIComponent(miruroId)}&ep=${encodeURIComponent(episodeNum)}`;
-  const resp = await fetch(url);
-  const data = await resp.json();
+  const maxAttempts = 2;
+  let lastData = null;
+  let lastStatus = 500;
 
-  if (!resp.ok) {
-    throw new Error(data.error || `HTTP ${resp.status}`);
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const cacheBuster = attempt > 0 ? `&_t=${Date.now()}` : '';
+    const url = `${STREAM_BASE}/api/stream/resolve?id=${encodeURIComponent(miruroId)}&ep=${encodeURIComponent(episodeNum)}${cacheBuster}`;
+    try {
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (resp.ok) {
+        lastData = data;
+        break;
+      }
+      lastData = data;
+      lastStatus = resp.status;
+      if (attempt < maxAttempts - 1 && (resp.status === 502 || resp.status === 504 || data.error?.includes('502'))) {
+        await new Promise(r => setTimeout(r, 1200));
+        continue;
+      }
+    } catch (err) {
+      if (attempt < maxAttempts - 1) {
+        await new Promise(r => setTimeout(r, 1200));
+        continue;
+      }
+      throw err;
+    }
   }
+
+  if (!lastData || lastData.error) {
+    throw new Error(lastData?.error || `HTTP ${lastStatus}`);
+  }
+
+  const data = lastData;
 
   if (STREAM_BASE) {
     if (data.proxiedStreamUrl?.startsWith('/api/stream/')) {
