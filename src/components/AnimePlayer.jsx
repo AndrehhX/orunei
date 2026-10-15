@@ -185,18 +185,29 @@ export default function AnimePlayer({
   };
 
   return (
-    <div id="player-theater" className="relative mb-6 flex flex-col w-full rounded-2xl bg-[#12141c] border border-white/10 shadow-2xl overflow-hidden animate-rise">
+    <div id="player-theater" className="relative mb-6 flex flex-col w-full rounded-2xl bg-[#0f111a] border border-white/10 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] overflow-hidden animate-rise">
       {/* Cabecera del reproductor */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/10 bg-[#171a26]/90 text-white">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/10 bg-[#161824]/95 backdrop-blur-md text-white">
         <div className="min-w-0 pr-4">
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
-            <h3 className="text-sm sm:text-base font-bold truncate">{animeTitle}</h3>
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+            </span>
+            <h3 className="text-sm sm:text-base font-bold truncate text-slate-100">{animeTitle}</h3>
           </div>
-          <p className="text-xs text-slate-400">Episodio {episode}{totalEpisodes ? ` de ${totalEpisodes}` : ''}</p>
+          <p className="mt-0.5 text-xs text-slate-400 font-medium">Episodio {episode}{totalEpisodes ? ` de ${totalEpisodes}` : ''}</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          {/* Badge de subtitulos en espanol */}
+          {playbackData && playbackData.hasSpanishSubtitles && (
+            <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+              <Check size={12} className="text-emerald-400" />
+              Sub Español Disponible
+            </span>
+          )}
+
           {/* Aviso si el proveedor no tiene subtitulos en espanol */}
           {playbackData && !playbackData.hasSpanishSubtitles && (
             <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -207,10 +218,10 @@ export default function AnimePlayer({
 
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/10 transition active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-all duration-200 active:scale-95 shadow-sm"
             title="Cerrar reproductor"
           >
-            <X size={16} />
+            <X size={15} />
             <span className="hidden sm:inline">Cerrar</span>
           </button>
         </div>
@@ -259,13 +270,13 @@ export default function AnimePlayer({
       </div>
 
       {/* Barra de controles, subtítulos y calidades */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-2.5 border-t border-white/10 bg-[#171a26]/90 text-sm text-white">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3 border-t border-white/10 bg-[#161824]/95 backdrop-blur-md text-sm text-white">
         {/* Navegación anterior / siguiente */}
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrevEp}
             disabled={episode <= 1 || loading}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 disabled:pointer-events-none transition"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 hover:border-white/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
           >
             <ChevronLeft size={16} />
             Anterior
@@ -274,7 +285,7 @@ export default function AnimePlayer({
           <button
             onClick={handleNextEp}
             disabled={(totalEpisodes && episode >= totalEpisodes) || loading}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-40 disabled:pointer-events-none transition"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 hover:border-white/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
           >
             Siguiente
             <ChevronRight size={16} />
@@ -287,7 +298,7 @@ export default function AnimePlayer({
           <div className="relative">
             <button
               onClick={() => { setShowSubMenu(!showSubMenu); setShowSettings(false); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${selectedSub !== 'off' ? 'bg-brand text-white border-brand' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
+              className={`flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${selectedSub !== 'off' ? 'bg-brand text-white border-brand shadow-[0_0_15px_rgba(109,92,255,0.4)]' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
               title="Seleccionar subtítulos"
             >
               <Subtitles size={15} />

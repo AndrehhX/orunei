@@ -4,11 +4,37 @@
 
 html { scroll-behavior: smooth; }
 body { @apply bg-[#f4f4fb] text-slate-900 antialiased transition-colors duration-300; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
-.dark body { @apply bg-[#0e0e17] text-slate-100; }
-.card { @apply bg-white/90 dark:bg-[#171723] rounded-2xl border border-white dark:border-white/5 shadow-sm; }
-.card { will-change: transform, box-shadow; backface-visibility: hidden; transform: translateZ(0); transition: transform 280ms cubic-bezier(.16,1,.3,1), box-shadow 280ms cubic-bezier(.16,1,.3,1), border-color 280ms cubic-bezier(.16,1,.3,1); }
-.card:hover { box-shadow: 0 16px 36px -10px rgba(109, 92, 255, 0.14), 0 4px 12px -2px rgba(0, 0, 0, 0.04); }
-.dark .card:hover { box-shadow: 0 16px 36px -10px rgba(109, 92, 255, 0.28), 0 4px 12px -2px rgba(0, 0, 0, 0.35); }
+.dark body {
+  background-color: #0a0a12;
+  background-image: 
+    radial-gradient(circle at 18% 12%, rgba(109, 92, 255, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 82% 85%, rgba(240, 138, 184, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.03) 0%, transparent 60%);
+  background-attachment: fixed;
+  color: #f1f5f9;
+}
+
+/* Tarjetas con acabado de cristal templado y micro-elevación */
+.card { @apply bg-white/90 dark:bg-[#151522]/90 rounded-2xl border border-white/60 dark:border-white/[0.07] shadow-sm; }
+.card { will-change: transform, box-shadow; backface-visibility: hidden; transform: translateZ(0); transition: transform 320ms cubic-bezier(.16,1,.3,1), box-shadow 320ms cubic-bezier(.16,1,.3,1), border-color 320ms cubic-bezier(.16,1,.3,1); }
+.card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px -12px rgba(109, 92, 255, 0.18), 0 4px 16px -2px rgba(0, 0, 0, 0.06); }
+.dark .card:hover { transform: translateY(-4px); border-color: rgba(109, 92, 255, 0.45); box-shadow: 0 22px 50px -12px rgba(109, 92, 255, 0.35), 0 0 24px rgba(109, 92, 255, 0.15); }
+
+/* Efectos de cristal y resplandor premium */
+.glass-panel {
+  background: rgba(21, 21, 34, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 16px 40px 0 rgba(0, 0, 0, 0.45);
+}
+.glow-brand {
+  box-shadow: 0 0 25px -4px rgba(109, 92, 255, 0.55);
+}
+.glow-brand:hover {
+  box-shadow: 0 0 35px 2px rgba(109, 92, 255, 0.75);
+}
+
 .animate-page-enter { animation: page-enter .55s cubic-bezier(.16,1,.3,1) both; }
 .custom-cursor { position: fixed; inset: 0; z-index: 9999; pointer-events: none; }
 .custom-cursor-ring, .custom-cursor-dot { position: fixed; left: 0; top: 0; pointer-events: none; will-change: transform; }
@@ -25,16 +51,22 @@ body { @apply bg-[#f4f4fb] text-slate-900 antialiased transition-colors duration
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.28); border-radius: 9999px; transition: background 0.2s ease; }
-.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
-::-webkit-scrollbar-thumb:hover { background: rgba(109, 92, 255, 0.7); }
+.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); }
+::-webkit-scrollbar-thumb:hover { background: rgba(109, 92, 255, 0.85); box-shadow: 0 0 10px rgba(109, 92, 255, 0.5); }
 
-/* Shimmer Skeleton */
+/* Shimmer Skeleton Ultra-Smooth */
 .skeleton-shimmer { position: relative; overflow: hidden; background: rgba(148, 163, 184, 0.12); }
-.dark .skeleton-shimmer { background: rgba(255, 255, 255, 0.06); }
-.skeleton-shimmer::after { position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%); animation: shimmer 1.8s infinite; content: ''; }
+.dark .skeleton-shimmer { background: rgba(255, 255, 255, 0.05); }
+.skeleton-shimmer::after { position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.12) 50%, transparent 100%); animation: shimmer 1.6s infinite; content: ''; }
 
-/* Entrada estilizada del reproductor Theater */
-#player-theater { will-change: transform, opacity; animation: player-entrance 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.65), 0 0 35px -8px rgba(109, 92, 255, 0.25); }
+/* Entrada cinematográfica del reproductor Theater */
+#player-theater {
+  will-change: transform, opacity;
+  animation: player-entrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  border-radius: 1.25rem;
+  box-shadow: 0 30px 90px -15px rgba(0, 0, 0, 0.85), 0 0 60px -8px rgba(109, 92, 255, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
 @keyframes player-entrance { from { opacity: 0; transform: translateY(-16px) scale(0.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 button, a { -webkit-tap-highlight-color: transparent; }

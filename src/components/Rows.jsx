@@ -33,22 +33,32 @@ export function Library({ query, onMore, onOpenAnime }) {
     </section>
   )
 }
-const Stat = ({ y, r }) => <div className="flex justify-between text-[11px] text-slate-500"><span>{y}</span><span className="flex items-center gap-0.5 font-semibold text-slate-700 dark:text-slate-200"><Star size={11} className="fill-yellow-400 text-yellow-400" />{r}</span></div>
+const Stat = ({ y, r }) => (
+  <div className="mt-1 flex items-center justify-between text-[11px] text-slate-400">
+    <span className="font-medium tracking-wide text-slate-500 dark:text-slate-400">{y}</span>
+    {r && r !== 'NaN' && (
+      <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400 border border-amber-500/20">
+        <Star size={10} className="fill-amber-400 text-amber-400" />
+        {r}
+      </span>
+    )}
+  </div>
+)
 
 function RecCard({ i, rec, onOpenAnime }) {
   const [out, setOut] = useState(false)
   const act = (fn) => { setOut(true); setTimeout(() => fn(i.id), 320) } // card shrinks away, then the engine refills the row
   return (
-      <article onClick={() => onOpenAnime?.(i)} className={`group cursor-pointer will-change-transform transform-gpu transition-all duration-300 ease-smooth hover:-translate-y-2 ${out ? 'scale-75 opacity-0' : ''}`} style={{ contentVisibility: 'auto', containIntrinsicSize: '0 260px' }}>
-        <Poster img={i.banner || i.img} grad="linear-gradient(135deg,#c9b7e6,#6f8a6b)" title={i.title} className="aspect-[3/2.1] rounded-xl shadow-sm group-hover:shadow-xl transition-shadow duration-300">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <article onClick={() => onOpenAnime?.(i)} className={`group cursor-pointer will-change-transform transform-gpu transition-all duration-320 ease-out hover:-translate-y-1.5 ${out ? 'scale-75 opacity-0' : ''}`} style={{ contentVisibility: 'auto', containIntrinsicSize: '0 260px' }}>
+        <Poster img={i.banner || i.img} grad="linear-gradient(135deg,#241f4d,#423584)" title={i.title} className="aspect-[3/2.1] rounded-xl shadow-sm border border-white/5 group-hover:border-brand/40 group-hover:shadow-[0_12px_30px_-8px_rgba(109,92,255,0.35)] transition-all duration-300">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <div className="absolute right-1.5 top-1.5 flex translate-y-1 gap-1 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
             <LikeBtn on={rec.isLiked(i.id)} onClick={() => act(rec.like)} />
-            <button onClick={(event) => { event.stopPropagation(); act(rec.dismiss) }} aria-label="No me interesa" className="grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white backdrop-blur transition hover:scale-110 hover:bg-red-500/80 active:scale-90"><X size={15} /></button>
+            <button onClick={(event) => { event.stopPropagation(); act(rec.dismiss) }} aria-label="No me interesa" className="grid h-8 w-8 place-items-center rounded-full bg-black/55 text-white backdrop-blur border border-white/10 transition hover:scale-110 hover:bg-rose-500/90 active:scale-90"><X size={14} /></button>
           </div>
-          <p className="absolute inset-x-0 bottom-0 p-2 text-[10px] font-medium leading-tight text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">{i.reason}</p>
+          <p className="absolute inset-x-0 bottom-0 p-2.5 text-[10px] font-semibold leading-tight text-white/95 opacity-0 transition-opacity duration-300 group-hover:opacity-100 drop-shadow">{i.reason}</p>
         </Poster>
-        <p className="mt-2 truncate text-[13px] font-semibold">{i.title}</p>
+        <p className="mt-2 truncate text-[13px] font-semibold text-slate-800 dark:text-slate-100 transition-colors duration-200 group-hover:text-brand">{i.title}</p>
         <Stat y={i.year} r={(i.score / 10).toFixed(1)} />
       </article>
   )

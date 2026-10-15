@@ -67,10 +67,10 @@ export default function Hero({ onOpenDetail }) {
                 <p className="line-clamp-2 h-12 shrink-0 overflow-hidden text-sm leading-6 text-white/85">{s.desc}</p>
                 <div className="mt-auto flex gap-2">
                   <button onClick={() => toggleLibrary(s)}
-                    className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${inLibrary(s) ? 'bg-emerald-500' : 'bg-brand hover:brightness-110'}`}>
+                    className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-95 ${inLibrary(s) ? 'bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.35)]' : 'bg-gradient-to-r from-brand via-[#7968ff] to-[#9d8eff] shadow-[0_4px_20px_rgba(109,92,255,0.45)] hover:shadow-[0_6px_30px_rgba(109,92,255,0.7)] hover:brightness-110'}`}>
                     {inLibrary(s) ? <Check size={16} /> : <Plus size={16} />}{inLibrary(s) ? 'En tu biblioteca' : 'Agregar a mi biblioteca'}</button>
-                  <button onClick={() => onOpenDetail?.(s)} className="flex items-center gap-1.5 rounded-lg border border-white/40 px-4 py-2 text-sm font-medium backdrop-blur transition hover:bg-white/15 active:scale-95"><Info size={15} />Ver detalles</button>
-                  <button onClick={() => setSaved((a) => ({ ...a, [n]: !a[n] }))} aria-label="Guardar" className="grid w-10 place-items-center rounded-lg border border-white/40 transition hover:bg-white/15 active:scale-90"><Bookmark size={16} className={`transition-all ${saved[n] ? 'fill-white' : ''}`} /></button>
+                  <button onClick={() => onOpenDetail?.(s)} className="flex items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-md transition-all duration-300 hover:bg-white/20 hover:border-white/40 active:scale-95"><Info size={15} />Ver detalles</button>
+                  <button onClick={() => setSaved((a) => ({ ...a, [n]: !a[n] }))} aria-label="Guardar" className="grid w-10 place-items-center rounded-xl border border-white/25 bg-white/10 backdrop-blur-md transition-all duration-300 hover:bg-white/20 hover:border-white/40 active:scale-90"><Bookmark size={16} className={`transition-all ${saved[n] ? 'fill-white' : ''}`} /></button>
                 </div>
               </div>
             </Poster>
@@ -78,22 +78,27 @@ export default function Hero({ onOpenDetail }) {
         })}
         <div className="absolute right-4 top-4 z-10 flex gap-2">
           {[[ChevronLeft, -1], [ChevronRight, 1]].map(([I, d]) => (
-            <button key={d} onClick={() => go(d)} aria-label={d < 0 ? 'Anterior' : 'Siguiente'} className="grid h-9 w-9 place-items-center rounded-full bg-black/40 text-white backdrop-blur transition hover:scale-110 hover:bg-black/60 active:scale-90"><I size={18} /></button>
+            <button key={d} onClick={() => go(d)} aria-label={d < 0 ? 'Anterior' : 'Siguiente'} className="grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur-md border border-white/10 transition hover:scale-110 hover:bg-black/70 active:scale-90"><I size={18} /></button>
           ))}
         </div>
         <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
-          {currentSlides.map((_, n) => <i key={n} className={`h-1.5 rounded-full bg-white transition-all duration-500 ${n === i ? 'w-5 opacity-100' : 'w-1.5 opacity-40'}`} />)}
+          {currentSlides.map((_, n) => <i key={n} className={`h-1.5 rounded-full transition-all duration-500 ${n === i ? 'w-6 opacity-100 bg-brand shadow-[0_0_10px_rgba(109,92,255,0.8)]' : 'w-1.5 opacity-35 bg-white'}`} />)}
         </div>
       </div>
-      <Poster {...currentTrending} onClick={() => onOpenDetail?.(currentTrending)} className="group hidden h-[360px] cursor-pointer rounded-2xl shadow-sm md:h-[340px] xl:h-[320px] md:block">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20" />
-        <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1 text-xs text-white backdrop-blur"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
+      <Poster {...currentTrending} onClick={() => onOpenDetail?.(currentTrending)} className="group hidden h-[360px] cursor-pointer rounded-2xl shadow-sm md:h-[340px] xl:h-[320px] md:block border border-white/5 hover:border-brand/30 transition-all duration-300">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/20" />
+        <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1 text-xs text-white backdrop-blur-md border border-white/10"><Sparkles size={13} className="text-yellow-300" />Tendencia en Anime</span>
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-          <h3 className="line-clamp-2 h-[48px] overflow-hidden text-lg font-bold leading-6">{formatHeroTitle(currentTrending.title, 34)}</h3>
+          <h3 className="line-clamp-2 h-[48px] overflow-hidden text-lg font-bold leading-6 transition-colors duration-200 group-hover:text-brand">{formatHeroTitle(currentTrending.title, 34)}</h3>
           <p className="text-[11px] text-white/80">{currentTrending.meta}</p>
-          <p className="mt-1 flex items-center gap-1 text-sm font-semibold"><Star size={14} className="fill-yellow-400 text-yellow-400" />{currentTrending.rating}</p>
+          <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
+            <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300 border border-amber-500/25">
+              <Star size={12} className="fill-amber-400 text-amber-400" />
+              {currentTrending.rating}
+            </span>
+          </p>
         </div>
-        <button onClick={(event) => { event.stopPropagation(); toggleLibrary(currentTrending) }} aria-label="Agregar" className={`absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-full transition-all duration-300 hover:scale-110 active:scale-90 ${inLibrary(currentTrending) ? 'rotate-[360deg] bg-emerald-400 text-white' : 'bg-white text-black'}`}>{inLibrary(currentTrending) ? <Check size={18} /> : <Plus size={18} />}</button>
+        <button onClick={(event) => { event.stopPropagation(); toggleLibrary(currentTrending) }} aria-label="Agregar" className={`absolute bottom-4 right-4 grid h-9 w-9 place-items-center rounded-full transition-all duration-300 hover:scale-110 active:scale-90 ${inLibrary(currentTrending) ? 'rotate-[360deg] bg-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-white text-black hover:bg-brand hover:text-white'}`}>{inLibrary(currentTrending) ? <Check size={18} /> : <Plus size={18} />}</button>
       </Poster>
     </section>
   )
