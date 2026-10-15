@@ -1,6 +1,7 @@
 const idCache = new Map();
-const STREAM_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_STREAM_API_URL)
-  ? import.meta.env.VITE_STREAM_API_URL.replace(/\/+$/, '')
+const rawEnvUrl = typeof import.meta !== 'undefined' ? (import.meta.env?.VITE_STREAM_API_URL || '').trim() : '';
+const STREAM_BASE = (rawEnvUrl && !rawEnvUrl.includes('trycloudflare.com') && rawEnvUrl.startsWith('http'))
+  ? rawEnvUrl.replace(/\/+$/, '')
   : 'https://orunei-stream.thealex230820.workers.dev';
 
 /**

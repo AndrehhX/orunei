@@ -27,6 +27,7 @@ export default function AnimePlayer({
   // Subtítulos
   const [subTracks, setSubTracks] = useState([]);
   const [selectedSub, setSelectedSub] = useState('off');
+  const [retryCount, setRetryCount] = useState(0);
   const [showSubMenu, setShowSubMenu] = useState(false);
 
   // Sincronizar número de episodio si cambia desde afuera
@@ -36,7 +37,7 @@ export default function AnimePlayer({
     }
   }, [initialEpisode]);
 
-  // Cargar episodio al cambiar número de episodio o miruroId
+  // Cargar episodio al cambiar número de episodio, miruroId o reintento
   useEffect(() => {
     let isCancelled = false;
     setLoading(true);
@@ -49,6 +50,20 @@ export default function AnimePlayer({
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
+    }
+
+    if (miruroId === undefined || miruroId === null) {
+      // Esperar a que se resuelva el ID de Miruro desde AniList
+      const timer = setTimeout(() => {
+        if (!isCancelled && !miruroId) {
+          setError('Este título aún no cuenta con fuentes disponibles en el catálogo de transmisión.');
+          setLoading(false);
+        }
+      }, 7000);
+      return () => {
+        isCancelled = true;
+        clearTimeout(timer);
+      };
     }
 
     if (!miruroId) {
@@ -88,7 +103,7 @@ export default function AnimePlayer({
         hlsRef.current = null;
       }
     };
-  }, [miruroId, episode]);
+  }, [miruroId, episode, retryCount]);
 
   // Inicializar Hls.js una vez cargada la fuente
   useEffect(() => {
@@ -241,7 +256,7 @@ export default function AnimePlayer({
             <AlertCircle size={40} className="text-rose-500" />
             <p className="text-sm max-w-md text-slate-300">{error}</p>
             <button
-              onClick={() => setEpisode((e) => e)}
+              onClick={() => setRetryCount((c) => c + 1)}
               className="mt-2 px-4 py-2 text-xs font-bold rounded-xl bg-brand text-white shadow-md hover:brightness-110 active:scale-95 transition"
             >
               Reintentar

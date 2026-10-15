@@ -225,10 +225,10 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
   }, [id])
 
   useEffect(() => {
-    if (m) {
-      getMiruroId(m.id, title(m)).then((resId) => {
-        setMiruroId(resId)
-      })
+    if (m?.id) {
+      getMiruroId(m.id, title(m))
+        .then((resId) => setMiruroId(resId))
+        .catch(() => setMiruroId(null))
     }
   }, [m])
   useEffect(() => {
@@ -256,7 +256,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
       setDescriptionState('ready')
       try { sessionStorage.setItem(cacheKey, translated) } catch {}
     }).catch((error) => {
-      if (error.name !== 'AbortError') {
+      if (error?.name !== 'AbortError') {
         setLocalizedDescription(original)
         setDescriptionState('fallback')
       }
@@ -278,7 +278,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
     }
   }, [playingEpisode])
 
-  const accent = m?.coverImage.color || '#6d5cff'
+  const accent = m?.coverImage?.color || '#6d5cff'
   const next = m?.nextAiringEpisode
   const liked = m && rec.isLiked(m.id)
   const inLibrary = m && profile.animeList.some((item) => item.id === String(m.id) || item.q === title(m))
@@ -287,9 +287,15 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
     const result = await updateAnimeList((items) => inLibrary ? items.filter((item) => item.id !== String(m.id) && item.q !== title(m)) : [...items, createLibraryEntry(m)])
     if (result?.ok) recordActivity('library', `${inLibrary ? 'Quitó' : 'Añadió'} “${title(m)}” ${inLibrary ? 'de' : 'a'} su biblioteca`)
   }
-  const tags = m ? m.tags.filter((t) => !t.isGeneralSpoiler && (spoil || !t.isMediaSpoiler)).slice(0, 14) : []
-  const info = m && [['Formato', T[m.format] || m.format], ['Episodios', m.episodes ? `${m.episodes}${m.duration ? ` × ${m.duration} min` : ''}` : '—'], ['Estado', T[m.status] || m.status],
-    ['Temporada', m.season ? `${T[m.season]} ${m.seasonYear}` : m.seasonYear || '—'], ['Estudio', m.studios.nodes[0]?.name || '—'], ['Favoritos', m.favourites?.toLocaleString('es')]]
+  const tags = (m && Array.isArray(m.tags)) ? m.tags.filter((t) => t && !t.isGeneralSpoiler && (spoil || !t.isMediaSpoiler)).slice(0, 14) : []
+  const info = m && [
+    ['Formato', T[m.format] || m.format || '—'],
+    ['Episodios', m.episodes ? `${m.episodes}${m.duration ? ` × ${m.duration} min` : ''}` : '—'],
+    ['Estado', T[m.status] || m.status || '—'],
+    ['Temporada', m.season ? `${T[m.season]} ${m.seasonYear || ''}`.trim() : (m.seasonYear || '—')],
+    ['Estudio', m.studios?.nodes?.[0]?.name || '—'],
+    ['Favoritos', m.favourites != null ? m.favourites.toLocaleString('es') : '—']
+  ]
 
   return (
     <div className="space-y-5 pb-10 animate-fade">
@@ -316,16 +322,16 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
         {!m && !err && <div className="space-y-4 p-6"><div className="h-64 skeleton-shimmer rounded-2xl" /><div className="h-8 w-1/2 skeleton-shimmer rounded" /></div>}
         {m && (<>
           <header className="relative h-[280px] overflow-hidden" style={{ background: accent }}>
-            {(m.bannerImage || m.coverImage.extraLarge) && <img src={m.bannerImage || m.coverImage.extraLarge} alt="" decoding="async" className="h-full w-full object-cover" />}
+            {(m.bannerImage || m.coverImage?.extraLarge || m.coverImage?.large) && <img src={m.bannerImage || m.coverImage?.extraLarge || m.coverImage?.large} alt="" decoding="async" className="h-full w-full object-cover" />}
             <div className="absolute inset-0 bg-gradient-to-t from-[#f4f4fb] via-[#f4f4fb]/30 to-black/30 dark:from-[#0e0e17] dark:via-[#0e0e17]/40" />
           </header>
           <div className="relative -mt-24 px-5 pb-8 sm:px-8">
             <div className="flex flex-col gap-5 sm:flex-row">
-              <img src={m.coverImage.extraLarge} alt={title(m)} className="h-[260px] w-[175px] shrink-0 rounded-2xl object-cover shadow-2xl ring-4 ring-[#f4f4fb] animate-rise dark:ring-[#0e0e17]" />
+              <img src={m.coverImage?.extraLarge || m.coverImage?.large || ''} alt={title(m)} className="h-[260px] w-[175px] shrink-0 rounded-2xl object-cover shadow-2xl ring-4 ring-[#f4f4fb] animate-rise dark:ring-[#0e0e17]" />
               <div className="flex min-w-0 flex-col justify-end gap-2 animate-rise" style={{ animationDelay: '.1s' }}>
                 <h2 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">{title(m)}</h2>
-                <p className="text-sm text-slate-500">{m.title.native}{m.title.native && m.title.romaji ? ' · ' : ''}{m.title.romaji !== title(m) ? m.title.romaji : ''}</p>
-                <div className="flex flex-wrap gap-1.5">{m.genres.map((g) => <span key={g} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: accent }}>{g}</span>)}</div>
+                <p className="text-sm text-slate-500">{m.title?.native || ''}{m.title?.native && m.title?.romaji ? ' · ' : ''}{m.title?.romaji && m.title?.romaji !== title(m) ? m.title.romaji : ''}</p>
+                <div className="flex flex-wrap gap-1.5">{(m.genres || []).map((g) => <span key={g} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: accent }}>{g}</span>)}</div>
                 {next && <p className="text-xs font-semibold text-emerald-600">Ep. {next.episode} · en {Math.max(1, Math.round((next.airingAt * 1000 - Date.now()) / 864e5))} días</p>}
                 <div className="mt-1 flex flex-wrap gap-2">
                   <button
@@ -370,8 +376,8 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                     </div>
                     <div><div className="mb-2 flex items-center justify-between"><h3 className="font-bold">Etiquetas</h3><button onClick={() => setSpoil(!spoil)} className="text-[11px] font-semibold text-brand">{spoil ? 'Ocultar spoilers' : 'Mostrar spoilers'}</button></div>
                       <div className="flex flex-wrap gap-2">{tags.map((t, i) => <span key={t.name} className="animate-rise rounded-lg bg-white px-2.5 py-1 text-xs shadow-sm dark:bg-white/5" style={{ animationDelay: `${i * 30}ms` }}>{t.name} <b className="text-brand">{t.rank}%</b></span>)}</div></div>
-                    {m.recommendations.nodes.length > 0 && <div><h3 className="mb-3 font-bold">Si te gustó, prueba</h3>
-                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">{m.recommendations.nodes.filter((n) => n.mediaRecommendation).map(({ mediaRecommendation: r }, i) => <AnimeCard key={r.id} m={r} i={i} onOpen={onOpen} />)}</div></div>}
+                    {Array.isArray(m.recommendations?.nodes) && m.recommendations.nodes.length > 0 && <div><h3 className="mb-3 font-bold">Si te gustó, prueba</h3>
+                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">{m.recommendations.nodes.filter((n) => n?.mediaRecommendation).map(({ mediaRecommendation: r }, i) => <AnimeCard key={r.id} m={r} i={i} onOpen={onOpen} />)}</div></div>}
                   </div>
                   <dl className="card h-fit divide-y divide-slate-200/70 p-1 text-sm dark:divide-white/10">{info.map(([k, v]) => <div key={k} className="flex justify-between gap-3 px-3 py-2.5"><dt className="text-slate-500">{k}</dt><dd className="text-right font-semibold">{v}</dd></div>)}</dl>
                 </div>)}

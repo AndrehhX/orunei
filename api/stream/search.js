@@ -1,5 +1,7 @@
 import { resolveMiruroId } from '../../src/api/streamServer.js';
 
+const WORKER_BASE = 'https://orunei-stream.thealex230820.workers.dev';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -18,32 +20,25 @@ export default async function handler(req, res) {
     return res.end(JSON.stringify({ error: 'Falta parametro id o title' }));
   }
 
+  // 1. Intentar resolver mediante Cloudflare Worker Edge
   try {
-    const searchUrl = `https://barelystarted.miruro.tv/search?q=${encodeURIComponent(title || '')}`;
-    const testResp = await fetch(searchUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'es-419,es;q=0.9,en;q=0.8',
-        'Sec-Ch-Ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1'
-      }
-    });
-    if (!testResp.ok) {
-      res.writeHead(502, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: `Miruro devolvió HTTP ${testResp.status} a Vercel`, status: testResp.status }));
+    const workerUrl = `${WORKER_BASE}/api/stream/search?id=${encodeURIComponent(id || '')}&title=${encodeURIComponent(title || '')}`;
+    const workerResp = await fetch(workerUrl);
+    const workerData = await workerResp.json();
+    if (workerResp.ok && workerData.miruroId) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify(workerData));
     }
+  } catch (workerErr) {
+    console.warn('[search.js] Worker no respondió, intentando fallback local:', workerErr.message);
+  }
 
+  // 2. Fallback local
+  try {
     const miruroId = await resolveMiruroId(id, title);
     if (!miruroId) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'No se encontro Miruro ID para este anime en Miruro' }));
+      return res.end(JSON.stringify({ error: 'No se encontro Miruro ID para este anime' }));
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ miruroId }));

@@ -38,6 +38,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/stream/:path*",
+      "destination": "https://orunei-stream.thealex230820.workers.dev/api/stream/:path*"
+    },
+    {
       "source": "/((?!assets/|favicon\\.svg|favicon\\.ico|api/).*)",
       "destination": "/index.html"
     }
