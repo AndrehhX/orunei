@@ -47,13 +47,38 @@ const Stat = ({ y, r }) => (
 
 function RecCard({ i, rec, onOpenAnime }) {
   const [out, setOut] = useState(false)
+  const { updateAnimeList, recordActivity } = useProfile()
   const act = (fn) => { setOut(true); setTimeout(() => fn(i.id), 320) } // card shrinks away, then the engine refills the row
+  const handleLike = () => {
+    act(rec.like)
+    updateAnimeList?.((items) => {
+      const existing = items.find((entry) => String(entry.id) === String(i.id) || entry.q === i.title)
+      if (existing) {
+        return items.map((entry) => String(entry.id) === String(existing.id) ? { ...entry, favorite: true } : entry)
+      }
+      return [...items, {
+        id: String(i.id),
+        animeId: String(i.id),
+        q: i.title,
+        t: i.title,
+        status: 'planned',
+        s: 'Favorito',
+        favorite: true,
+        img: i.banner || i.img,
+        genres: Array.isArray(i.genres) ? i.genres : [],
+        year: i.year || null,
+        dot: 'bg-blue-500'
+      }]
+    })
+    recordActivity?.('favorite', `Le gustó “${i.title}” desde Recomendaciones`)
+  }
+
   return (
       <article onClick={() => onOpenAnime?.(i)} className={`group cursor-pointer will-change-transform transform-gpu transition-all duration-320 ease-out hover:-translate-y-1.5 ${out ? 'scale-75 opacity-0' : ''}`} style={{ contentVisibility: 'auto', containIntrinsicSize: '0 260px' }}>
         <Poster img={i.banner || i.img} grad="linear-gradient(135deg,#241f4d,#423584)" title={i.title} className="aspect-[3/2.1] rounded-xl shadow-sm border border-white/5 group-hover:border-brand/40 group-hover:shadow-[0_12px_30px_-8px_rgba(109,92,255,0.35)] transition-all duration-300">
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <div className="absolute right-1.5 top-1.5 flex translate-y-1 gap-1 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-            <LikeBtn on={rec.isLiked(i.id)} onClick={() => act(rec.like)} />
+            <LikeBtn on={rec.isLiked(i.id)} onClick={handleLike} />
             <button onClick={(event) => { event.stopPropagation(); act(rec.dismiss) }} aria-label="No me interesa" className="grid h-8 w-8 place-items-center rounded-full bg-black/55 text-white backdrop-blur border border-white/10 transition hover:scale-110 hover:bg-rose-500/90 active:scale-90"><X size={14} /></button>
           </div>
           <p className="absolute inset-x-0 bottom-0 p-2.5 text-[10px] font-semibold leading-tight text-white/95 opacity-0 transition-opacity duration-300 group-hover:opacity-100 drop-shadow">{i.reason}</p>

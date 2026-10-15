@@ -4,7 +4,7 @@ import { getAnime, ratingJobs, commentJobs, title, crunchy, clean, T, ago, trans
 import { AnimeCard } from './AnimePage'
 import { useRec } from '../rec/rec'
 import { useProfile } from '../profile/ProfileProvider'
-import { createLibraryEntry } from '../profile/model.js'
+import { createLibraryEntry, markAnimeWatched } from '../profile/model.js'
 import { buildEpisodeCards } from '../api/episodeData.js'
 import AnimePlayer from './AnimePlayer'
 import { getMiruroId } from '../api/streamAdapter'
@@ -293,6 +293,47 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
     const result = await updateAnimeList((items) => inLibrary ? items.filter((item) => item.id !== String(m.id) && item.q !== title(m)) : [...items, createLibraryEntry(m)])
     if (result?.ok) recordActivity('library', `${inLibrary ? 'Quitó' : 'Añadió'} “${title(m)}” ${inLibrary ? 'de' : 'a'} su biblioteca`)
   }
+
+  const handlePlayEpisode = (ep) => {
+    setPlayingEpisode(ep)
+    if (m) {
+      const existing = profile.animeList.find((item) => item.id === String(m.id) || item.q === title(m))
+      const eps = m.episodes || existing?.episodes || null
+      const updatedEntry = existing
+        ? { ...existing, status: 'watching', s: `Viendo · Ep. ${ep}`, dot: 'bg-green-400', currentEpisode: ep, episodes: eps || existing.episodes }
+        : { ...createLibraryEntry(m), status: 'watching', s: `Viendo · Ep. ${ep}`, dot: 'bg-green-400', currentEpisode: ep, episodes: eps }
+
+      updateAnimeList((items) => existing ? items.map((i) => i.id === existing.id ? updatedEntry : i) : [...items, updatedEntry])
+      recordActivity('watch', `Viendo “${title(m)}” (Ep. ${ep})`)
+    }
+  }
+
+  const handleCompleteSeries = async () => {
+    if (!m) return
+    const existing = profile.animeList.find((item) => item.id === String(m.id) || item.q === title(m))
+    const entryToMark = existing || createLibraryEntry(m)
+    const next = markAnimeWatched(entryToMark, m)
+    await updateAnimeList((items) => existing ? items.map((i) => i.id === existing.id ? next : i) : [...items, next])
+    recordActivity('completed', `Terminó de ver “${title(m)}”`)
+    rec.likeMedia(m)
+  }
+
+  const handleToggleLike = async () => {
+    if (!m) return
+    const next = !liked
+    rec.likeMedia(m)
+    await updateAnimeList((items) => {
+      const existing = items.find((item) => item.id === String(m.id) || item.q === title(m))
+      if (existing) {
+        return items.map((item) => item.id === existing.id ? { ...item, favorite: next } : item)
+      } else if (next) {
+        return [...items, { ...createLibraryEntry(m), favorite: true, status: 'planned', s: 'Favorito' }]
+      }
+      return items
+    })
+    recordActivity('favorite', `${next ? 'Marcó' : 'Quitó'} “${title(m)}” ${next ? 'como favorito' : 'de favoritos'}`)
+  }
+
   const tags = (m && Array.isArray(m.tags)) ? m.tags.filter((t) => t && !t.isGeneralSpoiler && (spoil || !t.isMediaSpoiler)).slice(0, 14) : []
   const info = m && [
     ['Formato', T[m.format] || m.format || '—'],
@@ -318,7 +359,8 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
             initialEpisode={playingEpisode}
             totalEpisodes={m.episodes || 0}
             onClose={() => setPlayingEpisode(null)}
-            onEpisodeChange={(nextEp) => setPlayingEpisode(nextEp)}
+            onEpisodeChange={handlePlayEpisode}
+            onComplete={handleCompleteSeries}
           />
         </div>
       )}
@@ -342,7 +384,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                 <div className="mt-1 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setPlayingEpisode(1)}
+                    onClick={() => handlePlayEpisode(1)}
                     className="flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand/30 transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:scale-95"
                   >
                     <Play size={15} className="fill-white" />
@@ -353,7 +395,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                   </a>
                   {m.trailer?.site === 'youtube' && <a href={`https://youtu.be/${m.trailer.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 active:scale-95 dark:bg-white/10">Tráiler<ExternalLink size={13} /></a>}
                   <button onClick={toggleLibrary} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ease-spring active:scale-90 ${inLibrary ? 'bg-emerald-500 text-white' : 'bg-white shadow-sm dark:bg-white/10'}`}><BookOpen size={15} />{inLibrary ? <><Check size={14} />En biblioteca</> : 'Agregar a biblioteca'}</button>
-                  <button onClick={() => { const next = !liked; rec.likeMedia(m); recordActivity('favorite', `${next ? 'Marcó' : 'Quitó'} “${title(m)}” ${next ? 'como favorito' : 'de favoritos'}`) }} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ease-spring active:scale-90 ${liked ? 'bg-pink-500 text-white' : 'bg-white shadow-sm dark:bg-white/10'}`}><Heart size={15} className={liked ? 'fill-white' : ''} />{liked ? 'Te gusta' : 'Me gusta'}</button>
+                  <button onClick={handleToggleLike} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300 ease-spring active:scale-90 ${liked ? 'bg-pink-500 text-white' : 'bg-white shadow-sm dark:bg-white/10'}`}><Heart size={15} className={liked ? 'fill-white' : ''} />{liked ? 'Te gusta' : 'Me gusta'}</button>
                 </div>
               </div>
             </div>
@@ -387,7 +429,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                   </div>
                   <dl className="card h-fit divide-y divide-slate-200/70 p-1 text-sm dark:divide-white/10">{info.map(([k, v]) => <div key={k} className="flex justify-between gap-3 px-3 py-2.5"><dt className="text-slate-500">{k}</dt><dd className="text-right font-semibold">{v}</dd></div>)}</dl>
                 </div>)}
-              {tab === 1 && <Episodes m={m} onPlayEpisode={(ep) => setPlayingEpisode(ep)} currentEpisode={playingEpisode} />}
+              {tab === 1 && <Episodes m={m} onPlayEpisode={handlePlayEpisode} currentEpisode={playingEpisode} />}
               {tab === 2 && <Community m={m} />}
             </div>
           </div>

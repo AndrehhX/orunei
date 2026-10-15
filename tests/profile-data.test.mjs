@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readProfileStorage, writeProfileStorage } from '../src/profile/profileStorage.js'
-import { selectAnimeSections, selectProfileStats, selectRecentActivity, selectTasteGenres } from '../src/profile/profileData.js'
+import { selectAnimeSections, selectProfileStats, selectRecentActivity, selectTasteGenres, selectTasteMetrics } from '../src/profile/profileData.js'
 import { createProfile } from '../src/profile/model.js'
 
 const library = [
@@ -69,3 +69,24 @@ test('reads malformed storage as a normalized profile and reports write errors',
   assert.equal(result.ok, false)
   assert.match(result.error, /quota/i)
 })
+
+test('computes rich taste metrics with dynamic archetype and calibration progress', () => {
+  const userLibrary = [
+    { t: 'Jujutsu Kaisen', status: 'completed', episodes: 24, favorite: true, genres: ['Action', 'Fantasy'] },
+    { t: 'Chainsaw Man', status: 'watching', currentEpisode: 6, episodes: 12, favorite: true, genres: ['Action', 'Horror'] },
+    { t: 'Frieren', status: 'planned', episodes: 28, genres: ['Fantasy'] },
+  ]
+  const tasteGenres = selectTasteGenres(userLibrary)
+  const metrics = selectTasteMetrics(userLibrary, tasteGenres, {})
+
+  assert.equal(metrics.completedCount, 1)
+  assert.equal(metrics.watchingCount, 1)
+  assert.equal(metrics.favoritesCount, 2)
+  assert.equal(metrics.totalEpisodes, 30) // 24 completed + 6 watching
+  assert.ok(metrics.watchHours >= 11)
+  assert.equal(metrics.completionRate, 50)
+  assert.equal(metrics.dominantGenre, 'Action')
+  assert.equal(metrics.archetype, 'Guerrero Shōnen')
+  assert.ok(metrics.calibrationPct > 50)
+})
+

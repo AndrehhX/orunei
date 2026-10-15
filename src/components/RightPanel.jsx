@@ -1,10 +1,10 @@
-import { ArrowRight, Flame, Users, UserRound } from 'lucide-react'
+import { ArrowRight, Flame, Users, UserRound, Sparkles } from 'lucide-react'
 import Poster from './Poster'
 import { useNews, NewsLink } from '../news'
 import { useRec } from '../rec/rec'
 import { formatCount } from '../rec/engine.js'
 import { useProfile } from '../profile/ProfileProvider'
-import { selectTasteGenres } from '../profile/profileData'
+import { selectTasteGenres, selectTasteMetrics } from '../profile/profileData'
 import { useSocial } from '../social/SocialProvider.jsx'
 import { getProfileLayoutClasses } from '../ui/profileLayout.js'
 
@@ -18,6 +18,7 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
   const { friends } = useSocial()
   const profileAvatarClass = getProfileLayoutClasses().avatar
   const tasteGenres = selectTasteGenres(profile.animeList)
+  const metrics = selectTasteMetrics(profile.animeList, tasteGenres, profile)
   const newsItems = newsStatus === 'loading' && !items.length ? [0, 1] : items.slice(2, 5)
   const trendRows = liveTrends.map((item) => ({ ...item, q: item.title, t: item.title, y: item.year || '—', v: formatCount(item.trend), grad: 'linear-gradient(135deg,#d9405a,#2a0f3a)' }))
   return (
@@ -32,11 +33,19 @@ export default function RightPanel({ onSeeNews, onSeeProfile, onSeeFriends, onOp
         </div>
       </div>
       <div className="card p-4">
-        <div className="mb-3 flex items-center justify-between"><h3 className="font-bold">Tus gustos</h3><span className="text-[11px] text-slate-500">{profile.animeList?.length || 0} obras</span></div>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold">Tus gustos</h3>
+            <p className="text-[10px] font-semibold text-brand flex items-center gap-1 mt-0.5">
+              <Sparkles size={11} /> {metrics.archetype}
+            </p>
+          </div>
+          <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold text-brand">{metrics.calibrationPct}% Peak</span>
+        </div>
         {tasteGenres.length ? tasteGenres.map((g) => (
-          <div key={g.name} className="mb-3 last:mb-0"><div className="mb-1 flex justify-between text-[11px]"><span className="font-medium">{g.name}</span><span className="text-slate-500">{g.count}/{g.total}</span></div>
+          <div key={g.name} className="mb-2.5 last:mb-0"><div className="mb-1 flex justify-between text-[11px]"><span className="font-medium">{g.name}</span><span className="text-slate-500">{g.count}/{g.total}</span></div>
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-200/70 dark:bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-brand to-pink-400 transition-all duration-700 ease-smooth" style={{ width: g.pct + '%' }} /></div></div>
-        )) : <p className="text-xs leading-5 text-slate-500">{profile.animeList?.length ? 'Tus obras aún no tienen géneros registrados.' : 'Añade obras a tu AnimeList y este resumen se actualizará con sus géneros.'}</p>}
+        )) : <p className="text-xs leading-5 text-slate-500">{profile.animeList?.length ? 'Reproduce un anime o marca favoritos para calibrar tus gustos.' : 'Añade obras a tu AnimeList y este resumen se actualizará con sus géneros.'}</p>}
       </div>
       <div className="card p-4">
         <Head onAll={onSeeFriends}><span className="inline-flex items-center gap-2"><Users size={16} className="text-brand" />Amigos</span></Head>

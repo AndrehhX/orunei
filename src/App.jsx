@@ -15,6 +15,7 @@ import { useAuth } from './auth/AuthProvider'
 import { createProfileRepository } from './profile/profileRepository'
 import { getPublicProfileHash, getPublicProfileUsername } from './profile/navigation'
 import { supabase } from './auth/supabaseClient'
+import { useRec } from './rec/rec'
 
 const AnimePage = lazy(() => import('./components/AnimePage'))
 const LibraryPage = lazy(() => import('./components/LibraryPage'))
@@ -26,6 +27,21 @@ const PublicProfileRoute = lazy(() => import('./components/PublicProfileRoute'))
 
 function PageLoading() {
   return <div className="grid min-h-[18rem] place-items-center text-sm text-slate-500">Cargando…</div>
+}
+
+function GlobalTasteSync() {
+  const { profile } = useProfile()
+  const rec = useRec()
+  const profileLibrary = Array.isArray(profile.animeList) ? profile.animeList : []
+  const librarySignature = useMemo(() => profileLibrary.map((item) => `${item.id}:${item.status}:${item.favorite ? '1' : '0'}`).join('|'), [profileLibrary])
+
+  useEffect(() => {
+    if (rec.ready) {
+      rec.syncLibrary(profileLibrary)
+    }
+  }, [rec.ready, rec.syncLibrary, librarySignature])
+
+  return null
 }
 
 const tabs = ['Anime', 'Noticias']
@@ -116,6 +132,7 @@ export default function App() {
   if (!user) return <Login onSignIn={signIn} onSignUp={signUp} authStatus={authStatus} authError={authError} dark={dark} setDark={setDark} />
   return (
   <ProfileProvider user={user} repository={repository}>
+    <GlobalTasteSync />
     <Suspense fallback={<PageLoading />}>
       <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
         <CustomCursor />

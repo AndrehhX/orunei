@@ -37,7 +37,7 @@ function LibraryCard({ item, onStatusChange, onMarkWatched, onToggleFavorite, on
 }
 
 export default function LibraryPage({ query = '', onDiscover }) {
-  const { profile, profileStatus, updateAnimeList } = useProfile()
+  const { profile, profileStatus, updateAnimeList, recordActivity } = useProfile()
   const [filter, setFilter] = useState('all')
   const library = Array.isArray(profile.animeList) ? profile.animeList : []
   const normalizedQuery = query.trim().toLowerCase()
@@ -48,6 +48,13 @@ export default function LibraryPage({ query = '', onDiscover }) {
   })
 
   const update = (id, patch) => updateAnimeList((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item))
+  const toggleFavorite = (id) => {
+    const item = library.find((entry) => entry.id === id)
+    if (!item) return
+    const next = !item.favorite
+    update(id, { favorite: next })
+    recordActivity?.('favorite', `${next ? 'Marcó' : 'Quitó'} “${item.t}” ${next ? 'como favorito' : 'de favoritos'}`)
+  }
   const markWatched = async (id) => {
     const item = library.find((entry) => entry.id === id)
     if (!item) return
@@ -56,9 +63,15 @@ export default function LibraryPage({ query = '', onDiscover }) {
     if (!item.genres?.length && Number.isInteger(animeId)) {
       try { next = markAnimeWatched(item, await getAnime(animeId)) } catch {}
     }
-    return updateAnimeList((items) => items.map((entry) => entry.id === id ? next : entry))
+    const result = await updateAnimeList((items) => items.map((entry) => entry.id === id ? next : entry))
+    recordActivity?.('completed', `Terminó de ver “${item.t}”`)
+    return result
   }
-  const remove = (id) => updateAnimeList((items) => items.filter((item) => item.id !== id))
+  const remove = (id) => {
+    const item = library.find((entry) => entry.id === id)
+    updateAnimeList((items) => items.filter((entry) => entry.id !== id))
+    if (item) recordActivity?.('library', `Quitó “${item.t}” de su biblioteca`)
+  }
 
   if (profileStatus === 'loading') return <div className="card grid min-h-64 place-items-center p-8 text-sm text-slate-500">Cargando tu biblioteca…</div>
 
@@ -71,7 +84,7 @@ export default function LibraryPage({ query = '', onDiscover }) {
       {filters.map(([id, label]) => <button key={id} onClick={() => setFilter(id)} className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition ${filter === id ? 'bg-brand text-white shadow-md shadow-brand/25' : 'bg-white text-slate-600 dark:bg-white/5 dark:text-slate-300'}`}>{label}{id === 'favorites' && <Heart size={12} className="ml-1 inline" />}</button>)}
     </div>
     {!library.length ? <div className="card grid min-h-72 place-items-center p-8 text-center"><div><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand/10 text-brand"><BookOpen size={25} /></span><h2 className="mt-4 text-xl font-bold">Tu biblioteca está vacía</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">Agrega anime desde el catálogo o desde las recomendaciones de Para ti y aparecerá aquí.</p>{onDiscover && <button onClick={onDiscover} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand/25 transition hover:-translate-y-0.5"><Plus size={15} />Explorar anime</button>}</div></div>
-      : visible.length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{visible.map((item) => <LibraryCard key={item.id} item={item} onStatusChange={(id, status) => status === 'completed' ? markWatched(id) : update(id, { status })} onMarkWatched={markWatched} onToggleFavorite={(id) => update(id, { favorite: !library.find((entry) => entry.id === id)?.favorite })} onRemove={remove} />)}</div>
+      : visible.length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{visible.map((item) => <LibraryCard key={item.id} item={item} onStatusChange={(id, status) => status === 'completed' ? markWatched(id) : update(id, { status })} onMarkWatched={markWatched} onToggleFavorite={toggleFavorite} onRemove={remove} />)}</div>
       : <div className="card p-8 text-center"><p className="font-semibold">No hay obras en este filtro</p><p className="mt-1 text-sm text-slate-500">Prueba con otra categoría o agrega más títulos.</p></div>}
   </section>
 }

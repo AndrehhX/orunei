@@ -9,7 +9,8 @@ export default function AnimePlayer({
   initialEpisode = 1,
   totalEpisodes = 1,
   onClose,
-  onEpisodeChange
+  onEpisodeChange,
+  onComplete,
 }) {
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
@@ -303,6 +304,16 @@ export default function AnimePlayer({
     }
   };
 
+  const handleEnded = () => {
+    if (totalEpisodes && episode >= totalEpisodes) {
+      onComplete?.(episode);
+    } else if (onEpisodeChange) {
+      const nextEp = episode + 1;
+      setEpisode(nextEp);
+      onEpisodeChange(nextEp);
+    }
+  };
+
   return (
     <div id="player-theater" className="relative mb-6 flex flex-col w-full rounded-2xl bg-[#0f111a] border border-white/10 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] overflow-hidden animate-rise">
       {/* Cabecera del reproductor */}
@@ -400,6 +411,7 @@ export default function AnimePlayer({
           onWaiting={() => setIsBuffering(true)}
           onPlaying={() => { setIsBuffering(false); setBufferNotice(false); }}
           onCanPlay={() => setIsBuffering(false)}
+          onEnded={handleEnded}
         >
           {subTracks.map((tr) => (
             <track
