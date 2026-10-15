@@ -1,7 +1,7 @@
 const idCache = new Map();
 const STREAM_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_STREAM_API_URL)
   ? import.meta.env.VITE_STREAM_API_URL.replace(/\/+$/, '')
-  : '';
+  : 'https://orunei-stream.thealex230820.workers.dev';
 
 /**
  * Resuelve el Miruro ID para un anime a partir de su ID de AniList y título.
