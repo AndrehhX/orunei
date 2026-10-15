@@ -227,9 +227,9 @@ export default function AnimePlayer({
   }, [activeStreamUrl]);
 
   // Actualizar modo de pistas de subtítulos nativas
-  useEffect(() => {
+  const syncSubtitles = () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !video.textTracks) return;
 
     const textTracks = video.textTracks;
     for (let i = 0; i < textTracks.length; i++) {
@@ -238,13 +238,17 @@ export default function AnimePlayer({
         t.mode = 'disabled';
       } else {
         const match = subTracks.find((s) => s.lang === selectedSub);
-        if (match && t.label === match.label) {
+        if (match && (t.label === match.label || t.language === selectedSub || t.language === match.lang)) {
           t.mode = 'showing';
         } else {
           t.mode = 'disabled';
         }
       }
     }
+  };
+
+  useEffect(() => {
+    syncSubtitles();
   }, [selectedSub, subTracks]);
 
   const changeQuality = (levelIndex) => {
@@ -364,6 +368,7 @@ export default function AnimePlayer({
           controls
           playsInline
           crossOrigin="anonymous"
+          onLoadedMetadata={syncSubtitles}
           onWaiting={() => setIsBuffering(true)}
           onPlaying={() => { setIsBuffering(false); setBufferNotice(false); }}
           onCanPlay={() => setIsBuffering(false)}
