@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { Search, Sparkles, Sun, Moon, Smartphone, WifiOff } from 'lucide-react'
+import { Search, Sparkles, Sun, Moon, WifiOff } from 'lucide-react'
 import { checkForUpdate } from './offline/appUpdater'
 import UpdateModal from './components/UpdateModal'
 import DownloadAppModal from './components/DownloadAppModal'
@@ -74,17 +74,6 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownlo
         >
           <WifiOff size={14} />
           <span className="hidden sm:inline">Modo Offline</span>
-        </button>
-      )}
-      {onOpenDownloadApp && !isNativeApp() && (
-        <button
-          type="button"
-          onClick={onOpenDownloadApp}
-          title="Descargar Orunei para Android (APK)"
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand/10 text-brand text-xs font-bold hover:bg-brand/20 transition active:scale-95 shrink-0"
-        >
-          <Smartphone size={15} />
-          <span className="hidden sm:inline">App APK</span>
         </button>
       )}
       {setDark && (

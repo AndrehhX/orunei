@@ -1,24 +1,35 @@
 /**
- * Gestor de persistencia del punto exacto de reproducción (Timestamp Resume).
- * Permite reanudar un episodio en el segundo exacto donde se pausó.
+ * Gestor de persistencia del punto exacto de reproducción (Timestamp Resume)
+ * y estado de visualización ("Visto" / porcentaje completado).
+ * Permite reanudar un episodio en el segundo exacto y mostrar sutiles
+ * barras de progreso en la lista de episodios sin saturar la interfaz.
  */
 
 const STORAGE_KEY = 'orunei_playback_progress';
+const WATCHED_STORAGE_KEY = 'orunei_watched_episodes';
 
-function getStorage() {
-  if (typeof window === 'undefined' || !window.localStorage) return {};
+function getLocalStorage() {
+  if (typeof globalThis.localStorage !== 'undefined') return globalThis.localStorage;
+  if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
+  return null;
+}
+
+function getStorage(key = STORAGE_KEY) {
+  const storage = getLocalStorage();
+  if (!storage) return {};
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = storage.getItem(key);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
   }
 }
 
-function setStorage(data) {
-  if (typeof window === 'undefined' || !window.localStorage) return;
+function setStorage(key = STORAGE_KEY, data = {}) {
+  const storage = getLocalStorage();
+  if (!storage) return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    storage.setItem(key, JSON.stringify(data));
   } catch {}
 }
 
@@ -45,23 +56,105 @@ export function buildProgressKey(animeId, episode) {
 }
 
 /**
+ * Marca un episodio como completado/visto.
+ */
+export function markEpisodeWatched(animeId, episode) {
+  if (!animeId || !episode) return;
+  const store = getStorage(WATCHED_STORAGE_KEY);
+  const aId = String(animeId);
+  const epNum = Number(episode);
+
+  const list = Array.isArray(store[aId]) ? store[aId] : [];
+  if (!list.includes(epNum)) {
+    store[aId] = [...list, epNum];
+    setStorage(WATCHED_STORAGE_KEY, store);
+  }
+
+  // Al estar visto, limpiar prompt de reanudar
+  clearPlaybackProgress(animeId, episode);
+}
+
+/**
+ * Desmarca un episodio como visto (ej. si el usuario desea volver a verlo desde el inicio).
+ */
+export function unmarkEpisodeWatched(animeId, episode) {
+  if (!animeId || !episode) return;
+  const store = getStorage(WATCHED_STORAGE_KEY);
+  const aId = String(animeId);
+  const epNum = Number(episode);
+
+  if (Array.isArray(store[aId])) {
+    store[aId] = store[aId].filter((e) => e !== epNum);
+    setStorage(WATCHED_STORAGE_KEY, store);
+  }
+}
+
+/**
+ * Verifica si un episodio específico ya fue visto.
+ */
+export function isEpisodeWatched(animeId, episode) {
+  if (!animeId || !episode) return false;
+  const store = getStorage(WATCHED_STORAGE_KEY);
+  const aId = String(animeId);
+  const epNum = Number(episode);
+  return Array.isArray(store[aId]) && store[aId].includes(epNum);
+}
+
+/**
+ * Obtiene el progreso general de visualización para mostrar en la cuadrícula de episodios:
+ * - watched: boolean
+ * - percent: number (0 - 100)
+ * - currentTime: number
+ * - duration: number
+ */
+export function getEpisodeDisplayProgress(animeId, episode) {
+  if (!animeId || !episode) {
+    return { watched: false, percent: 0, currentTime: 0, duration: 0 };
+  }
+
+  if (isEpisodeWatched(animeId, episode)) {
+    return { watched: true, percent: 100, currentTime: 0, duration: 0 };
+  }
+
+  const inProgress = getPlaybackProgress(animeId, episode);
+  if (inProgress && inProgress.currentTime > 5) {
+    const duration = inProgress.duration || 0;
+    const percent = duration > 0 ? Math.min(99, Math.round((inProgress.currentTime / duration) * 100)) : 10;
+    return {
+      watched: false,
+      percent,
+      currentTime: inProgress.currentTime,
+      duration,
+    };
+  }
+
+  return { watched: false, percent: 0, currentTime: 0, duration: 0 };
+}
+
+/**
  * Guarda el progreso actual en segundos.
- * Si el usuario ya está a menos de 20s del final o vio más del 92%, se borra para no reanudar en los créditos.
+ * Si el usuario ya está a menos de 20s del final o vio más del 92%,
+ * se marca automáticamente como "Visto" y se limpia de in-progress.
  */
 export function savePlaybackProgress({ animeId, episode, currentTime, duration }) {
   if (!animeId || !episode || typeof currentTime !== 'number' || isNaN(currentTime)) return null;
 
   const validDuration = typeof duration === 'number' && !isNaN(duration) && duration > 0 ? duration : null;
-  const store = getStorage();
+  const store = getStorage(STORAGE_KEY);
   const key = buildProgressKey(animeId, episode);
 
-  // Si está al inicio (< 5s) o casi al final (> 92% o faltan menos de 20s)
+  // Si está casi al final (> 92% o faltan menos de 20s)
   const isFinished = validDuration && (currentTime > validDuration - 20 || (currentTime / validDuration) > 0.92);
 
-  if (isFinished || currentTime < 5) {
+  if (isFinished) {
+    markEpisodeWatched(animeId, episode);
+    return null;
+  }
+
+  if (currentTime < 5) {
     if (store[key]) {
       delete store[key];
-      setStorage(store);
+      setStorage(STORAGE_KEY, store);
     }
     return null;
   }
@@ -75,7 +168,7 @@ export function savePlaybackProgress({ animeId, episode, currentTime, duration }
   };
 
   store[key] = record;
-  setStorage(store);
+  setStorage(STORAGE_KEY, store);
   return record;
 }
 
@@ -84,7 +177,7 @@ export function savePlaybackProgress({ animeId, episode, currentTime, duration }
  */
 export function getPlaybackProgress(animeId, episode) {
   if (!animeId || !episode) return null;
-  const store = getStorage();
+  const store = getStorage(STORAGE_KEY);
   const key = buildProgressKey(animeId, episode);
   const entry = store[key];
   if (!entry || typeof entry.currentTime !== 'number') return null;
@@ -96,10 +189,10 @@ export function getPlaybackProgress(animeId, episode) {
  */
 export function clearPlaybackProgress(animeId, episode) {
   if (!animeId || !episode) return;
-  const store = getStorage();
+  const store = getStorage(STORAGE_KEY);
   const key = buildProgressKey(animeId, episode);
   if (store[key]) {
     delete store[key];
-    setStorage(store);
+    setStorage(STORAGE_KEY, store);
   }
 }

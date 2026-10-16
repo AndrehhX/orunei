@@ -10,6 +10,7 @@ import AnimePlayer from './AnimePlayer'
 import { getMiruroId, getEpisodePlayback } from '../api/streamAdapter'
 import { startEpisodeDownload, getDownload, cancelDownload, deleteDownload, subscribeDownloads, isNativeApp } from '../offline/downloadEngine'
 import { hasAiringAlert, toggleAiringAlert } from '../offline/airingAlerts'
+import { getEpisodeDisplayProgress, formatTime } from '../playback/playbackProgress'
 
 const TABS = ['Resumen', 'Episodios', 'Comunidad']
 const SRC = { 'AniList': 'bg-sky-500', 'Foro AniList': 'bg-indigo-500', 'MyAnimeList': 'bg-blue-700', 'Reddit': 'bg-orange-500' }
@@ -265,6 +266,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
               const dl = downloadStates[epNum]
               const isDownloaded = dl?.status === 'completed'
               const isDownloading = dl?.status === 'downloading'
+              const epProgress = getEpisodeDisplayProgress(m.id, epNum)
 
               return (
                 <div
@@ -285,20 +287,41 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
                     }`}>
                       <Play size={26} className="fill-white text-white drop-shadow" />
                     </span>
-                    <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded bg-black/85 text-[10px] font-bold text-white">
+                    <span className="absolute bottom-2 left-1.5 px-2 py-0.5 rounded bg-black/85 text-[10px] font-bold text-white z-10">
                       EP {epNum}
                     </span>
                     {isDownloaded && (
-                      <span className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/90 text-[10px] font-bold text-white shadow">
+                      <span className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/90 text-[10px] font-bold text-white shadow z-10">
                         <CheckCircle2 size={11} /> Offline
                       </span>
+                    )}
+                    {epProgress.watched && (
+                      <span className="absolute top-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-600/95 text-[10px] font-bold text-white shadow z-10">
+                        <Check size={11} className="stroke-[3]" /> Visto
+                      </span>
+                    )}
+
+                    {/* Barra de progreso de reproducción al pie de la miniatura */}
+                    {epProgress.percent > 0 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50 z-10">
+                        <div
+                          className={`h-full ${epProgress.watched ? 'bg-emerald-500' : 'bg-brand'}`}
+                          style={{ width: `${epProgress.percent}%` }}
+                        />
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center justify-between p-2.5">
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-1 text-xs font-semibold">{epTitle}</p>
                       <p className="mt-0.5 text-[10px] font-semibold text-brand">
-                        {isCurrent ? '▶ En reproducción' : 'Reproducir episodio ▸'}
+                        {isCurrent
+                          ? '▶ En reproducción'
+                          : epProgress.watched
+                          ? 'Completado'
+                          : epProgress.percent > 0
+                          ? `Continuar (${formatTime(epProgress.currentTime)}) ▸`
+                          : 'Reproducir episodio ▸'}
                       </p>
                     </div>
                     {isNativeApp() && (

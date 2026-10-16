@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
-import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, formatTime } from '../playback/playbackProgress';
+import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, markEpisodeWatched, formatTime } from '../playback/playbackProgress';
 import { fetchSkipTimes, getActiveSkipInterval } from '../playback/skipTimes';
 import { useVideoGestures, togglePiP, isPiPSupported } from '../playback/useVideoGestures';
+import { SUPPORTED_SPEEDS, getStoredPlaybackSpeed, setStoredPlaybackSpeed, applyPlaybackSpeed } from '../playback/playbackSpeed';
+import { shouldTriggerCountdown, COUNTDOWN_DURATION } from '../playback/nextEpisodeCountdown';
 
 export default function AnimePlayer({
   animeId,
@@ -33,10 +35,11 @@ export default function AnimePlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [bufferNotice, setBufferNotice] = useState(false);
 
-  // Calidad
+  // Calidad y Velocidad (Ajustes)
   const [qualities, setQualities] = useState([]);
   const [currentQuality, setCurrentQuality] = useState(-1); // -1 = Auto
   const [showSettings, setShowSettings] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(() => getStoredPlaybackSpeed());
 
   // Subtítulos
   const [subTracks, setSubTracks] = useState([]);
@@ -47,6 +50,10 @@ export default function AnimePlayer({
   // Reanudación al segundo exacto (Resume Timestamp)
   const [resumePrompt, setResumePrompt] = useState(null);
   const lastSaveTimeRef = useRef(0);
+
+  // Cuenta regresiva de Siguiente Episodio (Estilo Netflix)
+  const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(null);
+  const nextEpisodeDismissedRef = useRef(false);
 
   // Saltar Intro / Ending (AniSkip)
   const [skipIntervals, setSkipIntervals] = useState([]);
@@ -99,6 +106,8 @@ export default function AnimePlayer({
     setIsBuffering(false);
     setBufferNotice(false);
     setResumePrompt(null);
+    setNextEpisodeCountdown(null);
+    nextEpisodeDismissedRef.current = false;
 
     if (hlsRef.current) {
       hlsRef.current.destroy();
@@ -409,6 +418,14 @@ export default function AnimePlayer({
     setShowSettings(false);
   };
 
+  const handleChangeSpeed = (speed) => {
+    const saved = setStoredPlaybackSpeed(speed);
+    setPlaybackSpeed(saved);
+    if (videoRef.current) {
+      applyPlaybackSpeed(videoRef.current, saved);
+    }
+  };
+
   const handlePrevEp = () => {
     if (episode > 1) {
       const nextEp = episode - 1;
@@ -425,6 +442,22 @@ export default function AnimePlayer({
     }
   };
 
+  // Cuenta regresiva de siguiente episodio (decremento cada 1s)
+  useEffect(() => {
+    if (!nextEpisodeCountdown || nextEpisodeCountdown.secondsLeft <= 0) return;
+    const timer = setInterval(() => {
+      setNextEpisodeCountdown((prev) => {
+        if (!prev) return null;
+        if (prev.secondsLeft <= 1) {
+          handleNextEp();
+          return null;
+        }
+        return { ...prev, secondsLeft: prev.secondsLeft - 1 };
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [nextEpisodeCountdown, episode, totalEpisodes]);
+
   // Desvanecer prompt de reanudación después de 10s si el usuario no interactúa
   useEffect(() => {
     if (resumePrompt) {
@@ -435,6 +468,9 @@ export default function AnimePlayer({
 
   const handleLoadedMetadata = () => {
     syncSubtitles();
+    if (videoRef.current) {
+      applyPlaybackSpeed(videoRef.current, playbackSpeed);
+    }
     const progress = getPlaybackProgress(animeId || miruroId, episode);
     if (progress && progress.currentTime > 8) {
       setResumePrompt({
@@ -462,6 +498,21 @@ export default function AnimePlayer({
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video) return;
+
+    // Detectar si activar cuenta regresiva de siguiente episodio (últimos 15s)
+    if (
+      !nextEpisodeCountdown &&
+      !nextEpisodeDismissedRef.current &&
+      shouldTriggerCountdown({
+        currentTime: video.currentTime,
+        duration: video.duration,
+        episode,
+        totalEpisodes,
+        isDismissed: nextEpisodeDismissedRef.current,
+      })
+    ) {
+      setNextEpisodeCountdown({ secondsLeft: COUNTDOWN_DURATION });
+    }
 
     // Detectar intervalo activo de intro o ending
     if (skipIntervals.length > 0) {
@@ -506,11 +557,14 @@ export default function AnimePlayer({
 
   const handleEnded = () => {
     clearPlaybackProgress(animeId || miruroId, episode);
+    markEpisodeWatched(animeId || miruroId, episode);
     if (isAutoDeleteWatchedEnabled()) {
       deleteDownload(animeId || miruroId, episode).catch(() => {});
     }
     if (totalEpisodes && episode >= totalEpisodes) {
       onComplete?.(episode);
+    } else if (!nextEpisodeCountdown && !nextEpisodeDismissedRef.current) {
+      setNextEpisodeCountdown({ secondsLeft: COUNTDOWN_DURATION });
     } else if (onEpisodeChange) {
       const nextEp = episode + 1;
       setEpisode(nextEp);
@@ -693,6 +747,66 @@ export default function AnimePlayer({
           </div>
         )}
 
+        {/* Overlay elegante de Siguiente Episodio en 5s... (Estilo Netflix) */}
+        {nextEpisodeCountdown && (
+          <div className="absolute bottom-16 right-4 sm:right-6 z-40 w-72 max-w-[calc(100vw-32px)] rounded-2xl bg-[#131622]/95 border border-white/20 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.85)] backdrop-blur-md text-white animate-rise">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-brand">Siguiente episodio</span>
+                <h4 className="text-sm font-bold text-slate-100">Episodio {episode + 1}</h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  nextEpisodeDismissedRef.current = true;
+                  setNextEpisodeCountdown(null);
+                }}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+                title="Cancelar cuenta regresiva"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Barra de progreso de cuenta regresiva */}
+            <div className="mt-2.5 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-brand to-indigo-400 transition-all duration-1000 ease-linear rounded-full"
+                style={{ width: `${(nextEpisodeCountdown.secondsLeft / COUNTDOWN_DURATION) * 100}%` }}
+              />
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <span className="text-xs text-slate-300 font-medium">
+                En <strong className="text-white font-bold">{nextEpisodeCountdown.secondsLeft}s</strong>
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    nextEpisodeDismissedRef.current = true;
+                    setNextEpisodeCountdown(null);
+                  }}
+                  className="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white rounded-lg transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNextEpisodeCountdown(null);
+                    handleNextEp();
+                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-brand hover:bg-brand/90 text-white text-xs font-bold transition active:scale-95 shadow-md shadow-brand/30"
+                >
+                  <Play size={12} className="fill-white" />
+                  Ver ahora
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Botón flotante Saltar Intro / Saltar Ending */}
         {activeSkip && (
           <button
@@ -834,47 +948,69 @@ export default function AnimePlayer({
             )}
           </div>
 
-          {/* Selector de Calidad */}
-          {qualities.length > 0 && (
-            <div className="relative">
-              <button
-                onClick={() => { setShowSettings(!showSettings); setShowServerMenu(false); setShowSubMenu(false); }}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition active:scale-95"
-                title="Calidad de video"
-              >
-                <Settings size={15} className="shrink-0" />
-                <span className="truncate max-w-[50px] sm:max-w-none">{currentQuality === -1 ? 'Auto' : qualities.find((q) => q.index === currentQuality)?.label || 'Auto'}</span>
-              </button>
+          {/* Menú de Configuración: Velocidad de reproducción y Calidad */}
+          <div className="relative">
+            <button
+              onClick={() => { setShowSettings(!showSettings); setShowServerMenu(false); setShowSubMenu(false); }}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${showSettings || playbackSpeed !== 1 ? 'bg-brand/20 border-brand/50 text-white shadow-[0_0_12px_rgba(109,92,255,0.3)]' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
+              title="Ajustes de reproducción (Velocidad y Calidad)"
+            >
+              <Settings size={15} className={`shrink-0 ${playbackSpeed !== 1 ? 'text-brand' : ''}`} />
+              <span className="truncate max-w-[65px] sm:max-w-none">
+                {playbackSpeed !== 1 ? `${playbackSpeed}x` : (currentQuality === -1 ? 'Auto' : qualities.find((q) => q.index === currentQuality)?.label || 'Ajustes')}
+              </span>
+            </button>
 
-              {showSettings && (
-                <div className="absolute bottom-full right-0 mb-2 w-44 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
-                  <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
-                    Calidad de transmisión
-                  </div>
-                  <div className="mt-1 flex flex-col gap-0.5">
-                    <button
-                      onClick={() => changeQuality(-1)}
-                      className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition ${currentQuality === -1 ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
-                    >
-                      <span>Automática (Adaptativa)</span>
-                      {currentQuality === -1 && <Check size={14} />}
-                    </button>
-
-                    {qualities.map((q) => (
-                      <button
-                        key={q.index}
-                        onClick={() => changeQuality(q.index)}
-                        className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg transition ${currentQuality === q.index ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
-                      >
-                        <span>{q.label}</span>
-                        {currentQuality === q.index && <Check size={14} />}
-                      </button>
-                    ))}
-                  </div>
+            {showSettings && (
+              <div className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-2xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-2 z-30 animate-scaleUp">
+                {/* Sección de Velocidad */}
+                <div className="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5"><Gauge size={13} className="text-brand" /> Velocidad</span>
+                  <span className="text-brand font-extrabold">{playbackSpeed}x</span>
                 </div>
-              )}
-            </div>
-          )}
+                <div className="py-2 grid grid-cols-3 gap-1">
+                  {SUPPORTED_SPEEDS.map((spd) => (
+                    <button
+                      key={spd}
+                      onClick={() => handleChangeSpeed(spd)}
+                      className={`py-1.5 text-xs font-semibold rounded-lg text-center transition ${playbackSpeed === spd ? 'bg-brand text-white font-bold shadow-sm' : 'text-slate-300 hover:bg-white/5'}`}
+                    >
+                      {spd === 1 ? '1x Normal' : `${spd}x`}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sección de Calidad (si hay niveles disponibles) */}
+                {qualities.length > 0 && (
+                  <>
+                    <div className="mt-1 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10 border-t pt-2">
+                      Calidad de video
+                    </div>
+                    <div className="mt-1 flex flex-col gap-0.5 max-h-36 overflow-y-auto">
+                      <button
+                        onClick={() => changeQuality(-1)}
+                        className={`flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg transition ${currentQuality === -1 ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
+                      >
+                        <span>Automática (Adaptativa)</span>
+                        {currentQuality === -1 && <Check size={13} />}
+                      </button>
+
+                      {qualities.map((q) => (
+                        <button
+                          key={q.index}
+                          onClick={() => changeQuality(q.index)}
+                          className={`flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg transition ${currentQuality === q.index ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
+                        >
+                          <span>{q.label}</span>
+                          {currentQuality === q.index && <Check size={13} />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
