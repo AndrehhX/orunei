@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
-import { getOfflineVideoBlob, getDownload } from '../offline/downloadEngine';
+import { getOfflinePlaybackSource, getDownload } from '../offline/downloadEngine';
 
 export default function AnimePlayer({
   animeId,
@@ -16,6 +16,7 @@ export default function AnimePlayer({
 }) {
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
+  const offlineSourceRef = useRef(null);
 
   const [episode, setEpisode] = useState(initialEpisode);
   const [loading, setLoading] = useState(true);
@@ -74,13 +75,11 @@ export default function AnimePlayer({
       hlsRef.current = null;
     }
 
-    let offlineBlobUrl = null;
-
     // Verificar si el episodio se encuentra descargado localmente
-    getOfflineVideoBlob(animeId || miruroId, episode).then(async (offlineBlob) => {
+    getOfflinePlaybackSource(animeId || miruroId, episode).then(async (source) => {
       if (isCancelled) return;
-      if (offlineBlob) {
-        offlineBlobUrl = URL.createObjectURL(offlineBlob);
+      if (source) {
+        offlineSourceRef.current = source;
         const meta = await getDownload(animeId || miruroId, episode);
         if (isCancelled) return;
 
@@ -106,9 +105,9 @@ export default function AnimePlayer({
         }
 
         setPlaybackData({
-          proxiedStreamUrl: offlineBlobUrl,
+          proxiedStreamUrl: source.url,
           isOffline: true,
-          servers: [{ id: 'offline-local', name: '💾 Descarga Offline (Local)', proxiedStreamUrl: offlineBlobUrl }],
+          servers: [{ id: 'offline-local', name: '💾 Descarga Offline (Local)', proxiedStreamUrl: source.url }],
         });
         setLoading(false);
         return;
@@ -169,8 +168,9 @@ export default function AnimePlayer({
 
     return () => {
       isCancelled = true;
-      if (offlineBlobUrl) {
-        URL.revokeObjectURL(offlineBlobUrl);
+      if (offlineSourceRef.current) {
+        offlineSourceRef.current.revoke();
+        offlineSourceRef.current = null;
       }
       if (hlsRef.current) {
         hlsRef.current.destroy();

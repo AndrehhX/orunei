@@ -57,16 +57,17 @@ test('offline engine guarantees background downloads, persistent storage, and su
   assert.match(downloadEngine, /acquireWakeLock/)
   assert.match(downloadEngine, /downloadedSubtitles/)
   assert.match(downloadEngine, /getActiveDownloads/)
-  assert.match(downloadEngine, /getOfflineVideoBlob/)
+  assert.match(downloadEngine, /getOfflinePlaybackSource/)
+  assert.match(downloadEngine, /resolveHlsPlaylist/)
 })
 
 test('offline player and anime player support downloaded subtitles and zero backend playback', () => {
-  assert.match(offlinePlayer, /getOfflineVideoBlob/)
+  assert.match(offlinePlayer, /getOfflinePlaybackSource/)
   assert.match(offlinePlayer, /offlineSubtitles/)
   assert.match(offlinePlayer, /<track/)
   assert.match(offlinePlayer, /Subtítulos Offline/)
 
-  assert.match(animePlayer, /getOfflineVideoBlob/)
+  assert.match(animePlayer, /getOfflinePlaybackSource/)
   assert.match(animePlayer, /getDownload/)
   assert.match(animePlayer, /offlineTracks/)
 })

@@ -102,7 +102,8 @@ export async function getAllDownloads() {
       const store = tx.objectStore(STORE_EPISODES);
       const req = store.getAll();
       req.onsuccess = () => {
-        const items = (req.result || []).filter(item => item.status === 'completed');
+        // Descartar descargas incompletas o vacías
+        const items = (req.result || []).filter(item => item.status === 'completed' && (item.isHls || (item.sizeBytes && item.sizeBytes > 50000)));
         items.sort((a, b) => (b.downloadedAt || 0) - (a.downloadedAt || 0));
         resolve(items);
       };
@@ -131,19 +132,143 @@ export async function getDownload(animeId, episodeNumber) {
   }
 }
 
-export async function getOfflineVideoBlob(animeId, episodeNumber) {
+/**
+ * Obtiene la fuente de reproducción offline para un episodio.
+ * Si es un stream HLS, genera una lista M3U8 local apuntando a los segmentos en Blob locales.
+ */
+export async function getOfflinePlaybackSource(animeId, episodeNumber) {
   const id = `${animeId}_${episodeNumber}`;
   try {
     const db = await getDb();
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_BLOBS, 'readonly');
       const req = tx.objectStore(STORE_BLOBS).get(id);
-      req.onsuccess = () => resolve(req.result?.blob || null);
+      req.onsuccess = () => {
+        const record = req.result;
+        if (!record) return resolve(null);
+
+        // Stream HLS segmentado offline
+        if (record.isHls && Array.isArray(record.segments) && record.segments.length > 0) {
+          const segUrls = [];
+          for (let i = 0; i < record.segments.length; i++) {
+            segUrls.push(URL.createObjectURL(record.segments[i]));
+          }
+
+          let m3u8 = '#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:15\n#EXT-X-MEDIA-SEQUENCE:1\n#EXT-X-PLAYLIST-TYPE:VOD\n';
+          const durations = record.durations || [];
+          for (let i = 0; i < segUrls.length; i++) {
+            const dur = durations[i] || 4.0;
+            m3u8 += `#EXTINF:${dur},\n${segUrls[i]}\n`;
+          }
+          m3u8 += '#EXT-X-ENDLIST\n';
+
+          const playlistBlob = new Blob([m3u8], { type: 'application/vnd.apple.mpegurl' });
+          const playlistUrl = URL.createObjectURL(playlistBlob);
+
+          resolve({
+            type: 'hls',
+            url: playlistUrl,
+            revoke: () => {
+              URL.revokeObjectURL(playlistUrl);
+              segUrls.forEach(u => URL.revokeObjectURL(u));
+            },
+          });
+          return;
+        }
+
+        // Archivo único de video MP4
+        if (record.blob) {
+          const videoUrl = URL.createObjectURL(record.blob);
+          resolve({
+            type: 'file',
+            url: videoUrl,
+            revoke: () => URL.revokeObjectURL(videoUrl),
+          });
+          return;
+        }
+
+        resolve(null);
+      };
       req.onerror = () => resolve(null);
     });
   } catch {
     return null;
   }
+}
+
+export async function getOfflineVideoBlob(animeId, episodeNumber) {
+  const source = await getOfflinePlaybackSource(animeId, episodeNumber);
+  return source ? source.url : null;
+}
+
+/**
+ * Parsea el streamUrl. Si es un playlist HLS (.m3u8), resuelve la playlist de video y extrae los segmentos.
+ */
+async function resolveHlsPlaylist(streamUrl, signal) {
+  const resp = await fetch(streamUrl, { signal });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  const text = await resp.text();
+
+  if (!text.includes('#EXTM3U')) {
+    return { isHls: false, rawText: text };
+  }
+
+  let mediaPlaylistUrl = streamUrl;
+  let mediaPlaylistText = text;
+
+  // Master playlist con variantes de calidad (#EXT-X-STREAM-INF)
+  if (text.includes('#EXT-X-STREAM-INF')) {
+    const lines = text.split('\n');
+    let bestVariantUrl = null;
+    let maxBandwidth = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.startsWith('#EXT-X-STREAM-INF:')) {
+        const bwMatch = line.match(/BANDWIDTH=(\d+)/);
+        const bw = bwMatch ? parseInt(bwMatch[1], 10) : 0;
+        for (let j = i + 1; j < lines.length; j++) {
+          const next = lines[j].trim();
+          if (next && !next.startsWith('#')) {
+            if (bw >= maxBandwidth || !bestVariantUrl) {
+              maxBandwidth = bw;
+              bestVariantUrl = next;
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    if (bestVariantUrl) {
+      mediaPlaylistUrl = new URL(bestVariantUrl, streamUrl).href;
+      const mediaResp = await fetch(mediaPlaylistUrl, { signal });
+      if (!mediaResp.ok) throw new Error(`HTTP ${mediaResp.status}`);
+      mediaPlaylistText = await mediaResp.text();
+    }
+  }
+
+  // Extraer segmentos y duraciones de la playlist de video
+  const lines = mediaPlaylistText.split('\n');
+  const segments = [];
+  let currentDur = 4.0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('#EXTINF:')) {
+      const match = line.match(/#EXTINF:([0-9.]+)/);
+      if (match) currentDur = parseFloat(match[1]);
+    } else if (line && !line.startsWith('#')) {
+      const fullUrl = new URL(line, mediaPlaylistUrl).href;
+      segments.push({ url: fullUrl, duration: currentDur });
+    }
+  }
+
+  return {
+    isHls: true,
+    segments,
+    mediaPlaylistUrl,
+  };
 }
 
 export async function startEpisodeDownload({
@@ -171,7 +296,7 @@ export async function startEpisodeDownload({
     progress: 0,
     downloadedBytes: 0,
     totalBytes: 0,
-    sizeFormatted: 'Calculando...',
+    sizeFormatted: 'Iniciando descarga…',
     downloadedAt: Date.now(),
     subtitles: [],
   };
@@ -205,52 +330,131 @@ export async function startEpisodeDownload({
     }
     meta.subtitles = downloadedSubtitles;
 
-    // 2. Descargar flujo de video
-    const response = await fetch(streamUrl, { signal: controller.signal });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    // 2. Analizar si la fuente es HLS (.m3u8) o archivo directo
+    meta.sizeFormatted = 'Analizando flujo de video…';
+    notifyListeners();
 
-    const contentLength = Number(response.headers.get('content-length')) || 0;
-    meta.totalBytes = contentLength;
+    const hlsInfo = await resolveHlsPlaylist(streamUrl, controller.signal);
 
-    const reader = response.body.getReader();
-    const chunks = [];
-    let receivedBytes = 0;
+    const db = await getDb();
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    if (hlsInfo.isHls && hlsInfo.segments.length > 0) {
+      const totalSegments = hlsInfo.segments.length;
+      let completedSegments = 0;
+      let totalDownloadedBytes = 0;
+      const downloadedBlobs = new Array(totalSegments);
+      const durations = hlsInfo.segments.map(s => s.duration);
 
-      chunks.push(value);
-      receivedBytes += value.length;
+      const CONCURRENCY = 4;
+      let cursor = 0;
 
-      meta.downloadedBytes = receivedBytes;
-      if (contentLength > 0) {
-        meta.progress = Math.min(99, Math.round((receivedBytes / contentLength) * 100));
-        meta.sizeFormatted = `${formatBytes(receivedBytes)} / ${formatBytes(contentLength)}`;
-      } else {
-        meta.progress = 50;
-        meta.sizeFormatted = formatBytes(receivedBytes);
+      async function worker() {
+        while (cursor < totalSegments) {
+          if (controller.signal.aborted) break;
+          const index = cursor++;
+          const seg = hlsInfo.segments[index];
+
+          let attempts = 0;
+          let success = false;
+          while (attempts < 3 && !success) {
+            if (controller.signal.aborted) break;
+            try {
+              const segResp = await fetch(seg.url, { signal: controller.signal });
+              if (!segResp.ok) throw new Error(`HTTP ${segResp.status}`);
+              const blob = await segResp.blob();
+              downloadedBlobs[index] = blob;
+              totalDownloadedBytes += blob.size;
+              completedSegments++;
+              success = true;
+
+              meta.progress = Math.min(99, Math.round((completedSegments / totalSegments) * 100));
+              meta.downloadedBytes = totalDownloadedBytes;
+              meta.sizeFormatted = `${formatBytes(totalDownloadedBytes)} (${completedSegments}/${totalSegments} partes)`;
+              notifyListeners();
+            } catch (err) {
+              attempts++;
+              if (attempts >= 3) throw err;
+              await new Promise(r => setTimeout(r, 600));
+            }
+          }
+        }
       }
 
-      notifyListeners();
+      const workers = Array.from(
+        { length: Math.min(CONCURRENCY, totalSegments) },
+        () => worker()
+      );
+      await Promise.all(workers);
+
+      if (controller.signal.aborted) return;
+
+      meta.progress = 100;
+      meta.status = 'completed';
+      meta.isHls = true;
+      meta.segmentCount = totalSegments;
+      meta.sizeBytes = totalDownloadedBytes;
+      meta.sizeFormatted = formatBytes(totalDownloadedBytes);
+      meta.downloadedAt = Date.now();
+
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction([STORE_EPISODES, STORE_BLOBS], 'readwrite');
+        tx.objectStore(STORE_EPISODES).put(meta);
+        tx.objectStore(STORE_BLOBS).put({
+          id,
+          isHls: true,
+          segments: downloadedBlobs,
+          durations,
+        });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } else {
+      // Descarga de archivo único de video directo (MP4/WebM)
+      const response = await fetch(streamUrl, { signal: controller.signal });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const contentLength = Number(response.headers.get('content-length')) || 0;
+      meta.totalBytes = contentLength;
+
+      const reader = response.body.getReader();
+      const chunks = [];
+      let receivedBytes = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        chunks.push(value);
+        receivedBytes += value.length;
+
+        meta.downloadedBytes = receivedBytes;
+        if (contentLength > 0) {
+          meta.progress = Math.min(99, Math.round((receivedBytes / contentLength) * 100));
+          meta.sizeFormatted = `${formatBytes(receivedBytes)} / ${formatBytes(contentLength)}`;
+        } else {
+          meta.progress = 50;
+          meta.sizeFormatted = formatBytes(receivedBytes);
+        }
+
+        notifyListeners();
+      }
+
+      const videoBlob = new Blob(chunks, { type: 'video/mp4' });
+      meta.progress = 100;
+      meta.status = 'completed';
+      meta.isHls = false;
+      meta.sizeBytes = videoBlob.size;
+      meta.sizeFormatted = formatBytes(videoBlob.size);
+      meta.downloadedAt = Date.now();
+
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction([STORE_EPISODES, STORE_BLOBS], 'readwrite');
+        tx.objectStore(STORE_EPISODES).put(meta);
+        tx.objectStore(STORE_BLOBS).put({ id, isHls: false, blob: videoBlob });
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
     }
-
-    const videoBlob = new Blob(chunks, { type: 'video/mp4' });
-    meta.progress = 100;
-    meta.status = 'completed';
-    meta.sizeBytes = videoBlob.size;
-    meta.sizeFormatted = formatBytes(videoBlob.size);
-    meta.downloadedAt = Date.now();
-
-    // 3. Guardar en IndexedDB
-    const db = await getDb();
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction([STORE_EPISODES, STORE_BLOBS], 'readwrite');
-      tx.objectStore(STORE_EPISODES).put(meta);
-      tx.objectStore(STORE_BLOBS).put({ id, blob: videoBlob });
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
 
     activeDownloads.delete(id);
     releaseWakeLock();

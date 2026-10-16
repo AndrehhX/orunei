@@ -1,35 +1,38 @@
 import { useEffect, useState, useRef } from 'react';
+import Hls from 'hls.js';
 import { X, WifiOff, AlertCircle, Loader2, Subtitles } from 'lucide-react';
-import { getOfflineVideoBlob } from '../offline/downloadEngine';
+import { getOfflinePlaybackSource } from '../offline/downloadEngine';
 
 export default function OfflinePlayerModal({ episode, onClose }) {
-  const [blobUrl, setBlobUrl] = useState(null);
+  const [playbackReady, setPlaybackReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [offlineSubtitles, setOfflineSubtitles] = useState([]);
   const [selectedSub, setSelectedSub] = useState('es');
   const [showSubMenu, setShowSubMenu] = useState(false);
+
   const videoRef = useRef(null);
+  const hlsRef = useRef(null);
+  const playbackSourceRef = useRef(null);
 
   // Cargar video local y subtítulos
   useEffect(() => {
-    let videoUrl = null;
-    const subUrls = [];
     let isCancelled = false;
+    const subUrls = [];
 
     async function loadMedia() {
       setLoading(true);
       setError(null);
       try {
-        const blob = await getOfflineVideoBlob(episode.animeId, episode.episodeNumber);
+        const source = await getOfflinePlaybackSource(episode.animeId, episode.episodeNumber);
         if (isCancelled) return;
-        if (!blob) {
+        if (!source) {
           setError('No se pudo encontrar el archivo descargado en este dispositivo.');
           setLoading(false);
           return;
         }
-        videoUrl = URL.createObjectURL(blob);
-        setBlobUrl(videoUrl);
+
+        playbackSourceRef.current = source;
 
         // Convertir subtítulos descargados a URLs locales de tipo Blob
         if (Array.isArray(episode.subtitles) && episode.subtitles.length > 0) {
@@ -50,10 +53,11 @@ export default function OfflinePlayerModal({ episode, onClose }) {
           if (defTrack) setSelectedSub(defTrack.id);
         }
 
+        setPlaybackReady(true);
         setLoading(false);
       } catch (err) {
         if (!isCancelled) {
-          setError('Error al cargar el video sin conexión.');
+          setError('Error al cargar el video sin conexión: ' + (err.message || ''));
           setLoading(false);
         }
       }
@@ -65,10 +69,38 @@ export default function OfflinePlayerModal({ episode, onClose }) {
 
     return () => {
       isCancelled = true;
-      if (videoUrl) URL.revokeObjectURL(videoUrl);
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+      if (playbackSourceRef.current) {
+        playbackSourceRef.current.revoke();
+        playbackSourceRef.current = null;
+      }
       subUrls.forEach(u => URL.revokeObjectURL(u));
     };
   }, [episode]);
+
+  // Inicializar reproductor de video (HLS o directo) una vez que el DOM de videoRef esté montado
+  useEffect(() => {
+    if (!playbackReady || !videoRef.current || !playbackSourceRef.current) return;
+
+    const source = playbackSourceRef.current;
+    const video = videoRef.current;
+
+    if (source.type === 'hls' && Hls.isSupported()) {
+      if (hlsRef.current) hlsRef.current.destroy();
+      const hls = new Hls({
+        enableWorker: false,
+        lowLatencyMode: false,
+      });
+      hls.loadSource(source.url);
+      hls.attachMedia(video);
+      hlsRef.current = hls;
+    } else {
+      video.src = source.url;
+    }
+  }, [playbackReady]);
 
   // Manejar cambio de pista de subtítulos activa en el elemento video
   useEffect(() => {
@@ -193,10 +225,9 @@ export default function OfflinePlayerModal({ episode, onClose }) {
             </div>
           )}
 
-          {!loading && !error && blobUrl && (
+          {!loading && !error && playbackReady && (
             <video
               ref={videoRef}
-              src={blobUrl}
               controls
               autoPlay
               playsInline
