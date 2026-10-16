@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Star, Play, ExternalLink, Heart, ChevronDown, MessageSquare, ThumbsUp, Clock, BookOpen, Check, Download, CheckCircle2, Loader2, WifiOff } from 'lucide-react'
+import { ArrowLeft, Star, Play, ExternalLink, Heart, ChevronDown, MessageSquare, ThumbsUp, Clock, BookOpen, Check, Download, CheckCircle2, Loader2, WifiOff, Bell, BellRing } from 'lucide-react'
 import { getAnime, ratingJobs, commentJobs, title, crunchy, clean, T, ago, translateDescription } from '../api/anime'
 import { AnimeCard } from './AnimePage'
 import { useRec } from '../rec/rec'
@@ -9,6 +9,7 @@ import { buildEpisodeCards } from '../api/episodeData.js'
 import AnimePlayer from './AnimePlayer'
 import { getMiruroId, getEpisodePlayback } from '../api/streamAdapter'
 import { startEpisodeDownload, getDownload, cancelDownload, deleteDownload, subscribeDownloads, isNativeApp } from '../offline/downloadEngine'
+import { hasAiringAlert, toggleAiringAlert } from '../offline/airingAlerts'
 
 const TABS = ['Resumen', 'Episodios', 'Comunidad']
 const SRC = { 'AniList': 'bg-sky-500', 'Foro AniList': 'bg-indigo-500', 'MyAnimeList': 'bg-blue-700', 'Reddit': 'bg-orange-500' }
@@ -461,6 +462,25 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
   const existingLibraryEntry = m ? profile.animeList.find((item) => item.id === String(m.id) || item.q === title(m)) : null
   const currentEpToPlay = Number(existingLibraryEntry?.currentEpisode) > 0 ? Number(existingLibraryEntry.currentEpisode) : 1
   const inLibrary = Boolean(existingLibraryEntry)
+
+  const [hasAlert, setHasAlert] = useState(() => (m && next ? hasAiringAlert(m.id, next.episode) : false))
+  useEffect(() => {
+    if (m && next) {
+      setHasAlert(hasAiringAlert(m.id, next.episode))
+    }
+  }, [m?.id, next?.episode])
+
+  const handleToggleAlert = () => {
+    if (!m || !next) return
+    const active = toggleAiringAlert({
+      animeId: m.id,
+      animeTitle: title(m),
+      episode: next.episode,
+      airingAt: next.airingAt,
+    })
+    setHasAlert(active)
+  }
+
   const toggleLibrary = async () => {
     if (!m) return
     const result = await updateAnimeList((items) => inLibrary ? items.filter((item) => item.id !== String(m.id) && item.q !== title(m)) : [...items, createLibraryEntry(m)])
@@ -556,15 +576,31 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                 <p className="text-sm text-slate-500">{m.title?.native || ''}{m.title?.native && m.title?.romaji ? ' · ' : ''}{m.title?.romaji && m.title?.romaji !== title(m) ? m.title.romaji : ''}</p>
                 <div className="flex flex-wrap gap-1.5">{(m.genres || []).map((g) => <span key={g} className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-white" style={{ background: accent }}>{g}</span>)}</div>
                 {next && (
-                  <div className="my-1.5 inline-flex flex-wrap items-center gap-2.5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 px-4 py-2.5 border border-emerald-500/35 text-emerald-800 dark:text-emerald-200 shadow-sm w-fit backdrop-blur-md animate-rise">
-                    <span className="relative flex h-3 w-3 shrink-0">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                    </span>
-                    <Clock size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span className="text-sm sm:text-base font-extrabold tracking-tight">
-                      Episodio {next.episode} · Se estrena {formatAiringCountdown(next.airingAt)}
-                    </span>
+                  <div className="my-1.5 flex flex-wrap items-center gap-2 animate-rise">
+                    <div className="inline-flex flex-wrap items-center gap-2.5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 px-4 py-2.5 border border-emerald-500/35 text-emerald-800 dark:text-emerald-200 shadow-sm w-fit backdrop-blur-md">
+                      <span className="relative flex h-3 w-3 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                      </span>
+                      <Clock size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="text-sm sm:text-base font-extrabold tracking-tight">
+                        Episodio {next.episode} · Se estrena {formatAiringCountdown(next.airingAt)}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleToggleAlert}
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all duration-300 active:scale-95 shadow-sm border ${
+                        hasAlert
+                          ? 'bg-amber-500 text-white border-amber-600 shadow-amber-500/30'
+                          : 'bg-white/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 border-slate-200/80 dark:border-white/10 hover:bg-white'
+                      }`}
+                      title={hasAlert ? 'Recordatorio de estreno activado' : 'Avisarme cuando se estrene este episodio'}
+                    >
+                      {hasAlert ? <BellRing size={15} className="animate-bounce" /> : <Bell size={15} />}
+                      <span>{hasAlert ? 'Aviso activo' : 'Avisarme'}</span>
+                    </button>
                   </div>
                 )}
                 <div className="mt-1 flex flex-wrap gap-2">
