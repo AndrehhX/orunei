@@ -131,6 +131,25 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
   const initialPage = currentEpisode ? Math.floor((currentEpisode - 1) / PAGE_SIZE) : 0
   const [page, setPage] = useState(initialPage)
   const [downloadStates, setDownloadStates] = useState({})
+  const [jumpEpInput, setJumpEpInput] = useState('')
+
+  const handleJumpToEpisode = (e) => {
+    e?.preventDefault?.()
+    const target = parseInt(jumpEpInput, 10)
+    if (!isNaN(target) && target >= 1 && target <= totalEpisodes) {
+      const targetPage = Math.floor((target - 1) / PAGE_SIZE)
+      setPage(targetPage)
+      setJumpEpInput('')
+      setTimeout(() => {
+        const el = document.getElementById(`ep-card-${target}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          el.classList.add('ring-4', 'ring-brand', 'scale-[1.02]')
+          setTimeout(() => el.classList.remove('ring-4', 'ring-brand', 'scale-[1.02]'), 2000)
+        }
+      }, 100)
+    }
+  }
 
   useEffect(() => {
     if (currentEpisode && currentEpisode > 0) {
@@ -234,26 +253,49 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
         </div>
 
         {totalPages > 1 && (
-          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-            {Array.from({ length: totalPages }, (_, idx) => {
-              const pStart = idx * PAGE_SIZE + 1
-              const pEnd = Math.min((idx + 1) * PAGE_SIZE, totalEpisodes)
-              const isActive = idx === page
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setPage(idx)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                    isActive
-                      ? 'bg-brand text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-white/10'
-                  }`}
-                >
-                  {pStart} - {pEnd}
-                </button>
-              )
-            })}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 p-2 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+            <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto max-w-full pb-0.5">
+              {Array.from({ length: totalPages }, (_, idx) => {
+                const pStart = idx * PAGE_SIZE + 1
+                const pEnd = Math.min((idx + 1) * PAGE_SIZE, totalEpisodes)
+                const isActive = idx === page
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setPage(idx)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                      isActive
+                        ? 'bg-brand text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 dark:hover:bg-white/10'
+                    }`}
+                  >
+                    {pStart} - {pEnd}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Salto Rápido a Episodio en Series Extensas */}
+            <form onSubmit={handleJumpToEpisode} className="flex items-center gap-1.5 ml-auto shrink-0">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Ir al Ep.</span>
+              <input
+                type="number"
+                min="1"
+                max={totalEpisodes}
+                value={jumpEpInput}
+                onChange={(e) => setJumpEpInput(e.target.value)}
+                placeholder="1..."
+                className="w-16 px-2.5 py-1 text-xs font-bold text-center rounded-lg bg-white dark:bg-black/30 border border-slate-300 dark:border-white/15 outline-none focus:border-brand focus:ring-1 focus:ring-brand text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+              />
+              <button
+                type="submit"
+                disabled={!jumpEpInput}
+                className="px-3 py-1 text-xs font-bold rounded-lg bg-brand text-white shadow-sm hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:pointer-events-none transition"
+              >
+                Ir
+              </button>
+            </form>
           </div>
         )}
 
@@ -271,6 +313,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
 
               return (
                 <div
+                  id={`ep-card-${epNum}`}
                   key={epNum}
                   onClick={() => onPlayEpisode?.(epNum)}
                   className={`group card text-left overflow-hidden transition-all duration-300 cursor-pointer ${
