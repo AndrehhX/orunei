@@ -125,9 +125,43 @@ export default function PublicProfilePage({ profile, viewer = {}, library = prof
 
     <nav className="scroll-hide flex gap-1 overflow-x-auto rounded-2xl bg-white/70 p-1.5 shadow-sm dark:bg-white/5" aria-label="Secciones públicas del perfil">{availableTabs.map(([id, label, Icon]) => <button key={id} onClick={() => setActive(id)} aria-pressed={active === id} className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${active === id ? 'bg-brand text-white shadow-md shadow-brand/25' : 'text-slate-500 hover:bg-slate-100 hover:text-brand dark:hover:bg-white/10'}`}><Icon size={15} />{label}</button>)}</nav>
 
-    {active === 'overview' && <div className="grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
-      <section className="card p-5"><div className="mb-4"><h2 className="text-lg font-bold">AnimeList compartido</h2><p className="text-xs text-slate-500">Lo que este perfil ha decidido mostrar.</p></div>{visibility.visibleSections.includes('animeList') ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">{groups.map(([id, label, color]) => <div key={id} className="rounded-2xl border border-slate-200/80 p-3 dark:border-white/10"><span className={`text-xs font-semibold ${color}`}>●</span><p className="mt-4 text-2xl font-extrabold">{sections[id].length}</p><p className="text-xs text-slate-500">{label}</p></div>)}</div> : <Restricted section="su AnimeList" />}</section>
-      <section className="card p-5"><div className="mb-4"><h2 className="text-lg font-bold">Destacado</h2><p className="text-xs text-slate-500">Una historia elegida por este perfil.</p></div>{visibility.visibleSections.includes('favorites') && featured ? <div className="flex items-center gap-3"><Poster {...featured} title={featured.t} className="h-28 w-20 shrink-0 rounded-xl" /><div className="min-w-0"><p className="truncate font-bold">{featured.t}</p><p className="mt-1 text-xs text-slate-500">{featured.s}</p></div></div> : <Restricted section="este destacado" />}</section>
+    {active === 'overview' && <div className="grid gap-5 lg:grid-cols-3">
+      <section className="card p-5 lg:col-span-2 min-w-0">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold">AnimeList compartido</h2>
+          <p className="text-xs text-slate-500">Lo que este perfil ha decidido mostrar.</p>
+        </div>
+        {visibility.visibleSections.includes('animeList') ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {groups.map(([id, label, color]) => (
+              <div key={id} className="rounded-2xl border border-slate-200/80 p-3 dark:border-white/10 min-w-0">
+                <span className={`text-xs font-semibold ${color}`}>●</span>
+                <p className="mt-3 text-2xl font-extrabold">{sections[id].length}</p>
+                <p className="text-xs text-slate-500 truncate" title={label}>{label}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Restricted section="su AnimeList" />
+        )}
+      </section>
+      <section className="card p-5 lg:col-span-1 min-w-0">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold">Destacado</h2>
+          <p className="text-xs text-slate-500">Una historia elegida por este perfil.</p>
+        </div>
+        {visibility.visibleSections.includes('favorites') && featured ? (
+          <div className="flex items-center gap-3 min-w-0">
+            <Poster {...featured} title={featured.t} className="h-28 w-20 shrink-0 rounded-xl" />
+            <div className="min-w-0 flex-1">
+              <p className="line-clamp-2 font-bold text-sm" title={featured.t}>{featured.t}</p>
+              <p className="mt-1 text-xs text-slate-500">{featured.s}</p>
+            </div>
+          </div>
+        ) : (
+          <Restricted section="este destacado" />
+        )}
+      </section>
     </div>}
 
     {active === 'animeList' && (visibility.visibleSections.includes('animeList') ? <section className="space-y-5"><div><h2 className="text-2xl font-extrabold">AnimeList</h2><p className="text-sm text-slate-500">La biblioteca que este perfil comparte.</p></div>{groups.map(([id, label]) => <section key={id}><div className="mb-3 flex items-center gap-2"><h3 className="font-bold">{label}</h3><span className="text-xs text-slate-500">{sections[id].length}</span></div>{sections[id].length ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">{sections[id].map((item) => <AnimeCard key={item.q} item={item} />)}</div> : <p className="text-sm text-slate-500">No hay títulos compartidos en esta sección.</p>}</section>)}</section> : <Restricted section="su AnimeList" />)}
