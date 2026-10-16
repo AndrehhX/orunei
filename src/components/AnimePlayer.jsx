@@ -1047,31 +1047,40 @@ export default function AnimePlayer({
         </video>
       </div>
 
-      {/* Barra de controles, servidores, subtítulos y calidades */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3 sm:px-6 py-2.5 sm:py-3 border-t border-white/10 bg-[#161824]/95 backdrop-blur-md text-sm text-white">
-        {/* Navegación anterior / siguiente */}
-        <div className="flex items-center justify-between sm:justify-start gap-2">
+      {/* Barra de controles inferiores: Jerarquía limpia en 3 islas visuales */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-3 sm:px-6 py-2.5 sm:py-3 border-t border-white/10 bg-[#141724]/95 backdrop-blur-md text-sm text-white">
+        {/* GRUPO 1: Navegación de Episodios (Isla encapsulada) */}
+        <div className="flex items-center justify-between sm:justify-start gap-1 p-1 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner">
           <button
             onClick={handlePrevEp}
             disabled={episode <= 1 || loading}
-            className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 hover:border-white/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
+            title="Episodio anterior"
           >
             <ChevronLeft size={16} />
-            Anterior
+            <span className="hidden sm:inline">Anterior</span>
           </button>
+
+          <div className="px-3 py-1 text-xs font-bold text-slate-200 bg-white/5 rounded-xl border border-white/5 select-none text-center min-w-[80px]">
+            <span className="text-brand font-black">Ep. {episode}</span>
+            {totalEpisodes ? <span className="text-slate-400 font-normal"> / {totalEpisodes}</span> : null}
+          </div>
 
           <button
             onClick={handleNextEp}
             disabled={(totalEpisodes && episode >= totalEpisodes) || loading}
-            className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 hover:border-white/20 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all duration-200 active:scale-95"
+            title="Episodio siguiente"
           >
-            Siguiente
+            <span className="hidden sm:inline">Siguiente</span>
             <ChevronRight size={16} />
           </button>
         </div>
 
-        {/* Menús de Servidor, Subtítulos y Calidad */}
-        <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-2.5 relative flex-wrap sm:flex-nowrap">
+        {/* GRUPOS 2 Y 3: Transmisión y Ajustes */}
+        <div className="flex items-center justify-between md:justify-end gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap">
+          {/* GRUPO 2: Fuente y Pistas (Servidor y Subtítulos) */}
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/[0.04] border border-white/10">
           {/* Selector de Servidor (cuando hay múltiples disponibles) */}
           {servers.length > 1 && (
             <div className="relative">
@@ -1145,10 +1154,17 @@ export default function AnimePlayer({
                 </div>
               </div>
             )}
+            </div>
           </div>
+          {/* Fin GRUPO 2: Fuente y Pistas */}
 
-          {/* Menú de Configuración: Velocidad de reproducción y Calidad */}
-          <div className="relative">
+          {/* Divisor vertical decorativo */}
+          <div className="hidden sm:block h-6 w-px bg-white/10 my-auto" />
+
+          {/* GRUPO 3: Ajustes, Modo Cine y Pantalla Completa */}
+          <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/[0.04] border border-white/10">
+            {/* Menú de Configuración: Velocidad de reproducción y Calidad */}
+            <div className="relative">
             <button
               onClick={() => { setShowSettings(!showSettings); setShowServerMenu(false); setShowSubMenu(false); }}
               className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200 active:scale-95 ${showSettings || playbackSpeed !== 1 ? 'bg-brand/20 border-brand/50 text-white shadow-[0_0_12px_rgba(109,92,255,0.3)]' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
@@ -1334,13 +1350,15 @@ export default function AnimePlayer({
           <button
             type="button"
             onClick={handleToggleFullscreen}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 text-slate-300 hover:text-white transition active:scale-95 shadow-sm"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition active:scale-95 shadow-sm"
             title="Pantalla completa (Tecla F)"
           >
             <Maximize size={15} />
           </button>
         </div>
+        {/* Fin GRUPO 3 */}
       </div>
+    </div>
     </div>
   );
 }
