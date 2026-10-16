@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Star, MoreHorizontal, X } from 'lucide-react'
+import { ChevronRight, Star, MoreHorizontal, X, Play } from 'lucide-react'
 import LikeBtn from './LikeBtn'
 import { useRec } from '../rec/rec'
 import Poster from './Poster'
@@ -16,19 +16,64 @@ const ok = (t = '', q) => String(t).toLowerCase().includes((q || '').toLowerCase
 export function Library({ query, onMore, onOpenAnime }) {
   const { profile } = useProfile()
   const source = Array.isArray(profile.animeList) ? profile.animeList : []
-  const list = source.filter((a) => ok(a.t, query))
+
+  // Priorizar obras que el usuario está viendo actualmente o donde tiene progreso de episodios
+  const inProgress = source.filter((a) => a.status === 'watching' || (Number(a.currentEpisode) > 0 && a.status !== 'completed'))
+  const candidateList = inProgress.length > 0 ? inProgress : source
+  const list = candidateList.filter((a) => ok(a.t, query)).slice(0, 6)
+
   return (
     <section>
-      <Title onClick={onMore}>Continuar con tu biblioteca</Title>
-      <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
+      <Title onClick={onMore}>Donde lo dejaste</Title>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:grid-cols-6">
         {!list.length && <Empty q={query} message={query ? undefined : 'Tu biblioteca está vacía. Agrega obras a tu AnimeList para verlas aquí.'} />}
-        {list.map((a) => (
-          <article key={a.t} onClick={() => onOpenAnime?.(a)} className="group card cursor-pointer overflow-hidden transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg" style={{ contentVisibility: 'auto', containIntrinsicSize: '0 320px' }}>
-            <Poster {...a} title={a.t} className="aspect-[3/3.6]"><Dots onClick={onMore} /></Poster>
-            <div className="px-2.5 py-2"><p className="truncate text-[13px] font-semibold">{a.t}</p>
-              <p className="flex items-center gap-1.5 text-[11px] text-slate-500"><i className={`h-2 w-2 rounded-full ${a.dot}`} />{a.s}</p></div>
-          </article>
-        ))}
+        {list.map((a) => {
+          const currentEp = Number(a.currentEpisode) || 1
+          const totalEps = Number(a.episodes) || null
+          const progressPercent = totalEps ? Math.min(100, Math.max(8, Math.round((currentEp / totalEps) * 100))) : 40
+
+          return (
+            <article
+              key={a.id || a.t}
+              onClick={() => onOpenAnime?.(a)}
+              className="group card cursor-pointer overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-xl hover:border-brand/40"
+              style={{ contentVisibility: 'auto', containIntrinsicSize: '0 320px' }}
+            >
+              <Poster {...a} title={a.t} className="aspect-[3/3.6] relative">
+                <Dots onClick={onMore} />
+                {/* Botón flotante Play al hacer hover */}
+                <div className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <span className="p-3 rounded-full bg-brand text-white shadow-xl shadow-brand/50 transform group-hover:scale-110 transition-transform">
+                    <Play size={18} className="fill-white ml-0.5" />
+                  </span>
+                </div>
+                {/* Badge de episodio en el que se quedó */}
+                <div className="absolute left-2 top-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[10px] font-extrabold text-white shadow border border-white/10">
+                  Ep. {currentEp}
+                </div>
+                {/* Barra de progreso de episodios estilo Netflix / Crunchyroll */}
+                <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/60 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-brand to-purple-400 rounded-r-full transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </Poster>
+              <div className="px-2.5 py-2">
+                <p className="truncate text-[13px] font-bold group-hover:text-brand transition-colors" title={a.t}>
+                  {a.t}
+                </p>
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold text-brand mt-0.5">
+                  <Play size={10} className="fill-brand shrink-0" />
+                  <span className="truncate">
+                    {a.currentEpisode ? `Te quedaste en el Ep. ${a.currentEpisode}` : (a.s || 'Episodio 1')}
+                    {totalEps ? ` / ${totalEps}` : ''}
+                  </span>
+                </p>
+              </div>
+            </article>
+          )
+        })}
       </div>
     </section>
   )

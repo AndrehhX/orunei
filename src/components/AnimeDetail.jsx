@@ -458,7 +458,9 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
   const accent = m?.coverImage?.color || '#6d5cff'
   const next = m?.nextAiringEpisode
   const liked = m && rec.isLiked(m.id)
-  const inLibrary = m && profile.animeList.some((item) => item.id === String(m.id) || item.q === title(m))
+  const existingLibraryEntry = m ? profile.animeList.find((item) => item.id === String(m.id) || item.q === title(m)) : null
+  const currentEpToPlay = Number(existingLibraryEntry?.currentEpisode) > 0 ? Number(existingLibraryEntry.currentEpisode) : 1
+  const inLibrary = Boolean(existingLibraryEntry)
   const toggleLibrary = async () => {
     if (!m) return
     const result = await updateAnimeList((items) => inLibrary ? items.filter((item) => item.id !== String(m.id) && item.q !== title(m)) : [...items, createLibraryEntry(m)])
@@ -567,11 +569,11 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                 <div className="mt-1 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => handlePlayEpisode(1)}
+                    onClick={() => handlePlayEpisode(currentEpToPlay)}
                     className="flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand/30 transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:scale-95"
                   >
                     <Play size={15} className="fill-white" />
-                    Reproducir Ep. 1
+                    {existingLibraryEntry?.currentEpisode ? `Continuar Ep. ${currentEpToPlay}` : 'Reproducir Ep. 1'}
                   </button>
                   <a href={crunchy(m)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 active:scale-95 dark:bg-white/10">
                     Crunchyroll<ExternalLink size={13} />
@@ -612,7 +614,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                   </div>
                   <dl className="card h-fit divide-y divide-slate-200/70 p-1 text-sm dark:divide-white/10">{info.map(([k, v]) => <div key={k} className="flex justify-between gap-3 px-3 py-2.5"><dt className="text-slate-500">{k}</dt><dd className="text-right font-semibold">{v}</dd></div>)}</dl>
                 </div>)}
-              {tab === 1 && <Episodes m={m} onPlayEpisode={handlePlayEpisode} currentEpisode={playingEpisode} miruroId={miruroId} />}
+              {tab === 1 && <Episodes m={m} onPlayEpisode={handlePlayEpisode} currentEpisode={playingEpisode || currentEpToPlay} miruroId={miruroId} />}
               {tab === 2 && <Community m={m} />}
             </div>
           </div>
