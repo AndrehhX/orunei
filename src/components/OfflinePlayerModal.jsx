@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import Hls from 'hls.js';
 import { X, WifiOff, AlertCircle, Loader2, Subtitles } from 'lucide-react';
 import { getOfflinePlaybackSource } from '../offline/downloadEngine';
+import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, formatTime } from '../playback/playbackProgress';
 
 export default function OfflinePlayerModal({ episode, onClose }) {
   const [playbackReady, setPlaybackReady] = useState(false);
@@ -10,10 +11,12 @@ export default function OfflinePlayerModal({ episode, onClose }) {
   const [offlineSubtitles, setOfflineSubtitles] = useState([]);
   const [selectedSub, setSelectedSub] = useState('es');
   const [showSubMenu, setShowSubMenu] = useState(false);
+  const [resumePrompt, setResumePrompt] = useState(null);
 
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const playbackSourceRef = useRef(null);
+  const lastSaveTimeRef = useRef(0);
 
   // Cargar video local y subtítulos
   useEffect(() => {
@@ -121,6 +124,72 @@ export default function OfflinePlayerModal({ episode, onClose }) {
     }
   }, [selectedSub, offlineSubtitles]);
 
+  useEffect(() => {
+    if (resumePrompt) {
+      const timer = setTimeout(() => setResumePrompt(null), 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [resumePrompt]);
+
+  const handleLoadedMetadata = () => {
+    if (!episode) return;
+    const progress = getPlaybackProgress(episode.animeId, episode.episodeNumber);
+    if (progress && progress.currentTime > 8) {
+      setResumePrompt({
+        time: progress.currentTime,
+        formatted: formatTime(progress.currentTime),
+      });
+    } else {
+      setResumePrompt(null);
+    }
+  };
+
+  const handleResume = () => {
+    if (videoRef.current && resumePrompt) {
+      videoRef.current.currentTime = resumePrompt.time;
+      videoRef.current.play().catch(() => {});
+      setResumePrompt(null);
+    }
+  };
+
+  const handleDismissResume = () => {
+    if (episode) clearPlaybackProgress(episode.animeId, episode.episodeNumber);
+    setResumePrompt(null);
+  };
+
+  const handleTimeUpdate = () => {
+    const video = videoRef.current;
+    if (!video || !episode) return;
+    const now = Date.now();
+    if (now - lastSaveTimeRef.current >= 3000) {
+      lastSaveTimeRef.current = now;
+      if (video.currentTime > 5 && !video.paused) {
+        savePlaybackProgress({
+          animeId: episode.animeId,
+          episode: episode.episodeNumber,
+          currentTime: video.currentTime,
+          duration: video.duration,
+        });
+      }
+    }
+  };
+
+  const handlePause = () => {
+    const video = videoRef.current;
+    if (video && episode && video.currentTime > 5) {
+      savePlaybackProgress({
+        animeId: episode.animeId,
+        episode: episode.episodeNumber,
+        currentTime: video.currentTime,
+        duration: video.duration,
+      });
+    }
+  };
+
+  const handleEnded = () => {
+    if (episode) clearPlaybackProgress(episode.animeId, episode.episodeNumber);
+  };
+
   if (!episode) return null;
 
   return (
@@ -225,6 +294,37 @@ export default function OfflinePlayerModal({ episode, onClose }) {
             </div>
           )}
 
+          {/* Aviso flotante de reanudación al segundo exacto */}
+          {resumePrompt && (
+            <div className="absolute top-4 left-4 z-30 flex items-center gap-3 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-black/90 backdrop-blur-md border border-brand/60 text-white shadow-2xl animate-rise max-w-[90vw]">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="h-2 w-2 rounded-full bg-brand animate-pulse shrink-0" />
+                <span>¿Reanudar en <b>{resumePrompt.formatted}</b>?</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={handleResume}
+                  className="px-3 py-1 rounded-lg bg-brand hover:brightness-110 text-white font-bold text-xs shadow-md shadow-brand/40 transition active:scale-95"
+                >
+                  Reanudar
+                </button>
+                <button
+                  onClick={handleDismissResume}
+                  className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 text-xs transition active:scale-95"
+                >
+                  Reiniciar
+                </button>
+                <button
+                  onClick={() => setResumePrompt(null)}
+                  className="p-1 text-slate-400 hover:text-white transition"
+                  title="Cerrar"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
           {!loading && !error && playbackReady && (
             <video
               ref={videoRef}
@@ -233,6 +333,10 @@ export default function OfflinePlayerModal({ episode, onClose }) {
               playsInline
               crossOrigin="anonymous"
               className="w-full h-full object-contain"
+              onLoadedMetadata={handleLoadedMetadata}
+              onTimeUpdate={handleTimeUpdate}
+              onPause={handlePause}
+              onEnded={handleEnded}
             >
               {offlineSubtitles.map((sub) => (
                 <track
