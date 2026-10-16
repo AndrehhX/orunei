@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import Hls from 'hls.js';
-import { X, WifiOff, AlertCircle, Loader2, Subtitles } from 'lucide-react';
+import { X, WifiOff, AlertCircle, Loader2, Subtitles, Tv, Sun, Volume2 } from 'lucide-react';
 import { getOfflinePlaybackSource } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, formatTime } from '../playback/playbackProgress';
+import { useVideoGestures, togglePiP, isPiPSupported } from '../playback/useVideoGestures';
 
 export default function OfflinePlayerModal({ episode, onClose }) {
   const [playbackReady, setPlaybackReady] = useState(false);
@@ -190,6 +191,21 @@ export default function OfflinePlayerModal({ episode, onClose }) {
     if (episode) clearPlaybackProgress(episode.animeId, episode.episodeNumber);
   };
 
+  // Gestos táctiles y PiP
+  const {
+    brightness,
+    gestureFeedback,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+  } = useVideoGestures({
+    videoRef,
+  });
+
+  const handleTogglePiP = () => {
+    togglePiP(videoRef.current);
+  };
+
   if (!episode) return null;
 
   return (
@@ -262,6 +278,19 @@ export default function OfflinePlayerModal({ episode, onClose }) {
               </div>
             )}
 
+            {/* Botón Picture-in-Picture (PiP) */}
+            {isPiPSupported() && (
+              <button
+                type="button"
+                onClick={handleTogglePiP}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/10 hover:bg-white/20 transition active:scale-95"
+                title="Modo Picture-in-Picture (Ventana flotante)"
+              >
+                <Tv size={14} className="text-brand shrink-0" />
+                <span className="hidden sm:inline">PiP</span>
+              </button>
+            )}
+
             <button
               onClick={onClose}
               className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition shrink-0"
@@ -273,7 +302,12 @@ export default function OfflinePlayerModal({ episode, onClose }) {
         </div>
 
         {/* Contenedor del reproductor */}
-        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-2xl border border-white/10 flex items-center justify-center">
+        <div
+          className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black shadow-2xl border border-white/10 flex items-center justify-center select-none"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           {loading && (
             <div className="flex flex-col items-center gap-3 text-white">
               <Loader2 size={36} className="animate-spin text-brand" />
@@ -291,6 +325,30 @@ export default function OfflinePlayerModal({ episode, onClose }) {
               >
                 Volver a la biblioteca
               </button>
+            </div>
+          )}
+
+          {/* Overlay de feedback de gestos táctiles */}
+          {gestureFeedback && (
+            <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
+              {gestureFeedback.type === 'seek' && (
+                <div className="px-5 py-3 rounded-2xl bg-black/85 backdrop-blur-md border border-white/20 text-white font-extrabold text-base flex items-center gap-2 shadow-2xl animate-scaleUp">
+                  <span>{gestureFeedback.direction === 'backward' ? '⏪' : '⏩'}</span>
+                  <span>{gestureFeedback.text}</span>
+                </div>
+              )}
+              {gestureFeedback.type === 'brightness' && (
+                <div className="absolute top-4 right-4 px-3.5 py-1.5 rounded-xl bg-black/85 backdrop-blur-md border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center gap-1.5 shadow-xl animate-fade">
+                  <Sun size={14} />
+                  <span>Brillo: {gestureFeedback.value}%</span>
+                </div>
+              )}
+              {gestureFeedback.type === 'volume' && (
+                <div className="absolute top-4 right-4 px-3.5 py-1.5 rounded-xl bg-black/85 backdrop-blur-md border border-brand/50 text-brand font-bold text-xs flex items-center gap-1.5 shadow-xl animate-fade">
+                  <Volume2 size={14} />
+                  <span>Volumen: {gestureFeedback.value}%</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -328,6 +386,7 @@ export default function OfflinePlayerModal({ episode, onClose }) {
           {!loading && !error && playbackReady && (
             <video
               ref={videoRef}
+              style={brightness !== 1 ? { filter: `brightness(${brightness})` } : undefined}
               controls
               autoPlay
               playsInline
