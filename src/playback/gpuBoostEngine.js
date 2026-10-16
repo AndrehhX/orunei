@@ -17,6 +17,55 @@ export const GPU_BOOST_SETTINGS = {
 };
 
 /**
+ * Calcula la luminancia percibida de un pixel RGB
+ */
+export function calculateLuma(r, g, b) {
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+/**
+ * Calcula el factor t de interpolación temporal entre cuadros
+ * Genera el fotograma intermedio para alcanzar 60 FPS o más
+ */
+export function computeInterpolationFactor(now, lastFrameTime, frameInterval) {
+  const safeInterval = Math.max(frameInterval, 16.0);
+  const elapsed = now - lastFrameTime;
+  return Math.max(0.0, Math.min(1.0, elapsed / safeInterval));
+}
+
+/**
+ * Detección de cambio abrupto de escena para prevenir ghosting
+ */
+export function detectSceneCut(colA, colB, threshold = GPU_BOOST_SETTINGS.SCENE_CUT_THRESHOLD) {
+  const lumaA = calculateLuma(colA[0], colA[1], colA[2]);
+  const lumaB = calculateLuma(colB[0], colB[1], colB[2]);
+  return Math.abs(lumaA - lumaB) > threshold;
+}
+
+/**
+ * Reescalado espacial con Nitidez Adaptativa al Contraste (AMD CAS)
+ * Aplica realce en bordes y líneas sin distorsionar zonas planas
+ */
+export function computeCASSample(c, n, s, w, e, sharpness = GPU_BOOST_SETTINGS.DEFAULT_SHARPNESS) {
+  if (typeof c === 'number') {
+    const minLuma = Math.min(c, n, s, w, e);
+    const maxLuma = Math.max(c, n, s, w, e);
+    const amp = Math.max(0, Math.min(1, Math.min(minLuma, 2.0 - maxLuma) / Math.max(maxLuma, 1e-5)));
+    const wCAS = -Math.sqrt(amp) * 0.22 * sharpness;
+    return Math.max(0, Math.min(1, (wCAS * (n + s + w + e) + c) / (1.0 + 4.0 * wCAS)));
+  }
+
+  return [0, 1, 2].map((channel) => {
+    const cVal = c[channel], nVal = n[channel], sVal = s[channel], wVal = w[channel], eVal = e[channel];
+    const minVal = Math.min(cVal, nVal, sVal, wVal, eVal);
+    const maxVal = Math.max(cVal, nVal, sVal, wVal, eVal);
+    const amp = Math.max(0, Math.min(1, Math.min(minVal, 2.0 - maxVal) / Math.max(maxVal, 1e-5)));
+    const wCAS = -Math.sqrt(amp) * 0.22 * sharpness;
+    return Math.max(0, Math.min(1, (wCAS * (nVal + sVal + wVal + eVal) + cVal) / (1.0 + 4.0 * wCAS)));
+  });
+}
+
+/**
  * Comprueba si el entorno soporta WebGL2
  */
 export function isWebGL2Supported() {
@@ -335,10 +384,8 @@ export function createGpuBoostEngine({
     }
 
     if (hasFirstFrame) {
-      // Calcular factor de interpolación t entre 0.0 y 1.0
-      const elapsed = now - lastVideoFrameTime;
-      const factor = Math.max(0.0, Math.min(1.0, elapsed / Math.max(frameInterval, 16.0)));
-
+      // Calcular factor de interpolación t entre 0.0 y 1.0 (Frame Generation)
+      const factor = computeInterpolationFactor(now, lastVideoFrameTime, frameInterval);
       gl.uniform1f(uFactorLoc, factor);
 
       gl.activeTexture(gl.TEXTURE0);
