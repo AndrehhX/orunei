@@ -616,7 +616,7 @@ export default function AnimePlayer({
       const next = !prev;
       showFeedback?.({
         type: 'boost',
-        text: next ? '✨ Nitidez Anime (AMD CAS) Activada' : 'Modo Normal (Desactivado)',
+        text: next ? '✨ Mejora de Imagen (Reescalado 4K) Activada' : 'Modo Normal (Desactivado)',
       });
       return next;
     });
@@ -759,11 +759,11 @@ export default function AnimePlayer({
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Badge Nitidez Anime CAS activo */}
+          {/* Badge Mejora de Imagen / Reescalado 4K activo */}
           {gpuBoostEnabled && (
             <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.25)] animate-fade">
               <Zap size={12} className="fill-amber-400 text-amber-400" />
-              <span>{gpuFps ? `${gpuFps} FPS • AMD CAS` : 'AMD CAS'}</span>
+              <span>{gpuFps ? `${gpuFps} FPS • Reescalado 4K` : '✨ Reescalado 4K'}</span>
             </span>
           )}
 
@@ -1190,15 +1190,15 @@ export default function AnimePlayer({
                   </>
                 )}
 
-                {/* Ajuste de Nitidez Anime (AMD FidelityFX CAS) */}
+                {/* Ajuste de Mejora de Imagen y Reescalado 4K (AMD FidelityFX CAS) */}
                 <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between px-2.5 py-1">
                   <div className="flex flex-col pr-2">
                     <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
                       <Zap size={13} className={gpuBoostEnabled ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
-                      Nitidez Anime (AMD CAS)
+                      Mejora de Imagen (Reescalado 4K)
                     </span>
                     <span className="text-[10px] text-slate-400">
-                      {gpuBoostEnabled ? (gpuFps ? `${gpuFps} FPS • AMD CAS Activo` : 'Activo (Contraste AMD)') : 'Normal (Desactivado)'}
+                      {gpuBoostEnabled ? (gpuFps ? `${gpuFps} FPS • Reescalado 4K Activo` : 'Reescalado 4K Activo (AMD CAS)') : 'Modo Normal (Desactivado)'}
                     </span>
                   </div>
                   <button
@@ -1207,7 +1207,7 @@ export default function AnimePlayer({
                     aria-checked={gpuBoostEnabled}
                     onClick={handleToggleGpuBoost}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${gpuBoostEnabled ? 'bg-amber-500' : 'bg-white/20'}`}
-                    title={gpuBoostEnabled ? 'Desactivar Nitidez AMD CAS' : 'Activar Nitidez Anime (AMD CAS)'}
+                    title={gpuBoostEnabled ? 'Desactivar Mejora de Imagen' : 'Activar Mejora de Imagen (Reescalado 4K - AMD CAS)'}
                   >
                     <span
                       className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${gpuBoostEnabled ? 'translate-x-4' : 'translate-x-0'}`}
