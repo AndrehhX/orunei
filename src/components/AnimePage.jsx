@@ -34,7 +34,7 @@ export function AnimeCard({ m, onOpen }) {
   )
 }
 
-export default function AnimePage({ query, initialOpenId = null, onCloseDetail }) {
+export default function AnimePage({ query, initialOpenId = null, initialPlayEpisode = null, onCloseDetail }) {
   const [f, setF] = useState(init)
   const [showExtra, setShowExtra] = useState(false)
   const [items, setItems] = useState([])
@@ -61,7 +61,7 @@ export default function AnimePage({ query, initialOpenId = null, onCloseDetail }
   }
   useEffect(() => { const t = setTimeout(() => run(1, false), query ? 400 : 0); return () => { clearTimeout(t); abort.current?.abort() } }, [f, query])
 
-  if (open) return <AnimeDetail id={open} onClose={() => { setOpen(null); onCloseDetail?.() }} onOpen={setOpen} />
+  if (open) return <AnimeDetail id={open} initialPlayEpisode={open === initialOpenId ? initialPlayEpisode : null} onClose={() => { setOpen(null); onCloseDetail?.() }} onOpen={setOpen} />
 
   return (
     <section className="space-y-5 pb-10">

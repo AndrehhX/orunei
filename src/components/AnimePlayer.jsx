@@ -4,7 +4,7 @@ import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, 
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, markEpisodeWatched, formatTime } from '../playback/playbackProgress';
-import { fetchSkipTimes, getActiveSkipInterval } from '../playback/skipTimes';
+import { fetchSkipTimes, resolveActiveSkip, isAutoSkipEnabled, setAutoSkipEnabled } from '../playback/skipTimes';
 import { useVideoGestures, togglePiP, isPiPSupported } from '../playback/useVideoGestures';
 import { SUPPORTED_SPEEDS, getStoredPlaybackSpeed, setStoredPlaybackSpeed, applyPlaybackSpeed } from '../playback/playbackSpeed';
 import { shouldTriggerCountdown, COUNTDOWN_DURATION } from '../playback/nextEpisodeCountdown';
@@ -55,15 +55,19 @@ export default function AnimePlayer({
   const [nextEpisodeCountdown, setNextEpisodeCountdown] = useState(null);
   const nextEpisodeDismissedRef = useRef(false);
 
-  // Saltar Intro / Ending (AniSkip)
+  // Saltar Intro / Ending (AniSkip + Smart Fallback + Auto-Skip)
   const [skipIntervals, setSkipIntervals] = useState([]);
   const [activeSkip, setActiveSkip] = useState(null);
+  const [autoSkipIntro, setAutoSkipIntro] = useState(() => isAutoSkipEnabled());
+  const [skipNotice, setSkipNotice] = useState(null);
+  const autoSkipTriggeredRef = useRef(false);
 
   // Cargar intervalos de skip desde AniSkip
   useEffect(() => {
     let isCancelled = false;
     setSkipIntervals([]);
     setActiveSkip(null);
+    autoSkipTriggeredRef.current = false;
 
     const targetMalId = malId || animeId;
     if (targetMalId && episode) {
@@ -107,6 +111,9 @@ export default function AnimePlayer({
     setBufferNotice(false);
     setResumePrompt(null);
     setNextEpisodeCountdown(null);
+    setSkipNotice(null);
+    setActiveSkip(null);
+    autoSkipTriggeredRef.current = false;
     nextEpisodeDismissedRef.current = false;
 
     if (hlsRef.current) {
@@ -514,10 +521,25 @@ export default function AnimePlayer({
       setNextEpisodeCountdown({ secondsLeft: COUNTDOWN_DURATION });
     }
 
-    // Detectar intervalo activo de intro o ending
-    if (skipIntervals.length > 0) {
-      const skip = getActiveSkipInterval(skipIntervals, video.currentTime);
-      setActiveSkip(skip);
+    // Detectar intervalo activo de intro o ending (AniSkip o Fallback inteligente)
+    const skip = resolveActiveSkip({
+      skipIntervals,
+      currentTime: video.currentTime,
+      duration: video.duration,
+      allowFallback: true,
+    });
+
+    if (skip) {
+      // Auto-Skip inteligente de Intro si el usuario lo tiene habilitado
+      if (autoSkipIntro && skip.type === 'op' && !autoSkipTriggeredRef.current) {
+        autoSkipTriggeredRef.current = true;
+        video.currentTime = skip.targetTime;
+        setSkipNotice('Intro saltado automáticamente');
+        setTimeout(() => setSkipNotice(null), 2500);
+        setActiveSkip(null);
+      } else {
+        setActiveSkip(skip);
+      }
     } else if (activeSkip) {
       setActiveSkip(null);
     }
@@ -538,10 +560,26 @@ export default function AnimePlayer({
 
   const handleTriggerSkip = () => {
     if (videoRef.current && activeSkip) {
-      videoRef.current.currentTime = activeSkip.endTime + 0.5;
+      videoRef.current.currentTime = activeSkip.targetTime;
       setActiveSkip(null);
     }
   };
+
+  // Atajo de teclado 'S' para saltar Intro / Ending instantáneamente
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target?.tagName === 'INPUT' || e.target?.tagName === 'TEXTAREA') return;
+      if (e.key === 's' || e.key === 'S') {
+        if (activeSkip && videoRef.current) {
+          e.preventDefault();
+          videoRef.current.currentTime = activeSkip.targetTime;
+          setActiveSkip(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeSkip]);
 
   const handlePause = () => {
     const video = videoRef.current;
@@ -807,15 +845,24 @@ export default function AnimePlayer({
           </div>
         )}
 
+        {/* Aviso sutil de Auto-Skip */}
+        {skipNotice && (
+          <div className="absolute top-4 right-4 z-30 px-3.5 py-1.5 rounded-xl bg-black/85 backdrop-blur-md border border-brand/40 text-brand font-bold text-xs flex items-center gap-1.5 shadow-xl animate-fade">
+            <FastForward size={14} />
+            <span>{skipNotice}</span>
+          </div>
+        )}
+
         {/* Botón flotante Saltar Intro / Saltar Ending */}
         {activeSkip && (
           <button
             type="button"
             onClick={handleTriggerSkip}
             className="absolute bottom-16 right-4 sm:right-6 z-30 flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-black/85 hover:bg-brand text-white font-bold text-xs sm:text-sm backdrop-blur-md border border-white/20 shadow-2xl transition-all duration-200 active:scale-95 group animate-rise"
-            title={activeSkip.label}
+            title={`${activeSkip.label} (Tecla S)`}
           >
             <span>{activeSkip.label}</span>
+            <span className="hidden sm:inline-block text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-slate-200 font-mono">S</span>
             <FastForward size={16} className="text-brand group-hover:text-white transition-colors" />
           </button>
         )}
@@ -1008,6 +1055,27 @@ export default function AnimePlayer({
                     </div>
                   </>
                 )}
+
+                {/* Ajuste de Auto-saltar Intro */}
+                <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between px-2.5 py-1">
+                  <span className="text-xs text-slate-300 font-medium">Auto-saltar Intro</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={autoSkipIntro}
+                    onClick={() => {
+                      const next = !autoSkipIntro;
+                      setAutoSkipIntro(next);
+                      setAutoSkipEnabled(next);
+                    }}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${autoSkipIntro ? 'bg-brand' : 'bg-white/20'}`}
+                    title={autoSkipIntro ? 'Desactivar salto automático de intro' : 'Activar salto automático de intro'}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${autoSkipIntro ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </button>
+                </div>
               </div>
             )}
           </div>

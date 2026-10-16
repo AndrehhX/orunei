@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getActiveSkipInterval, fetchSkipTimes } from '../src/playback/skipTimes.js';
+import {
+  getActiveSkipInterval,
+  fetchSkipTimes,
+  resolveActiveSkip,
+  isAutoSkipEnabled,
+  setAutoSkipEnabled,
+} from '../src/playback/skipTimes.js';
 
 test('getActiveSkipInterval detecta intervalo activo de opening correctamente', () => {
   const intervals = [
@@ -25,6 +31,47 @@ test('getActiveSkipInterval detecta intervalo activo de opening correctamente', 
   assert.ok(activeEd);
   assert.equal(activeEd.type, 'ed');
   assert.equal(activeEd.label, 'Saltar Ending');
+});
+
+test('resolveActiveSkip activa fallback inteligente cuando AniSkip no tiene datos', () => {
+  // En los primeros minutos (intro)
+  const introFallback = resolveActiveSkip({
+    intervals: [],
+    currentTime: 45,
+    duration: 1420,
+  });
+  assert.ok(introFallback);
+  assert.equal(introFallback.type, 'fallback_op');
+  assert.equal(introFallback.label, 'Saltar Intro (+85s)');
+  assert.equal(introFallback.targetTime, 45 + 85);
+
+  // En los créditos finales (ending)
+  const endingFallback = resolveActiveSkip({
+    intervals: [],
+    currentTime: 1350,
+    duration: 1400,
+  });
+  assert.ok(endingFallback);
+  assert.equal(endingFallback.type, 'fallback_ed');
+  assert.equal(endingFallback.label, 'Saltar Ending');
+  assert.equal(endingFallback.targetTime, 1400 - 2);
+
+  // A la mitad del episodio sin intro ni ending
+  assert.equal(resolveActiveSkip({ intervals: [], currentTime: 600, duration: 1400 }), null);
+});
+
+test('auto-skip preference se guarda y recupera en storage', () => {
+  globalThis.localStorage = {
+    _store: {},
+    getItem(k) { return this._store[k] || null; },
+    setItem(k, v) { this._store[k] = String(v); },
+  };
+
+  assert.equal(isAutoSkipEnabled(), false);
+  setAutoSkipEnabled(true);
+  assert.equal(isAutoSkipEnabled(), true);
+  setAutoSkipEnabled(false);
+  assert.equal(isAutoSkipEnabled(), false);
 });
 
 test('getActiveSkipInterval maneja listas vacias o entradas invalidas de forma segura', () => {

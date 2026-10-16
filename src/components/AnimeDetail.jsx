@@ -11,6 +11,7 @@ import { getMiruroId, getEpisodePlayback } from '../api/streamAdapter'
 import { startEpisodeDownload, getDownload, cancelDownload, deleteDownload, subscribeDownloads, isNativeApp } from '../offline/downloadEngine'
 import { hasAiringAlert, toggleAiringAlert } from '../offline/airingAlerts'
 import { getEpisodeDisplayProgress, formatTime } from '../playback/playbackProgress'
+import { calculateNextEpisodeToWatch, formatContinueWatchingLabel } from '../playback/continueWatching.js'
 
 const TABS = ['Resumen', 'Episodios', 'Comunidad']
 const SRC = { 'AniList': 'bg-sky-500', 'Foro AniList': 'bg-indigo-500', 'MyAnimeList': 'bg-blue-700', 'Reddit': 'bg-orange-500' }
@@ -402,7 +403,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
   )
 }
 
-export default function AnimeDetail({ id, onClose, onOpen }) {
+export default function AnimeDetail({ id, initialPlayEpisode = null, onClose, onOpen }) {
   const [m, setM] = useState(null)
   const [err, setErr] = useState(false)
   const [tab, setTab] = useState(0)
@@ -411,7 +412,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
   const [localizedDescription, setLocalizedDescription] = useState('')
   const [descriptionState, setDescriptionState] = useState('idle')
   const [miruroId, setMiruroId] = useState(null)
-  const [playingEpisode, setPlayingEpisode] = useState(null)
+  const [playingEpisode, setPlayingEpisode] = useState(initialPlayEpisode ? Number(initialPlayEpisode) : null)
   const rec = useRec()
   const { profile, updateAnimeList, recordActivity } = useProfile()
   const close = () => onClose()
@@ -420,10 +421,10 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
     setM(null)
     setErr(false)
     setTab(0)
-    setPlayingEpisode(null)
+    setPlayingEpisode(initialPlayEpisode ? Number(initialPlayEpisode) : null)
     setMiruroId(null)
     getAnime(id).then(setM).catch(() => setErr(true))
-  }, [id])
+  }, [id, initialPlayEpisode])
 
   useEffect(() => {
     if (m?.id) {
@@ -483,8 +484,14 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
   const next = m?.nextAiringEpisode
   const liked = m && rec.isLiked(m.id)
   const existingLibraryEntry = m ? profile.animeList.find((item) => item.id === String(m.id) || item.q === title(m)) : null
-  const currentEpToPlay = Number(existingLibraryEntry?.currentEpisode) > 0 ? Number(existingLibraryEntry.currentEpisode) : 1
   const inLibrary = Boolean(existingLibraryEntry)
+  const continueInfo = calculateNextEpisodeToWatch({
+    animeId: m?.id,
+    savedEpisode: existingLibraryEntry?.currentEpisode || 1,
+    totalEpisodes: m?.episodes || 0,
+  })
+  const currentEpToPlay = continueInfo.episode
+  const continueLabel = formatContinueWatchingLabel(continueInfo)
 
   const [hasAlert, setHasAlert] = useState(() => (m && next ? hasAiringAlert(m.id, next.episode) : false))
   useEffect(() => {
@@ -633,7 +640,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                     className="flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-brand/30 transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:scale-95"
                   >
                     <Play size={15} className="fill-white" />
-                    {existingLibraryEntry?.currentEpisode ? `Continuar Ep. ${currentEpToPlay}` : 'Reproducir Ep. 1'}
+                    {continueLabel}
                   </button>
                   <a href={crunchy(m)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 active:scale-95 dark:bg-white/10">
                     Crunchyroll<ExternalLink size={13} />

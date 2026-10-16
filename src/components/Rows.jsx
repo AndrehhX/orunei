@@ -5,6 +5,7 @@ import { useRec } from '../rec/rec'
 import Poster from './Poster'
 import { useNews, NewsLink } from '../news'
 import { useProfile } from '../profile/ProfileProvider'
+import { enrichContinueWatchingItem } from '../playback/continueWatching.js'
 
 export const Title = ({ children, onClick }) => (
   <div className="mb-3 flex items-center justify-between"><h3 onClick={onClick} className={`flex items-center gap-1 text-[17px] font-bold transition-colors ${onClick ? 'cursor-pointer hover:text-brand' : ''}`}>{children}<ChevronRight size={17} /></h3><ChevronRight size={15} className="text-slate-400" /></div>
@@ -27,10 +28,9 @@ export function Library({ query, onMore, onOpenAnime }) {
       <Title onClick={onMore}>Donde lo dejaste</Title>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:grid-cols-6">
         {!list.length && <Empty q={query} message={query ? undefined : 'Tu biblioteca está vacía. Agrega obras a tu AnimeList para verlas aquí.'} />}
-        {list.map((a) => {
-          const currentEp = Number(a.currentEpisode) || 1
+        {list.map((raw) => {
+          const a = enrichContinueWatchingItem(raw)
           const totalEps = Number(a.episodes) || null
-          const progressPercent = totalEps ? Math.min(100, Math.max(8, Math.round((currentEp / totalEps) * 100))) : 40
 
           return (
             <article
@@ -42,20 +42,27 @@ export function Library({ query, onMore, onOpenAnime }) {
               <Poster {...a} title={a.t} className="aspect-[3/3.6] relative">
                 <Dots onClick={onMore} />
                 {/* Botón flotante Play al hacer hover */}
-                <div className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <span className="p-3 rounded-full bg-brand text-white shadow-xl shadow-brand/50 transform group-hover:scale-110 transition-transform">
+                <div
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onOpenAnime?.(a, a.nextEpisode)
+                  }}
+                  className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                  title={`Reproducir Ep. ${a.nextEpisode}`}
+                >
+                  <span className="p-3 rounded-full bg-brand text-white shadow-xl shadow-brand/50 transform group-hover:scale-110 transition-transform hover:brightness-110">
                     <Play size={18} className="fill-white ml-0.5" />
                   </span>
                 </div>
-                {/* Badge de episodio en el que se quedó */}
+                {/* Badge de episodio que corresponde ver */}
                 <div className="absolute left-2 top-2 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[10px] font-extrabold text-white shadow border border-white/10">
-                  Ep. {currentEp}
+                  Ep. {a.nextEpisode}
                 </div>
-                {/* Barra de progreso de episodios estilo Netflix / Crunchyroll */}
+                {/* Barra de progreso de reproducción del episodio */}
                 <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/60 overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-brand to-purple-400 rounded-r-full transition-all duration-300"
-                    style={{ width: `${progressPercent}%` }}
+                    style={{ width: `${Math.min(100, Math.max(a.percent > 0 ? a.percent : 6, 0))}%` }}
                   />
                 </div>
               </Poster>
@@ -66,8 +73,8 @@ export function Library({ query, onMore, onOpenAnime }) {
                 <p className="flex items-center gap-1.5 text-[11px] font-semibold text-brand mt-0.5">
                   <Play size={10} className="fill-brand shrink-0" />
                   <span className="truncate">
-                    {a.currentEpisode ? `Te quedaste en el Ep. ${a.currentEpisode}` : (a.s || 'Episodio 1')}
-                    {totalEps ? ` / ${totalEps}` : ''}
+                    {a.displayLabel}
+                    {totalEps ? ` · ${totalEps} eps` : ''}
                   </span>
                 </p>
               </div>
