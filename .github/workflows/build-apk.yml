@@ -35,6 +35,10 @@ jobs:
         run: npm install
 
       - name: Build Web Assets (Vite)
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://afgvxmqapzikggmasskz.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmZ3Z4bXFhcHppa2dnbWFzc2t6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwMjYwODEsImV4cCI6MjEwNzYwMjA4MX0.c6OPXgUJz855R1JnLayAfiUIBsAvDlFqQtLFFziD8rU' }}
+          VITE_STREAM_API_URL: ${{ secrets.VITE_STREAM_API_URL || 'https://orunei-stream.thealex230820.workers.dev' }}
         run: npm run build
 
       - name: Sync Capacitor Android
