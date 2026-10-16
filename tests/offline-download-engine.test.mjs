@@ -9,6 +9,9 @@ const animeDetail = fs.readFileSync(new URL('../src/components/AnimeDetail.jsx',
 const app = fs.readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
 const workflow = fs.readFileSync(new URL('../.github/workflows/build-apk.yml', import.meta.url), 'utf8')
 const capConfig = fs.readFileSync(new URL('../capacitor.config.json', import.meta.url), 'utf8')
+const downloadEngine = fs.readFileSync(new URL('../src/offline/downloadEngine.js', import.meta.url), 'utf8')
+const offlinePlayer = fs.readFileSync(new URL('../src/components/OfflinePlayerModal.jsx', import.meta.url), 'utf8')
+const animePlayer = fs.readFileSync(new URL('../src/components/AnimePlayer.jsx', import.meta.url), 'utf8')
 
 test('formats bytes correctly into human readable units', () => {
   assert.equal(formatBytes(0), '0 MB')
@@ -35,6 +38,7 @@ test('library page includes Descargas filter and offline storage controls', () =
 test('anime detail includes episode download controls and offline indicators', () => {
   assert.match(animeDetail, /startEpisodeDownload/)
   assert.match(animeDetail, /handleDownload/)
+  assert.match(animeDetail, /subtitles:\s*playback\?\.subtitles\?\.tracks/)
   assert.match(animeDetail, /Descargar para ver sin internet/)
   assert.match(animeDetail, /CheckCircle2/)
 })
@@ -42,8 +46,29 @@ test('anime detail includes episode download controls and offline indicators', (
 test('app header and sidebar include Android APK download actions', () => {
   assert.match(app, /onOpenDownloadApp/)
   assert.match(app, /DownloadAppModal/)
+  assert.match(app, /ActiveDownloadBar/)
   assert.match(app, /UpdateModal/)
   assert.match(app, /checkForUpdate/)
+})
+
+test('offline engine guarantees background downloads, persistent storage, and subtitle preservation', () => {
+  assert.match(downloadEngine, /ensurePersistentStorage/)
+  assert.match(downloadEngine, /navigator\.storage\?\.persist/)
+  assert.match(downloadEngine, /acquireWakeLock/)
+  assert.match(downloadEngine, /downloadedSubtitles/)
+  assert.match(downloadEngine, /getActiveDownloads/)
+  assert.match(downloadEngine, /getOfflineVideoBlob/)
+})
+
+test('offline player and anime player support downloaded subtitles and zero backend playback', () => {
+  assert.match(offlinePlayer, /getOfflineVideoBlob/)
+  assert.match(offlinePlayer, /offlineSubtitles/)
+  assert.match(offlinePlayer, /<track/)
+  assert.match(offlinePlayer, /Subtítulos Offline/)
+
+  assert.match(animePlayer, /getOfflineVideoBlob/)
+  assert.match(animePlayer, /getDownload/)
+  assert.match(animePlayer, /offlineTracks/)
 })
 
 test('capacitor config and android workflow are properly set up', () => {

@@ -193,6 +193,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
         episodeNumber: epNum,
         episodeTitle: epTitle,
         streamUrl,
+        subtitles: playback?.subtitles?.tracks || [],
       })
     } catch (err) {
       alert(`Error al iniciar descarga: ${err.message}`)

@@ -1,17 +1,23 @@
-import { useEffect, useState } from 'react';
-import { X, WifiOff, AlertCircle, Loader2 } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { X, WifiOff, AlertCircle, Loader2, Subtitles } from 'lucide-react';
 import { getOfflineVideoBlob } from '../offline/downloadEngine';
 
 export default function OfflinePlayerModal({ episode, onClose }) {
   const [blobUrl, setBlobUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [offlineSubtitles, setOfflineSubtitles] = useState([]);
+  const [selectedSub, setSelectedSub] = useState('es');
+  const [showSubMenu, setShowSubMenu] = useState(false);
+  const videoRef = useRef(null);
 
+  // Cargar video local y subtítulos
   useEffect(() => {
-    let url = null;
+    let videoUrl = null;
+    const subUrls = [];
     let isCancelled = false;
 
-    async function loadVideo() {
+    async function loadMedia() {
       setLoading(true);
       setError(null);
       try {
@@ -22,8 +28,28 @@ export default function OfflinePlayerModal({ episode, onClose }) {
           setLoading(false);
           return;
         }
-        url = URL.createObjectURL(blob);
-        setBlobUrl(url);
+        videoUrl = URL.createObjectURL(blob);
+        setBlobUrl(videoUrl);
+
+        // Convertir subtítulos descargados a URLs locales de tipo Blob
+        if (Array.isArray(episode.subtitles) && episode.subtitles.length > 0) {
+          const preparedSubs = episode.subtitles.map((sub, idx) => {
+            const subBlob = new Blob([sub.vttText], { type: 'text/vtt' });
+            const sUrl = URL.createObjectURL(subBlob);
+            subUrls.push(sUrl);
+            return {
+              id: sub.id || `sub-${sub.lang}-${idx}`,
+              lang: sub.lang || 'es',
+              label: sub.label || (sub.lang?.startsWith('es') ? 'Español' : sub.lang),
+              blobUrl: sUrl,
+              default: sub.default || sub.lang?.startsWith('es'),
+            };
+          });
+          setOfflineSubtitles(preparedSubs);
+          const defTrack = preparedSubs.find(s => s.default) || preparedSubs[0];
+          if (defTrack) setSelectedSub(defTrack.id);
+        }
+
         setLoading(false);
       } catch (err) {
         if (!isCancelled) {
@@ -34,16 +60,34 @@ export default function OfflinePlayerModal({ episode, onClose }) {
     }
 
     if (episode) {
-      loadVideo();
+      loadMedia();
     }
 
     return () => {
       isCancelled = true;
-      if (url) {
-        URL.revokeObjectURL(url);
-      }
+      if (videoUrl) URL.revokeObjectURL(videoUrl);
+      subUrls.forEach(u => URL.revokeObjectURL(u));
     };
   }, [episode]);
+
+  // Manejar cambio de pista de subtítulos activa en el elemento video
+  useEffect(() => {
+    if (!videoRef.current) return;
+    const textTracks = videoRef.current.textTracks;
+    for (let i = 0; i < textTracks.length; i++) {
+      const track = textTracks[i];
+      if (selectedSub === 'off') {
+        track.mode = 'disabled';
+      } else {
+        const activeSub = offlineSubtitles.find(s => s.id === selectedSub);
+        if (activeSub && (track.language === activeSub.lang || track.label === activeSub.label)) {
+          track.mode = 'showing';
+        } else {
+          track.mode = 'disabled';
+        }
+      }
+    }
+  }, [selectedSub, offlineSubtitles]);
 
   if (!episode) return null;
 
@@ -55,20 +99,76 @@ export default function OfflinePlayerModal({ episode, onClose }) {
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold">
               <WifiOff size={13} />
-              Modo Offline
+              Modo Offline (Sin Internet)
             </span>
             <div className="min-w-0">
               <h2 className="text-sm sm:text-base font-bold truncate">{episode.animeTitle}</h2>
-              <p className="text-xs text-slate-400 truncate">{episode.episodeTitle} · {episode.sizeFormatted}</p>
+              <p className="text-xs text-slate-400 truncate">
+                {episode.episodeTitle} · {episode.sizeFormatted}
+                {offlineSubtitles.length > 0 && ` · ${offlineSubtitles.length} subtítulo(s) guardado(s)`}
+              </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition shrink-0"
-            aria-label="Cerrar reproductor offline"
-          >
-            <X size={20} />
-          </button>
+          
+          <div className="flex items-center gap-2">
+            {/* Selector de subtítulos descargados */}
+            {offlineSubtitles.length > 0 && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowSubMenu(!showSubMenu)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
+                    selectedSub !== 'off'
+                      ? 'bg-brand/20 border-brand/40 text-brand'
+                      : 'bg-white/10 border-white/10 text-slate-300 hover:bg-white/20'
+                  }`}
+                  aria-label="Seleccionar subtítulos sin conexión"
+                >
+                  <Subtitles size={14} />
+                  <span className="hidden sm:inline">
+                    {selectedSub === 'off' ? 'Subtítulos' : offlineSubtitles.find(s => s.id === selectedSub)?.label || 'Subtítulos'}
+                  </span>
+                </button>
+
+                {showSubMenu && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-slate-900 border border-white/15 shadow-2xl p-2 z-50 text-xs">
+                    <p className="px-2 py-1 font-bold text-slate-400 border-b border-white/10 mb-1">
+                      Subtítulos Offline
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedSub('off'); setShowSubMenu(false); }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg transition ${
+                        selectedSub === 'off' ? 'bg-brand text-white font-bold' : 'hover:bg-white/10 text-slate-200'
+                      }`}
+                    >
+                      Desactivados
+                    </button>
+                    {offlineSubtitles.map((sub) => (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() => { setSelectedSub(sub.id); setShowSubMenu(false); }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg transition ${
+                          selectedSub === sub.id ? 'bg-brand text-white font-bold' : 'hover:bg-white/10 text-slate-200'
+                        }`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition shrink-0"
+              aria-label="Cerrar reproductor offline"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Contenedor del reproductor */}
@@ -76,7 +176,7 @@ export default function OfflinePlayerModal({ episode, onClose }) {
           {loading && (
             <div className="flex flex-col items-center gap-3 text-white">
               <Loader2 size={36} className="animate-spin text-brand" />
-              <p className="text-xs text-slate-400">Cargando episodio desde el almacenamiento local…</p>
+              <p className="text-xs text-slate-400">Cargando episodio y subtítulos desde el almacenamiento local…</p>
             </div>
           )}
 
@@ -95,12 +195,25 @@ export default function OfflinePlayerModal({ episode, onClose }) {
 
           {!loading && !error && blobUrl && (
             <video
+              ref={videoRef}
               src={blobUrl}
               controls
               autoPlay
               playsInline
+              crossOrigin="anonymous"
               className="w-full h-full object-contain"
-            />
+            >
+              {offlineSubtitles.map((sub) => (
+                <track
+                  key={sub.id}
+                  kind="subtitles"
+                  src={sub.blobUrl}
+                  srcLang={sub.lang}
+                  label={sub.label}
+                  default={sub.id === selectedSub}
+                />
+              ))}
+            </video>
           )}
         </div>
       </div>

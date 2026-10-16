@@ -3,6 +3,7 @@ import { Search, Sparkles, Sun, Moon, Smartphone } from 'lucide-react'
 import { checkForUpdate } from './offline/appUpdater'
 import UpdateModal from './components/UpdateModal'
 import DownloadAppModal from './components/DownloadAppModal'
+import ActiveDownloadBar from './components/ActiveDownloadBar'
 import Login from './components/Login'
 import Sidebar from './components/Sidebar'
 import MobileNav from './components/MobileNav'
@@ -211,6 +212,7 @@ export default function App() {
         </main>
         {page === 'home' && <RightPanel onSeeNews={() => setTab('Noticias')} onSeeProfile={() => navigatePage('profile')} onSeeFriends={() => navigatePage('friends')} onOpenProfile={openPublicProfile} onOpenAnime={openAnime} />}
         {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}
+        <ActiveDownloadBar onGoToDownloads={() => navigatePage('library')} />
         <MobileNav page={page} setPage={navigatePage} />
         <DevelopmentNotice notice={developmentNotice} onClose={() => setDevelopmentNotice(null)} />
         <UpdateModal updateInfo={updateInfo} onClose={() => setUpdateInfo(null)} />

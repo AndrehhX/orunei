@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
-import { getOfflineVideoBlob } from '../offline/downloadEngine';
+import { getOfflineVideoBlob, getDownload } from '../offline/downloadEngine';
 
 export default function AnimePlayer({
   animeId,
@@ -77,10 +77,34 @@ export default function AnimePlayer({
     let offlineBlobUrl = null;
 
     // Verificar si el episodio se encuentra descargado localmente
-    getOfflineVideoBlob(animeId || miruroId, episode).then((offlineBlob) => {
+    getOfflineVideoBlob(animeId || miruroId, episode).then(async (offlineBlob) => {
       if (isCancelled) return;
       if (offlineBlob) {
         offlineBlobUrl = URL.createObjectURL(offlineBlob);
+        const meta = await getDownload(animeId || miruroId, episode);
+        if (isCancelled) return;
+
+        if (Array.isArray(meta?.subtitles) && meta.subtitles.length > 0) {
+          const offlineTracks = meta.subtitles.map((t, idx) => {
+            const subBlob = new Blob([t.vttText], { type: 'text/vtt' });
+            return {
+              id: t.id || `offline-sub-${idx}`,
+              lang: t.lang || 'es',
+              label: t.label || (t.lang?.startsWith('es') ? 'Español' : t.lang),
+              src: URL.createObjectURL(subBlob),
+              default: Boolean(t.default),
+            };
+          });
+          setSubTracks(offlineTracks);
+          const defaultSub = offlineTracks.find(t => t.lang?.startsWith('es')) || offlineTracks[0];
+          if (defaultSub) {
+            setSelectedSub(defaultSub.id);
+          }
+        } else {
+          setSubTracks([]);
+          setSelectedSub('off');
+        }
+
         setPlaybackData({
           proxiedStreamUrl: offlineBlobUrl,
           isOffline: true,

@@ -7,11 +7,48 @@ const STORE_EPISODES = 'episodes';
 const STORE_BLOBS = 'video_blobs';
 
 let dbInstance = null;
+let wakeLockSentinel = null;
 const listeners = new Set();
-const activeDownloads = new Map(); // id -> { controller, abort }
+const activeDownloads = new Map(); // id -> { controller, meta }
+
+export async function ensurePersistentStorage() {
+  if (typeof navigator !== 'undefined' && navigator.storage?.persist) {
+    try {
+      const isPersisted = await navigator.storage.persisted();
+      if (!isPersisted) {
+        return await navigator.storage.persist();
+      }
+      return isPersisted;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+async function acquireWakeLock() {
+  if (typeof navigator !== 'undefined' && 'wakeLock' in navigator && !wakeLockSentinel) {
+    try {
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+      wakeLockSentinel.addEventListener('release', () => {
+        wakeLockSentinel = null;
+      });
+    } catch {}
+  }
+}
+
+function releaseWakeLock() {
+  if (activeDownloads.size === 0 && wakeLockSentinel) {
+    try {
+      wakeLockSentinel.release();
+    } catch {}
+    wakeLockSentinel = null;
+  }
+}
 
 function getDb() {
   if (dbInstance) return Promise.resolve(dbInstance);
+  ensurePersistentStorage().catch(() => {});
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined' || !window.indexedDB) {
       return reject(new Error('IndexedDB no soportado'));
@@ -53,6 +90,10 @@ function notifyListeners() {
   });
 }
 
+export function getActiveDownloads() {
+  return Array.from(activeDownloads.values()).map(item => item.meta);
+}
+
 export async function getAllDownloads() {
   try {
     const db = await getDb();
@@ -61,7 +102,7 @@ export async function getAllDownloads() {
       const store = tx.objectStore(STORE_EPISODES);
       const req = store.getAll();
       req.onsuccess = () => {
-        const items = req.result || [];
+        const items = (req.result || []).filter(item => item.status === 'completed');
         items.sort((a, b) => (b.downloadedAt || 0) - (a.downloadedAt || 0));
         resolve(items);
       };
@@ -74,7 +115,6 @@ export async function getAllDownloads() {
 
 export async function getDownload(animeId, episodeNumber) {
   const id = `${animeId}_${episodeNumber}`;
-  // Si está descargándose activamente en memoria
   if (activeDownloads.has(id)) {
     return activeDownloads.get(id).meta;
   }
@@ -113,6 +153,7 @@ export async function startEpisodeDownload({
   episodeNumber,
   episodeTitle,
   streamUrl,
+  subtitles = [],
 }) {
   const id = `${animeId}_${episodeNumber}`;
 
@@ -132,12 +173,39 @@ export async function startEpisodeDownload({
     totalBytes: 0,
     sizeFormatted: 'Calculando...',
     downloadedAt: Date.now(),
+    subtitles: [],
   };
 
   activeDownloads.set(id, { controller, meta });
   notifyListeners();
+  acquireWakeLock().catch(() => {});
 
   try {
+    // 1. Descargar y conservar subtítulos asociados
+    const downloadedSubtitles = [];
+    if (Array.isArray(subtitles) && subtitles.length > 0) {
+      for (const track of subtitles) {
+        if (!track.src) continue;
+        try {
+          const subResp = await fetch(track.src, { signal: controller.signal });
+          if (subResp.ok) {
+            const vttText = await subResp.text();
+            downloadedSubtitles.push({
+              id: track.id || `sub-${track.lang || 'es'}-${downloadedSubtitles.length}`,
+              lang: track.lang || 'es',
+              label: track.label || (track.lang === 'es' ? 'Español' : track.lang || 'Subtítulo'),
+              default: Boolean(track.default),
+              vttText,
+            });
+          }
+        } catch (subErr) {
+          console.warn(`[OfflineEngine] Subtítulo no descargable (${track.lang}):`, subErr);
+        }
+      }
+    }
+    meta.subtitles = downloadedSubtitles;
+
+    // 2. Descargar flujo de video
     const response = await fetch(streamUrl, { signal: controller.signal });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -174,7 +242,7 @@ export async function startEpisodeDownload({
     meta.sizeFormatted = formatBytes(videoBlob.size);
     meta.downloadedAt = Date.now();
 
-    // Guardar en IndexedDB
+    // 3. Guardar en IndexedDB
     const db = await getDb();
     await new Promise((resolve, reject) => {
       const tx = db.transaction([STORE_EPISODES, STORE_BLOBS], 'readwrite');
@@ -185,17 +253,20 @@ export async function startEpisodeDownload({
     });
 
     activeDownloads.delete(id);
+    releaseWakeLock();
     notifyListeners();
     return meta;
   } catch (error) {
     if (controller.signal.aborted) {
       activeDownloads.delete(id);
+      releaseWakeLock();
       notifyListeners();
       return;
     }
     meta.status = 'error';
     meta.error = error.message;
     activeDownloads.delete(id);
+    releaseWakeLock();
     notifyListeners();
     throw error;
   }
@@ -207,6 +278,7 @@ export function cancelDownload(animeId, episodeNumber) {
   if (active) {
     active.controller.abort();
     activeDownloads.delete(id);
+    releaseWakeLock();
     notifyListeners();
   }
 }
