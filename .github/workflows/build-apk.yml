@@ -4,9 +4,10 @@ on:
   push:
     branches:
       - master
-    paths-ignore:
-      - 'README.md'
-      - '.gitignore'
+    paths:
+      - 'android/**'
+      - 'capacitor.config.json'
+      - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
 permissions:
