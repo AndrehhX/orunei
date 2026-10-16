@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Star, Play, ExternalLink, Heart, ChevronDown, MessageSquare, ThumbsUp, Clock, BookOpen, Check } from 'lucide-react'
+import { ArrowLeft, Star, Play, ExternalLink, Heart, ChevronDown, MessageSquare, ThumbsUp, Clock, BookOpen, Check, Download, CheckCircle2, Loader2, WifiOff } from 'lucide-react'
 import { getAnime, ratingJobs, commentJobs, title, crunchy, clean, T, ago, translateDescription } from '../api/anime'
 import { AnimeCard } from './AnimePage'
 import { useRec } from '../rec/rec'
@@ -7,7 +7,8 @@ import { useProfile } from '../profile/ProfileProvider'
 import { createLibraryEntry, markAnimeWatched } from '../profile/model.js'
 import { buildEpisodeCards } from '../api/episodeData.js'
 import AnimePlayer from './AnimePlayer'
-import { getMiruroId } from '../api/streamAdapter'
+import { getMiruroId, getEpisodePlayback } from '../api/streamAdapter'
+import { startEpisodeDownload, getDownload, cancelDownload, deleteDownload, subscribeDownloads } from '../offline/downloadEngine'
 
 const TABS = ['Resumen', 'Episodios', 'Comunidad']
 const SRC = { 'AniList': 'bg-sky-500', 'Foro AniList': 'bg-indigo-500', 'MyAnimeList': 'bg-blue-700', 'Reddit': 'bg-orange-500' }
@@ -118,7 +119,7 @@ function Community({ m }) {
   )
 }
 
-function Episodes({ m, onPlayEpisode, currentEpisode }) {
+function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
   const eps = buildEpisodeCards(m)
   const count = m.episodes || eps.length || 0
   const totalEpisodes = Math.max(count, eps.length, 0)
@@ -126,6 +127,7 @@ function Episodes({ m, onPlayEpisode, currentEpisode }) {
 
   const initialPage = currentEpisode ? Math.floor((currentEpisode - 1) / PAGE_SIZE) : 0
   const [page, setPage] = useState(initialPage)
+  const [downloadStates, setDownloadStates] = useState({})
 
   useEffect(() => {
     if (currentEpisode && currentEpisode > 0) {
@@ -133,12 +135,71 @@ function Episodes({ m, onPlayEpisode, currentEpisode }) {
     }
   }, [currentEpisode])
 
-  if (totalEpisodes > 0) {
-    const totalPages = Math.ceil(totalEpisodes / PAGE_SIZE)
-    const startEp = page * PAGE_SIZE + 1
-    const endEp = Math.min((page + 1) * PAGE_SIZE, totalEpisodes)
-    const currentSlice = Array.from({ length: endEp - startEp + 1 }, (_, idx) => startEp + idx)
+  const totalPages = Math.ceil(totalEpisodes / PAGE_SIZE)
+  const startEp = page * PAGE_SIZE + 1
+  const endEp = Math.min((page + 1) * PAGE_SIZE, totalEpisodes)
+  const currentSlice = totalEpisodes > 0 ? Array.from({ length: endEp - startEp + 1 }, (_, idx) => startEp + idx) : []
 
+  useEffect(() => {
+    let isCancelled = false
+    const syncStatus = async () => {
+      const states = {}
+      for (const ep of currentSlice) {
+        const item = await getDownload(m.id, ep)
+        if (item) {
+          states[ep] = item
+        }
+      }
+      if (!isCancelled) setDownloadStates(states)
+    }
+
+    syncStatus()
+    const unsub = subscribeDownloads(syncStatus)
+    return () => {
+      isCancelled = true
+      unsub()
+    }
+  }, [m.id, page, totalEpisodes])
+
+  const handleDownload = async (epNum, epTitle) => {
+    const existing = downloadStates[epNum]
+    if (existing?.status === 'completed') {
+      if (window.confirm(`¿Deseas eliminar la descarga del Episodio ${epNum}?`)) {
+        await deleteDownload(m.id, epNum)
+      }
+      return
+    }
+    if (existing?.status === 'downloading') {
+      cancelDownload(m.id, epNum)
+      return
+    }
+
+    try {
+      const activeMiruroId = miruroId || await getMiruroId(m.id, title(m))
+      if (!activeMiruroId) {
+        alert('No se encontraron fuentes de transmisión para descargar este episodio.')
+        return
+      }
+      const playback = await getEpisodePlayback(activeMiruroId, epNum)
+      const streamUrl = playback?.proxiedStreamUrl || playback?.servers?.[0]?.proxiedStreamUrl
+      if (!streamUrl) {
+        alert('No se pudo obtener el flujo de video para la descarga.')
+        return
+      }
+      startEpisodeDownload({
+        animeId: m.id,
+        animeTitle: title(m),
+        animeCover: m.coverImage?.extraLarge || m.bannerImage || '',
+        episodeNumber: epNum,
+        episodeTitle: epTitle,
+        streamUrl,
+      })
+    } catch (err) {
+      alert(`Error al iniciar descarga: ${err.message}`)
+    }
+  }
+
+  if (totalEpisodes > 0) {
     const next = m?.nextAiringEpisode
 
     return (
@@ -199,11 +260,13 @@ function Episodes({ m, onPlayEpisode, currentEpisode }) {
               const meta = eps[epNum - 1]
               const epTitle = meta?.title || `Episodio ${epNum}`
               const thumbnail = meta?.thumbnail || m.coverImage?.extraLarge || m.bannerImage || ''
+              const dl = downloadStates[epNum]
+              const isDownloaded = dl?.status === 'completed'
+              const isDownloading = dl?.status === 'downloading'
 
               return (
-                <button
+                <div
                   key={epNum}
-                  type="button"
                   onClick={() => onPlayEpisode?.(epNum)}
                   className={`group card text-left overflow-hidden transition-all duration-300 cursor-pointer ${
                     isCurrent ? 'ring-2 ring-brand shadow-lg bg-brand/5 dark:bg-brand/10' : 'hover:-translate-y-0.5 hover:shadow-md'
@@ -223,14 +286,53 @@ function Episodes({ m, onPlayEpisode, currentEpisode }) {
                     <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded bg-black/85 text-[10px] font-bold text-white">
                       EP {epNum}
                     </span>
+                    {isDownloaded && (
+                      <span className="absolute top-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/90 text-[10px] font-bold text-white shadow">
+                        <CheckCircle2 size={11} /> Offline
+                      </span>
+                    )}
                   </div>
-                  <div className="p-2.5">
-                    <p className="line-clamp-1 text-xs font-semibold">{epTitle}</p>
-                    <p className="mt-0.5 text-[10px] font-semibold text-brand">
-                      {isCurrent ? '▶ En reproducción' : 'Reproducir episodio ▸'}
-                    </p>
+                  <div className="flex items-center justify-between p-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-1 text-xs font-semibold">{epTitle}</p>
+                      <p className="mt-0.5 text-[10px] font-semibold text-brand">
+                        {isCurrent ? '▶ En reproducción' : 'Reproducir episodio ▸'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDownload(epNum, epTitle)
+                      }}
+                      className={`p-2 rounded-xl transition shrink-0 ml-2 ${
+                        isDownloaded
+                          ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20'
+                          : isDownloading
+                          ? 'text-brand bg-brand/10'
+                          : 'text-slate-400 hover:text-brand hover:bg-slate-200/50 dark:hover:bg-white/10'
+                      }`}
+                      title={
+                        isDownloaded
+                          ? 'Descargado (Click para eliminar)'
+                          : isDownloading
+                          ? `Descargando: ${dl?.progress}% (Click para cancelar)`
+                          : 'Descargar para ver sin internet (Offline)'
+                      }
+                    >
+                      {isDownloaded ? (
+                        <CheckCircle2 size={16} className="text-emerald-500" />
+                      ) : isDownloading ? (
+                        <div className="flex items-center gap-1">
+                          <Loader2 size={13} className="animate-spin text-brand" />
+                          <span className="text-[10px] font-bold text-brand">{dl?.progress}%</span>
+                        </div>
+                      ) : (
+                        <Download size={15} />
+                      )}
+                    </button>
                   </div>
-                </button>
+                </div>
               )
             })}
           </div>
@@ -420,6 +522,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
       {playingEpisode && m && (
         <div id="player-theater-top" className="animate-slideDown scroll-mt-4">
           <AnimePlayer
+            animeId={m.id}
             animeTitle={title(m)}
             miruroId={miruroId}
             initialEpisode={playingEpisode}
@@ -506,7 +609,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
                   </div>
                   <dl className="card h-fit divide-y divide-slate-200/70 p-1 text-sm dark:divide-white/10">{info.map(([k, v]) => <div key={k} className="flex justify-between gap-3 px-3 py-2.5"><dt className="text-slate-500">{k}</dt><dd className="text-right font-semibold">{v}</dd></div>)}</dl>
                 </div>)}
-              {tab === 1 && <Episodes m={m} onPlayEpisode={handlePlayEpisode} currentEpisode={playingEpisode} />}
+              {tab === 1 && <Episodes m={m} onPlayEpisode={handlePlayEpisode} currentEpisode={playingEpisode} miruroId={miruroId} />}
               {tab === 2 && <Community m={m} />}
             </div>
           </div>

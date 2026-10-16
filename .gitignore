@@ -3,6 +3,10 @@ node_modules
 dist
 dist-ssr
 *.local
+.gradle
+android/.gradle
+android/build
+android/app/build
 
 # Variables de entorno y secretos (nunca comitear)
 .env

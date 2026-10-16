@@ -1,0 +1,9 @@
+{
+  "appId": "com.orunei.app",
+  "appName": "Orunei",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

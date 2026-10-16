@@ -1,11 +1,11 @@
-import { Sparkles, Home, Library, User, Users, Film, MonitorPlay, Gamepad2, Sun, Moon, LogOut } from 'lucide-react'
+import { Sparkles, Home, Library, User, Users, Film, MonitorPlay, Gamepad2, Sun, Moon, LogOut, Smartphone } from 'lucide-react'
 import { getMainDestination } from '../profile/navigation'
 import { useProfile } from '../profile/ProfileProvider'
 
 const main = [['Para ti', Home], ['Biblioteca', Library], ['Perfil', User], ['Amigos', Users]]
 const explore = [['Anime', Sparkles], ['Películas', Film], ['Series', MonitorPlay]]
 
-export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, onDevelopmentFeature }) {
+export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, onDevelopmentFeature, onOpenDownloadApp }) {
   const { profile } = useProfile()
   return (
     <aside className="hidden lg:flex w-[216px] shrink-0 flex-col px-3 py-6 sticky top-0 h-screen">
@@ -28,6 +28,16 @@ export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, 
           <span className="rounded-full bg-slate-200/80 dark:bg-white/10 px-2 py-0.5 text-[10px]">Próximamente</span></a>
       </nav>
       <div className="mt-auto space-y-4">
+        {onOpenDownloadApp && (
+          <button
+            type="button"
+            onClick={onOpenDownloadApp}
+            className="w-full flex items-center justify-center gap-2 rounded-xl py-2 px-3 text-xs font-bold text-brand bg-brand/10 hover:bg-brand/20 border border-brand/20 transition active:scale-95"
+          >
+            <Smartphone size={15} />
+            <span>App Android (APK)</span>
+          </button>
+        )}
         <div className="relative inline-flex rounded-full bg-slate-200/70 dark:bg-white/10 p-1">
           <span className={`absolute left-1 top-1 h-9 w-9 rounded-full bg-white shadow transition-transform duration-300 ease-out dark:bg-[#2a2a3c] ${dark ? 'translate-x-9' : ''}`} />
           {[[false, Sun], [true, Moon]].map(([v, I]) => (

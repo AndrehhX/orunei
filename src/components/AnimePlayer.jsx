@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
+import { getOfflineVideoBlob } from '../offline/downloadEngine';
 
 export default function AnimePlayer({
+  animeId,
   animeTitle,
   miruroId,
   initialEpisode = 1,
@@ -72,66 +74,86 @@ export default function AnimePlayer({
       hlsRef.current = null;
     }
 
-    if (miruroId === undefined || miruroId === null) {
-      const timer = setTimeout(() => {
-        if (!isCancelled && !miruroId) {
-          setError('Este título aún no cuenta con fuentes disponibles en el catálogo de transmisión.');
+    let offlineBlobUrl = null;
+
+    // Verificar si el episodio se encuentra descargado localmente
+    getOfflineVideoBlob(animeId || miruroId, episode).then((offlineBlob) => {
+      if (isCancelled) return;
+      if (offlineBlob) {
+        offlineBlobUrl = URL.createObjectURL(offlineBlob);
+        setPlaybackData({
+          proxiedStreamUrl: offlineBlobUrl,
+          isOffline: true,
+          servers: [{ id: 'offline-local', name: '💾 Descarga Offline (Local)', proxiedStreamUrl: offlineBlobUrl }],
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (miruroId === undefined || miruroId === null) {
+        const timer = setTimeout(() => {
+          if (!isCancelled && !miruroId) {
+            setError('Este título aún no cuenta con fuentes disponibles en el catálogo de transmisión.');
+            setLoading(false);
+          }
+        }, 7000);
+        return () => {
+          isCancelled = true;
+          clearTimeout(timer);
+        };
+      }
+
+      if (!miruroId) {
+        setError('Este título aún no cuenta con fuentes disponibles en el catálogo de transmisión.');
+        setLoading(false);
+        return;
+      }
+
+      getEpisodePlayback(miruroId, episode)
+        .then((data) => {
+          if (isCancelled) return;
+          setPlaybackData(data);
           setLoading(false);
-        }
-      }, 7000);
-      return () => {
-        isCancelled = true;
-        clearTimeout(timer);
-      };
-    }
 
-    if (!miruroId) {
-      setError('Este título aún no cuenta con fuentes disponibles en el catálogo de transmisión.');
-      setLoading(false);
-      return;
-    }
+          // Configurar subtítulos disponibles con IDs únicos
+          const rawTracks = data.subtitles?.tracks || [];
+          const tracks = rawTracks.map((t, idx) => ({
+            ...t,
+            id: t.id || `sub-${t.lang || 'es'}-${idx}`
+          }));
+          setSubTracks(tracks);
 
-    getEpisodePlayback(miruroId, episode)
-      .then((data) => {
-        if (isCancelled) return;
-        setPlaybackData(data);
-        setLoading(false);
-
-        // Configurar subtítulos disponibles con IDs únicos
-        const rawTracks = data.subtitles?.tracks || [];
-        const tracks = rawTracks.map((t, idx) => ({
-          ...t,
-          id: t.id || `sub-${t.lang || 'es'}-${idx}`
-        }));
-        setSubTracks(tracks);
-
-        // Seleccionar automáticamente español si existe
-        const defaultSub = tracks.find((t) => t.lang?.startsWith('es')) || tracks[0];
-        if (defaultSub) {
-          setSelectedSub(defaultSub.id);
-        } else {
-          setSelectedSub('off');
-        }
-      })
-      .catch((err) => {
-        if (isCancelled) return;
-        const msg = err.message || '';
-        if (msg.includes('502') || msg.includes('504') || msg.includes('Bad Gateway')) {
-          setError('Los servidores de fuentes están procesando este episodio (502 Bad Gateway). Esto suele ocurrir en episodios de reciente emisión mientras se generan los flujos. Pulsa "Reintentar" para reconectar.');
-        } else {
-          setError(msg || 'Error al obtener el flujo de reproducción.');
-        }
-        setLoading(false);
-      });
+          // Seleccionar automáticamente español si existe
+          const defaultSub = tracks.find((t) => t.lang?.startsWith('es')) || tracks[0];
+          if (defaultSub) {
+            setSelectedSub(defaultSub.id);
+          } else {
+            setSelectedSub('off');
+          }
+        })
+        .catch((err) => {
+          if (isCancelled) return;
+          const msg = err.message || '';
+          if (msg.includes('502') || msg.includes('504') || msg.includes('Bad Gateway')) {
+            setError('Los servidores de fuentes están procesando este episodio (502 Bad Gateway). Esto suele ocurrir en episodios de reciente emisión mientras se generan los flujos. Pulsa "Reintentar" para reconectar.');
+          } else {
+            setError(msg || 'Error al obtener el flujo de reproducción.');
+          }
+          setLoading(false);
+        });
+    });
 
     return () => {
       isCancelled = true;
+      if (offlineBlobUrl) {
+        URL.revokeObjectURL(offlineBlobUrl);
+      }
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
     };
-  }, [miruroId, episode, retryCount]);
+  }, [animeId, miruroId, episode, retryCount]);
 
   // Monitoreo de buffering prolongado (aviso al usuario para cambiar de servidor)
   useEffect(() => {

@@ -1,5 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { Search, Sparkles, Sun, Moon } from 'lucide-react'
+import { Search, Sparkles, Sun, Moon, Smartphone } from 'lucide-react'
+import { checkForUpdate } from './offline/appUpdater'
+import UpdateModal from './components/UpdateModal'
+import DownloadAppModal from './components/DownloadAppModal'
 import Login from './components/Login'
 import Sidebar from './components/Sidebar'
 import MobileNav from './components/MobileNav'
@@ -47,7 +50,7 @@ function GlobalTasteSync() {
 
 const tabs = ['Anime', 'Noticias']
 
-function AppHeader({ query, setQuery, onOpenProfile, dark, setDark }) {
+function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownloadApp }) {
   const { profile } = useProfile()
   return (
     <header className="flex items-center gap-2.5 sm:gap-4 animate-fade">
@@ -59,6 +62,17 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark }) {
         <Search size={18} className="shrink-0" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-xs sm:text-sm outline-none" placeholder="Buscar anime, películas, series..." />
       </label>
+      {onOpenDownloadApp && (
+        <button
+          type="button"
+          onClick={onOpenDownloadApp}
+          title="Descargar Orunei para Android (APK)"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand/10 text-brand text-xs font-bold hover:bg-brand/20 transition active:scale-95 shrink-0"
+        >
+          <Smartphone size={15} />
+          <span className="hidden sm:inline">App APK</span>
+        </button>
+      )}
       {setDark && (
         <button
           type="button"
@@ -93,6 +107,17 @@ export default function App() {
   const [selectedUsername, setSelectedUsername] = useState(initialProfileUsername)
   const [selectedAnimeId, setSelectedAnimeId] = useState(null)
   const [developmentNotice, setDevelopmentNotice] = useState(null)
+  const [showDownloadApp, setShowDownloadApp] = useState(false)
+  const [updateInfo, setUpdateInfo] = useState(null)
+
+  useEffect(() => {
+    checkForUpdate().then((info) => {
+      if (info && info.hasUpdate) {
+        setUpdateInfo(info)
+      }
+    }).catch(() => {})
+  }, [])
+
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
     localStorage.setItem('theme', dark ? 'dark' : 'light')
@@ -161,7 +186,7 @@ export default function App() {
     <Suspense fallback={<PageLoading />}>
       <div className="mx-auto flex min-h-screen max-w-[1536px] animate-fade">
         <CustomCursor />
-        <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} />
+        <Sidebar dark={dark} setDark={setDark} user={user} onLogout={signOut} page={page} setPage={navigatePage} onDevelopmentFeature={showDevelopmentNotice} onOpenDownloadApp={() => setShowDownloadApp(true)} />
         <main className="min-w-0 flex-1 space-y-6 px-4 py-4 pb-24 lg:pb-8 lg:px-5">
           <AppHeader
             query={query}
@@ -169,6 +194,7 @@ export default function App() {
             onOpenProfile={() => navigatePage('profile')}
             dark={dark}
             setDark={setDark}
+            onOpenDownloadApp={() => setShowDownloadApp(true)}
           />
           <div key={page} className="animate-page-enter space-y-7">
             {page === 'anime' ? <AnimePage query={query} initialOpenId={selectedAnimeId} onCloseDetail={closeAnime} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
@@ -187,6 +213,8 @@ export default function App() {
         {page === 'profile' && editingProfile && <ProfileEditor onClose={() => setEditingProfile(false)} />}
         <MobileNav page={page} setPage={navigatePage} />
         <DevelopmentNotice notice={developmentNotice} onClose={() => setDevelopmentNotice(null)} />
+        <UpdateModal updateInfo={updateInfo} onClose={() => setUpdateInfo(null)} />
+        <DownloadAppModal isOpen={showDownloadApp} onClose={() => setShowDownloadApp(false)} />
       </div>
     </Suspense>
   </ProfileProvider>

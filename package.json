@@ -11,6 +11,12 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/network": "^8.0.1",
     "@supabase/supabase-js": "^2.117.3",
     "hls.js": "^1.7.3",
     "lucide-react": "^0.383.0",

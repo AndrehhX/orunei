@@ -1,0 +1,84 @@
+name: Build and Release Orunei APK
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Web Assets (Vite)
+        run: npm run build
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Make Gradlew Executable
+        run: chmod +x android/gradlew
+
+      - name: Build Android Release APK
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Prepare APK Artifact
+        run: |
+          mkdir -p build-output
+          cp android/app/build/outputs/apk/release/app-release.apk build-output/orunei.apk
+          cp android/app/build/outputs/apk/release/app-release.apk build-output/orunei-latest.apk
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: orunei-apk
+          path: build-output/orunei.apk
+          retention-days: 30
+
+      - name: Release Latest APK
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/master'
+        with:
+          tag_name: latest
+          name: 'Orunei Android App'
+          body: |
+            ### 📱 Orunei para Android
+            Compilación automática de la aplicación oficial de Orunei.
+            - Sistema de descargas para ver anime sin internet (estilo Netflix / Crunchyroll).
+            - Detección automática de actualizaciones.
+            - Reproductor optimizado a pantalla completa.
+            
+            **Descarga:** [orunei.apk](https://github.com/AndrehhX/orunei-v2/releases/download/latest/orunei.apk)
+          draft: false
+          prerelease: false
+          files: |
+            build-output/orunei.apk
+            build-output/orunei-latest.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
