@@ -137,6 +137,7 @@ export function useVideoGestures({ videoRef, onSeekDelta }) {
   return {
     brightness,
     gestureFeedback,
+    showFeedback,
     isPiPActive,
     setIsPiPActive,
     handleTouchStart,

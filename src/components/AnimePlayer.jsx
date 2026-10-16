@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Keyboard } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, markEpisodeWatched, formatTime } from '../playback/playbackProgress';
 import { fetchSkipTimes, resolveActiveSkip, isAutoSkipEnabled, setAutoSkipEnabled } from '../playback/skipTimes';
 import { useVideoGestures, togglePiP, isPiPSupported } from '../playback/useVideoGestures';
+import { handlePlayerKeydown, PLAYER_SHORTCUTS } from '../playback/keyboardShortcuts';
 import { SUPPORTED_SPEEDS, getStoredPlaybackSpeed, setStoredPlaybackSpeed, applyPlaybackSpeed } from '../playback/playbackSpeed';
 import { shouldTriggerCountdown, COUNTDOWN_DURATION } from '../playback/nextEpisodeCountdown';
 
@@ -20,6 +21,7 @@ export default function AnimePlayer({
   onEpisodeChange,
   onComplete,
 }) {
+  const containerRef = useRef(null);
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const offlineSourceRef = useRef(null);
@@ -39,6 +41,7 @@ export default function AnimePlayer({
   const [qualities, setQualities] = useState([]);
   const [currentQuality, setCurrentQuality] = useState(-1); // -1 = Auto
   const [showSettings, setShowSettings] = useState(false);
+  const [showShortcutsList, setShowShortcutsList] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(() => getStoredPlaybackSpeed());
 
   // Subtítulos
@@ -565,21 +568,54 @@ export default function AnimePlayer({
     }
   };
 
-  // Atajo de teclado 'S' para saltar Intro / Ending instantáneamente
+  const handleToggleFullscreen = () => {
+    const el = containerRef.current || videoRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    } else {
+      el.requestFullscreen?.().catch(() => {
+        if (videoRef.current?.webkitEnterFullscreen) {
+          videoRef.current.webkitEnterFullscreen();
+        }
+      });
+    }
+  };
+
+  const handleTogglePiP = () => {
+    togglePiP(videoRef.current);
+  };
+
+  // Gestos táctiles y Picture-in-Picture (PiP)
+  const {
+    brightness,
+    gestureFeedback,
+    showFeedback,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+  } = useVideoGestures({
+    videoRef,
+  });
+
+  // Atajos de teclado profesionales (Espacio, F, M, Flechas, J/L, N, P, S)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.target?.tagName === 'INPUT' || e.target?.tagName === 'TEXTAREA') return;
-      if (e.key === 's' || e.key === 'S') {
-        if (activeSkip && videoRef.current) {
-          e.preventDefault();
-          videoRef.current.currentTime = activeSkip.targetTime;
-          setActiveSkip(null);
-        }
-      }
+      handlePlayerKeydown({
+        event: e,
+        video: videoRef.current,
+        activeSkip,
+        onTriggerSkip: handleTriggerSkip,
+        onNextEpisode: handleNextEp,
+        onPrevEpisode: handlePrevEp,
+        onToggleFullscreen: handleToggleFullscreen,
+        onTogglePiP: handleTogglePiP,
+        showFeedback,
+      });
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeSkip]);
+  }, [activeSkip, episode, totalEpisodes]);
 
   const handlePause = () => {
     const video = videoRef.current;
@@ -610,23 +646,8 @@ export default function AnimePlayer({
     }
   };
 
-  // Gestos táctiles y Picture-in-Picture (PiP)
-  const {
-    brightness,
-    gestureFeedback,
-    handleTouchStart,
-    handleTouchMove,
-    handleTouchEnd,
-  } = useVideoGestures({
-    videoRef,
-  });
-
-  const handleTogglePiP = () => {
-    togglePiP(videoRef.current);
-  };
-
   return (
-    <div id="player-theater" className="relative mb-6 flex flex-col w-full rounded-2xl bg-[#0f111a] border border-white/10 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] overflow-hidden animate-rise">
+    <div ref={containerRef} id="player-theater" className="relative mb-6 flex flex-col w-full rounded-2xl bg-[#0f111a] border border-white/10 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] overflow-hidden animate-rise">
       {/* Cabecera del reproductor */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/10 bg-[#161824]/95 backdrop-blur-md text-white">
         <div className="min-w-0 pr-4">
@@ -723,6 +744,11 @@ export default function AnimePlayer({
             {gestureFeedback.type === 'seek' && (
               <div className="px-5 py-3 rounded-2xl bg-black/85 backdrop-blur-md border border-white/20 text-white font-extrabold text-base flex items-center gap-2 shadow-2xl animate-scaleUp">
                 <span>{gestureFeedback.direction === 'backward' ? '⏪' : '⏩'}</span>
+                <span>{gestureFeedback.text}</span>
+              </div>
+            )}
+            {(gestureFeedback.type === 'play' || gestureFeedback.type === 'pause') && (
+              <div className="px-5 py-3 rounded-2xl bg-black/85 backdrop-blur-md border border-white/20 text-white font-extrabold text-base flex items-center gap-2 shadow-2xl animate-scaleUp">
                 <span>{gestureFeedback.text}</span>
               </div>
             )}
@@ -1076,9 +1102,55 @@ export default function AnimePlayer({
                     />
                   </button>
                 </div>
+
+                {/* Atajos de teclado desplegables */}
+                <div className="mt-2 pt-2 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setShowShortcutsList(!showShortcutsList)}
+                    className="w-full flex items-center justify-between px-2.5 py-1 text-xs text-slate-300 hover:text-white rounded-lg transition"
+                  >
+                    <span className="font-medium flex items-center gap-1.5">
+                      <Keyboard size={13} className="text-brand" /> Atajos de teclado
+                    </span>
+                    <span className="text-[10px] text-brand font-semibold">{showShortcutsList ? 'Ocultar' : 'Ver'}</span>
+                  </button>
+                  {showShortcutsList && (
+                    <div className="mt-1.5 p-2 rounded-xl bg-black/40 border border-white/5 space-y-1.5 text-[11px] max-h-36 overflow-y-auto">
+                      {PLAYER_SHORTCUTS.map((s) => (
+                        <div key={s.key} className="flex items-center justify-between gap-2 text-slate-300">
+                          <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[10px] font-bold">{s.key}</kbd>
+                          <span className="text-right text-slate-400 text-[10px]">{s.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
+
+          {/* Botón Picture-in-Picture (PiP) */}
+          {isPiPSupported() && (
+            <button
+              type="button"
+              onClick={handleTogglePiP}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 text-slate-300 hover:text-white transition active:scale-95 shadow-sm"
+              title="Ventana flotante / PiP (Tecla P)"
+            >
+              <Tv size={15} />
+            </button>
+          )}
+
+          {/* Botón Pantalla Completa (Fullscreen) */}
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-white/5 border border-white/10 hover:bg-white/15 text-slate-300 hover:text-white transition active:scale-95 shadow-sm"
+            title="Pantalla completa (Tecla F)"
+          >
+            <Maximize size={15} />
+          </button>
         </div>
       </div>
     </div>
