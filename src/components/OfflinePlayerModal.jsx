@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Hls from 'hls.js';
 import { X, WifiOff, AlertCircle, Loader2, Subtitles, Tv, Sun, Volume2 } from 'lucide-react';
-import { getOfflinePlaybackSource } from '../offline/downloadEngine';
+import { getOfflinePlaybackSource, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, formatTime } from '../playback/playbackProgress';
 import { useVideoGestures, togglePiP, isPiPSupported } from '../playback/useVideoGestures';
 
@@ -188,7 +188,12 @@ export default function OfflinePlayerModal({ episode, onClose }) {
   };
 
   const handleEnded = () => {
-    if (episode) clearPlaybackProgress(episode.animeId, episode.episodeNumber);
+    if (episode) {
+      clearPlaybackProgress(episode.animeId, episode.episodeNumber);
+      if (isAutoDeleteWatchedEnabled()) {
+        deleteDownload(episode.animeId, episode.episodeNumber).catch(() => {});
+      }
+    }
   };
 
   // Gestos táctiles y PiP

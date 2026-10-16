@@ -4,7 +4,18 @@ import Poster from './Poster'
 import { useProfile } from '../profile/ProfileProvider'
 import { getAnime } from '../api/anime'
 import { markAnimeWatched } from '../profile/model.js'
-import { getAllDownloads, deleteDownload, clearAllDownloads, getTotalStorageUsed, subscribeDownloads, isNativeApp } from '../offline/downloadEngine'
+import {
+  getAllDownloads,
+  deleteDownload,
+  clearAllDownloads,
+  getTotalStorageUsed,
+  subscribeDownloads,
+  isNativeApp,
+  getPreferredDownloadQuality,
+  setPreferredDownloadQuality,
+  isAutoDeleteWatchedEnabled,
+  setAutoDeleteWatched,
+} from '../offline/downloadEngine'
 import OfflinePlayerModal from './OfflinePlayerModal'
 
 const allFilters = [
@@ -46,6 +57,8 @@ export default function LibraryPage({ query = '', onDiscover }) {
   const [downloads, setDownloads] = useState([])
   const [storageStats, setStorageStats] = useState({ bytes: 0, formatted: '0 MB', count: 0 })
   const [playingOfflineEpisode, setPlayingOfflineEpisode] = useState(null)
+  const [preferredQuality, setPreferredQuality] = useState(() => getPreferredDownloadQuality())
+  const [autoDelete, setAutoDelete] = useState(() => isAutoDeleteWatchedEnabled())
 
   const library = Array.isArray(profile.animeList) ? profile.animeList : []
   const normalizedQuery = query.trim().toLowerCase()
@@ -162,17 +175,56 @@ export default function LibraryPage({ query = '', onDiscover }) {
     {filter === 'downloads' ? (
       <div className="space-y-4">
         {downloads.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-white/60 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-xs">
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 font-medium">
-              <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
-              <span>Almacenamiento: <strong className="text-brand font-bold">{storageStats.formatted}</strong> usados ({downloads.length} episodios listos sin conexión)</span>
+          <div className="p-4 rounded-2xl bg-white/70 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 shadow-sm space-y-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Almacenamiento: <strong className="text-brand font-bold">{storageStats.formatted}</strong> usados ({downloads.length} episodios listos sin conexión)</span>
+              </div>
+              <button
+                onClick={handleClearAllDownloads}
+                className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 hover:underline transition"
+              >
+                Liberar espacio (Borrar todo)
+              </button>
             </div>
-            <button
-              onClick={handleClearAllDownloads}
-              className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 hover:underline transition"
-            >
-              Liberar espacio (Borrar todo)
-            </button>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-200/60 dark:border-white/10 text-slate-600 dark:text-slate-300">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-500">Calidad de descarga:</span>
+                <select
+                  value={preferredQuality}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setPreferredQuality(val)
+                    setPreferredDownloadQuality(val)
+                  }}
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-800 outline-none dark:border-white/15 dark:bg-slate-800 dark:text-white"
+                  aria-label="Calidad de descarga preferida"
+                >
+                  <option value="auto">Automática (Mejor)</option>
+                  <option value="1080p">1080p (FHD)</option>
+                  <option value="720p">720p (HD Ligero)</option>
+                  <option value="480p">480p (Ahorro de espacio)</option>
+                </select>
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoDelete}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setAutoDelete(checked)
+                    setAutoDeleteWatched(checked)
+                  }}
+                  className="rounded border-slate-300 text-brand focus:ring-brand h-4 w-4"
+                />
+                <span className="font-medium text-slate-700 dark:text-slate-200">
+                  Eliminar automáticamente episodios tras verlos
+                </span>
+              </label>
+            </div>
           </div>
         )}
 

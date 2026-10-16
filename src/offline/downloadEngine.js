@@ -204,45 +204,64 @@ export async function getOfflineVideoBlob(animeId, episodeNumber) {
 
 /**
  * Parsea el streamUrl. Si es un playlist HLS (.m3u8), resuelve la playlist de video y extrae los segmentos.
+ * Soporta selección de calidad preferida (1080p, 720p, 480p, auto).
  */
-async function resolveHlsPlaylist(streamUrl, signal) {
+async function resolveHlsPlaylist(streamUrl, signal, preferredQuality = 'auto') {
   const resp = await fetch(streamUrl, { signal });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const text = await resp.text();
 
   if (!text.includes('#EXTM3U')) {
-    return { isHls: false, rawText: text };
+    return { isHls: false, rawText: text, quality: 'direct' };
   }
 
   let mediaPlaylistUrl = streamUrl;
   let mediaPlaylistText = text;
+  let selectedQuality = 'auto';
 
   // Master playlist con variantes de calidad (#EXT-X-STREAM-INF)
   if (text.includes('#EXT-X-STREAM-INF')) {
     const lines = text.split('\n');
-    let bestVariantUrl = null;
-    let maxBandwidth = 0;
+    const variants = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (line.startsWith('#EXT-X-STREAM-INF:')) {
         const bwMatch = line.match(/BANDWIDTH=(\d+)/);
+        const resMatch = line.match(/RESOLUTION=(\d+)x(\d+)/i);
         const bw = bwMatch ? parseInt(bwMatch[1], 10) : 0;
+        const height = resMatch ? parseInt(resMatch[2], 10) : (bw > 2500000 ? 1080 : bw > 1200000 ? 720 : 480);
+
         for (let j = i + 1; j < lines.length; j++) {
           const next = lines[j].trim();
           if (next && !next.startsWith('#')) {
-            if (bw >= maxBandwidth || !bestVariantUrl) {
-              maxBandwidth = bw;
-              bestVariantUrl = next;
-            }
+            variants.push({
+              url: next,
+              bandwidth: bw,
+              height,
+              label: `${height}p`,
+            });
             break;
           }
         }
       }
     }
 
-    if (bestVariantUrl) {
-      mediaPlaylistUrl = new URL(bestVariantUrl, streamUrl).href;
+    let targetVariant = null;
+    if (variants.length > 0) {
+      if (preferredQuality && preferredQuality !== 'auto') {
+        const targetHeight = parseInt(preferredQuality, 10);
+        variants.sort((a, b) => Math.abs(a.height - targetHeight) - Math.abs(b.height - targetHeight));
+        targetVariant = variants[0];
+      } else {
+        variants.sort((a, b) => b.bandwidth - a.bandwidth);
+        targetVariant = variants[0];
+      }
+    }
+
+    if (targetVariant) {
+      selectedQuality = targetVariant.label;
+      mediaPlaylistUrl = new URL(targetVariant.url, streamUrl).href;
       const mediaResp = await fetch(mediaPlaylistUrl, { signal });
       if (!mediaResp.ok) throw new Error(`HTTP ${mediaResp.status}`);
       mediaPlaylistText = await mediaResp.text();
@@ -280,11 +299,13 @@ export async function startEpisodeDownload({
   episodeTitle,
   streamUrl,
   subtitles = [],
+  quality = null,
 }) {
   const id = `${animeId}_${episodeNumber}`;
 
   if (activeDownloads.has(id)) return;
 
+  const preferredQuality = quality || getPreferredDownloadQuality();
   const controller = new AbortController();
   const meta = {
     id,
@@ -300,6 +321,7 @@ export async function startEpisodeDownload({
     sizeFormatted: 'Iniciando descarga…',
     downloadedAt: Date.now(),
     subtitles: [],
+    quality: preferredQuality,
   };
 
   activeDownloads.set(id, { controller, meta });
@@ -335,7 +357,10 @@ export async function startEpisodeDownload({
     meta.sizeFormatted = 'Analizando flujo de video…';
     notifyListeners();
 
-    const hlsInfo = await resolveHlsPlaylist(streamUrl, controller.signal);
+    const hlsInfo = await resolveHlsPlaylist(streamUrl, controller.signal, preferredQuality);
+    if (hlsInfo.quality) {
+      meta.quality = hlsInfo.quality;
+    }
 
     const db = await getDb();
 
@@ -526,10 +551,45 @@ export async function clearAllDownloads() {
 
 export async function getTotalStorageUsed() {
   const all = await getAllDownloads();
-  const total = all.reduce((sum, item) => sum + (item.sizeBytes || 0), 0);
+  const total = all.reduce((sum, item) => sum + (item.sizeBytes || item.totalBytes || item.downloadedBytes || 0), 0);
   return {
     bytes: total,
     formatted: formatBytes(total),
     count: all.length,
   };
+}
+
+const PREFERRED_QUALITY_KEY = 'orunei_preferred_download_quality';
+const AUTO_DELETE_KEY = 'orunei_auto_delete_watched';
+
+export function getPreferredDownloadQuality() {
+  if (typeof window === 'undefined' || !window.localStorage) return 'auto';
+  try {
+    return window.localStorage.getItem(PREFERRED_QUALITY_KEY) || 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
+export function setPreferredDownloadQuality(quality) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(PREFERRED_QUALITY_KEY, quality || 'auto');
+  } catch {}
+}
+
+export function isAutoDeleteWatchedEnabled() {
+  if (typeof window === 'undefined' || !window.localStorage) return false;
+  try {
+    return window.localStorage.getItem(AUTO_DELETE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setAutoDeleteWatched(enabled) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    window.localStorage.setItem(AUTO_DELETE_KEY, enabled ? 'true' : 'false');
+  } catch {}
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2 } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
-import { getOfflinePlaybackSource, getDownload } from '../offline/downloadEngine';
+import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, formatTime } from '../playback/playbackProgress';
 import { fetchSkipTimes, getActiveSkipInterval } from '../playback/skipTimes';
 import { useVideoGestures, togglePiP, isPiPSupported } from '../playback/useVideoGestures';
@@ -506,6 +506,9 @@ export default function AnimePlayer({
 
   const handleEnded = () => {
     clearPlaybackProgress(animeId || miruroId, episode);
+    if (isAutoDeleteWatchedEnabled()) {
+      deleteDownload(animeId || miruroId, episode).catch(() => {});
+    }
     if (totalEpisodes && episode >= totalEpisodes) {
       onComplete?.(episode);
     } else if (onEpisodeChange) {
