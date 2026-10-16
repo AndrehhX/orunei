@@ -110,3 +110,14 @@ test('Tecla S activa el callback onTriggerSkip cuando hay un activeSkip', () => 
   assert.equal(handled, true);
   assert.equal(skipTriggered, true);
 });
+
+test('Tecla T activa el modo cine / teatro', () => {
+  let theaterToggled = false;
+  const handled = handlePlayerKeydown({
+    event: { key: 't', target: { tagName: 'BODY' }, preventDefault: () => {} },
+    onToggleTheater: () => { theaterToggled = true; },
+  });
+  assert.equal(handled, true);
+  assert.equal(theaterToggled, true);
+});
+

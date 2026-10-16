@@ -6,6 +6,7 @@
 export const PLAYER_SHORTCUTS = [
   { key: 'Espacio / K', description: 'Reproducir / Pausar' },
   { key: 'F', description: 'Pantalla completa' },
+  { key: 'T', description: 'Modo Cine / Teatro' },
   { key: 'M', description: 'Silenciar / Activar sonido' },
   { key: '← / J', description: 'Retroceder 10 segundos' },
   { key: '→ / L', description: 'Adelantar 10 segundos' },
@@ -21,7 +22,9 @@ export function handlePlayerKeydown({
   activeSkip,
   onTriggerSkip,
   onNextEpisode,
+  onPrevEpisode,
   onToggleFullscreen,
+  onToggleTheater,
   onTogglePiP,
   showFeedback,
 }) {
@@ -57,6 +60,13 @@ export function handlePlayerKeydown({
     case 'F': {
       event.preventDefault?.();
       onToggleFullscreen?.();
+      return true;
+    }
+
+    case 't':
+    case 'T': {
+      event.preventDefault?.();
+      onToggleTheater?.();
       return true;
     }
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Keyboard } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Keyboard, Film } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, markEpisodeWatched, formatTime } from '../playback/playbackProgress';
@@ -42,6 +42,9 @@ export default function AnimePlayer({
   const [currentQuality, setCurrentQuality] = useState(-1); // -1 = Auto
   const [showSettings, setShowSettings] = useState(false);
   const [showShortcutsList, setShowShortcutsList] = useState(false);
+  const [isTheaterMode, setIsTheaterMode] = useState(() => {
+    try { return localStorage.getItem('orunei_theater_mode') === 'true'; } catch { return false; }
+  });
   const [playbackSpeed, setPlaybackSpeed] = useState(() => getStoredPlaybackSpeed());
 
   // Subtítulos
@@ -586,6 +589,15 @@ export default function AnimePlayer({
     togglePiP(videoRef.current);
   };
 
+  const handleToggleTheater = () => {
+    setIsTheaterMode((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('orunei_theater_mode', String(next)); } catch {}
+      showFeedback?.({ type: 'theater', text: next ? 'Modo Cine Activado' : 'Modo Normal' });
+      return next;
+    });
+  };
+
   // Gestos táctiles y Picture-in-Picture (PiP)
   const {
     brightness,
@@ -598,7 +610,7 @@ export default function AnimePlayer({
     videoRef,
   });
 
-  // Atajos de teclado profesionales (Espacio, F, M, Flechas, J/L, N, P, S)
+  // Atajos de teclado profesionales (Espacio, F, T, M, Flechas, J/L, N, P, S)
   useEffect(() => {
     const handleKeyDown = (e) => {
       handlePlayerKeydown({
@@ -609,13 +621,14 @@ export default function AnimePlayer({
         onNextEpisode: handleNextEp,
         onPrevEpisode: handlePrevEp,
         onToggleFullscreen: handleToggleFullscreen,
+        onToggleTheater: handleToggleTheater,
         onTogglePiP: handleTogglePiP,
         showFeedback,
       });
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeSkip, episode, totalEpisodes]);
+  }, [activeSkip, episode, totalEpisodes, isTheaterMode]);
 
   const handlePause = () => {
     const video = videoRef.current;
@@ -647,7 +660,15 @@ export default function AnimePlayer({
   };
 
   return (
-    <div ref={containerRef} id="player-theater" className="relative mb-6 flex flex-col w-full rounded-2xl bg-[#0f111a] border border-white/10 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] overflow-hidden animate-rise">
+    <div
+      ref={containerRef}
+      id="player-theater"
+      className={`relative mb-6 flex flex-col w-full bg-[#0f111a] border border-white/10 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.85)] overflow-hidden animate-rise transition-all duration-300 ${
+        isTheaterMode
+          ? 'rounded-none xl:rounded-2xl xl:-mx-8 xl:w-[calc(100%+4rem)] 2xl:-mx-14 2xl:w-[calc(100%+7rem)] max-w-none'
+          : 'rounded-2xl'
+      }`}
+    >
       {/* Cabecera del reproductor */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-white/10 bg-[#161824]/95 backdrop-blur-md text-white">
         <div className="min-w-0 pr-4">
@@ -703,7 +724,9 @@ export default function AnimePlayer({
 
       {/* Área del reproductor de video contenida en pantalla */}
       <div
-        className="relative aspect-video max-h-[50vh] w-full bg-black flex items-center justify-center overflow-hidden mx-auto select-none"
+        className={`relative aspect-video w-full bg-black flex items-center justify-center overflow-hidden mx-auto select-none transition-all duration-300 ${
+          isTheaterMode ? 'max-h-[78vh]' : 'max-h-[50vh]'
+        }`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -747,7 +770,7 @@ export default function AnimePlayer({
                 <span>{gestureFeedback.text}</span>
               </div>
             )}
-            {(gestureFeedback.type === 'play' || gestureFeedback.type === 'pause') && (
+            {(gestureFeedback.type === 'play' || gestureFeedback.type === 'pause' || gestureFeedback.type === 'theater') && (
               <div className="px-5 py-3 rounded-2xl bg-black/85 backdrop-blur-md border border-white/20 text-white font-extrabold text-base flex items-center gap-2 shadow-2xl animate-scaleUp">
                 <span>{gestureFeedback.text}</span>
               </div>
@@ -1129,6 +1152,21 @@ export default function AnimePlayer({
               </div>
             )}
           </div>
+
+          {/* Botón Modo Cine / Teatro (Desktop) */}
+          <button
+            type="button"
+            onClick={handleToggleTheater}
+            className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-xl border transition active:scale-95 shadow-sm ${
+              isTheaterMode
+                ? 'bg-brand text-white border-brand shadow-[0_0_12px_rgba(109,92,255,0.4)]'
+                : 'bg-white/5 border-white/10 text-slate-300 hover:text-white hover:bg-white/15'
+            }`}
+            title={isTheaterMode ? 'Salir de Modo Cine (Tecla T)' : 'Activar Modo Cine / Teatro (Tecla T)'}
+          >
+            <Film size={15} className={isTheaterMode ? 'text-white' : 'text-brand'} />
+            <span className="hidden md:inline">Cine</span>
+          </button>
 
           {/* Botón Picture-in-Picture (PiP) */}
           {isPiPSupported() && (
