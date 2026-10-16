@@ -130,6 +130,7 @@ export default function Login({ onSignIn, onSignUp, authStatus = 'ready', authEr
   const [notice, setNotice] = useState('')
   const [shake, setShake] = useState(0)
   const [state, setState] = useState('idle')
+  const set = (key) => (event) => { setF((prev) => ({ ...prev, [key]: event.target.value })); setErr(''); setNotice('') }
   const handleEmailBlur = () => {
     setF((prev) => ({ ...prev, email: (prev.email || '').trim().toLowerCase() }))
   }
