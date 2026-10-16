@@ -9,7 +9,7 @@ import { useVideoGestures, togglePiP, isPiPSupported } from '../playback/useVide
 import { handlePlayerKeydown, PLAYER_SHORTCUTS } from '../playback/keyboardShortcuts';
 import { SUPPORTED_SPEEDS, getStoredPlaybackSpeed, setStoredPlaybackSpeed, applyPlaybackSpeed } from '../playback/playbackSpeed';
 import { shouldTriggerCountdown, COUNTDOWN_DURATION } from '../playback/nextEpisodeCountdown';
-import { createGpuBoostEngine, isWebGL2Supported } from '../playback/gpuBoostEngine';
+import { createGpuBoostEngine, isWebGL2Supported, GPU_BOOST_MODES } from '../playback/gpuBoostEngine';
 
 
 export default function AnimePlayer({
@@ -51,9 +51,11 @@ export default function AnimePlayer({
   });
   const [playbackSpeed, setPlaybackSpeed] = useState(() => getStoredPlaybackSpeed());
 
-  // Modo GPU Boost (60 FPS + Reescalado CAS). Por defecto siempre Normal / Clásico (false)
   const [gpuBoostEnabled, setGpuBoostEnabled] = useState(false);
   const [gpuFps, setGpuFps] = useState(null);
+  const [upscalerMode, setUpscalerMode] = useState(() => {
+    try { return localStorage.getItem('orunei_upscaler_mode') || 'ultra'; } catch { return 'ultra'; }
+  });
 
 
   // Subtítulos
@@ -614,11 +616,25 @@ export default function AnimePlayer({
     }
     setGpuBoostEnabled((prev) => {
       const next = !prev;
+      const currentMode = GPU_BOOST_MODES.find((m) => m.id === upscalerMode) || GPU_BOOST_MODES[1];
       showFeedback?.({
         type: 'boost',
-        text: next ? '✨ Mejora de Imagen (Reescalado 4K) Activada' : 'Modo Normal (Desactivado)',
+        text: next ? `✨ ${currentMode.label} Activado` : 'Modo Normal (Desactivado)',
       });
       return next;
+    });
+  };
+
+  const handleChangeUpscalerMode = (modeId) => {
+    setUpscalerMode(modeId);
+    try { localStorage.setItem('orunei_upscaler_mode', modeId); } catch {}
+    const mode = GPU_BOOST_MODES.find((m) => m.id === modeId);
+    if (mode && gpuEngineRef.current) {
+      gpuEngineRef.current.setSharpness(mode.sharpness);
+    }
+    showFeedback?.({
+      type: 'boost',
+      text: `✨ ${mode?.label || 'Modo'} activado`,
     });
   };
 
@@ -634,7 +650,7 @@ export default function AnimePlayer({
     videoRef,
   });
 
-  // Ciclo de vida y sincronización del acelerador Nitidez Anime (AMD CAS)
+  // Ciclo de vida y sincronización del acelerador Reescalado Anime 4K (Anime4K + AMD CAS)
   useEffect(() => {
     if (!gpuBoostEnabled) {
       if (gpuEngineRef.current) {
@@ -650,22 +666,24 @@ export default function AnimePlayer({
     if (!video || !wrapper) return;
 
     try {
+      const activeMode = GPU_BOOST_MODES.find((m) => m.id === upscalerMode) || GPU_BOOST_MODES[1];
       const engine = createGpuBoostEngine({
         video,
         container: wrapper,
+        sharpness: activeMode.sharpness,
         onFpsUpdate: (fps) => setGpuFps(fps),
         onPerformanceDrop: ({ fps }) => {
           setGpuBoostEnabled(false);
           showFeedback?.({
             type: 'boost',
-            text: `Nitidez CAS desactivada por rendimiento (${fps} FPS)`,
+            text: `Reescalado 4K desactivado por rendimiento (${fps} FPS)`,
           });
         },
         onError: () => {
           setGpuBoostEnabled(false);
           showFeedback?.({
             type: 'boost',
-            text: 'Nitidez CAS no disponible en esta fuente',
+            text: 'Reescalado 4K no disponible en esta fuente',
           });
         },
       });
@@ -682,7 +700,7 @@ export default function AnimePlayer({
       }
       setGpuFps(null);
     };
-  }, [gpuBoostEnabled, episode]);
+  }, [gpuBoostEnabled, upscalerMode, episode]);
 
   // Atajos de teclado profesionales (Espacio, F, T, M, Flechas, J/L, N, P, S, B)
   useEffect(() => {
@@ -763,7 +781,7 @@ export default function AnimePlayer({
           {gpuBoostEnabled && (
             <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.25)] animate-fade">
               <Zap size={12} className="fill-amber-400 text-amber-400" />
-              <span>{gpuFps ? `${gpuFps} FPS • Reescalado 4K` : '✨ Reescalado 4K'}</span>
+              <span>{gpuFps ? `${gpuFps} FPS • ${GPU_BOOST_MODES.find((m) => m.id === upscalerMode)?.label || 'Ultra 4K'}` : `✨ ${GPU_BOOST_MODES.find((m) => m.id === upscalerMode)?.label || 'Ultra 4K'}`}</span>
             </span>
           )}
 
@@ -1190,29 +1208,51 @@ export default function AnimePlayer({
                   </>
                 )}
 
-                {/* Ajuste de Mejora de Imagen y Reescalado 4K (AMD FidelityFX CAS) */}
-                <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between px-2.5 py-1">
-                  <div className="flex flex-col pr-2">
-                    <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
-                      <Zap size={13} className={gpuBoostEnabled ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
-                      Mejora de Imagen (Reescalado 4K)
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      {gpuBoostEnabled ? (gpuFps ? `${gpuFps} FPS • Reescalado 4K Activo` : 'Reescalado 4K Activo (AMD CAS)') : 'Modo Normal (Desactivado)'}
-                    </span>
+                {/* Ajuste de Mejora de Imagen y Reescalado 4K (Anime4K + AMD FidelityFX CAS) */}
+                <div className="mt-2 pt-2 border-t border-white/10 flex flex-col px-2.5 py-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col pr-2">
+                      <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
+                        <Zap size={13} className={gpuBoostEnabled ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
+                        Mejora de Imagen (Reescalado 4K)
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {gpuBoostEnabled ? (gpuFps ? `${gpuFps} FPS • ${GPU_BOOST_MODES.find((m) => m.id === upscalerMode)?.label || 'Ultra 4K'}` : 'Reescalado 4K Activo') : 'Modo Normal (Desactivado)'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={gpuBoostEnabled}
+                      onClick={handleToggleGpuBoost}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${gpuBoostEnabled ? 'bg-amber-500' : 'bg-white/20'}`}
+                      title={gpuBoostEnabled ? 'Desactivar Mejora de Imagen' : 'Activar Mejora de Imagen (Reescalado 4K - Anime4K + AMD CAS)'}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${gpuBoostEnabled ? 'translate-x-4' : 'translate-x-0'}`}
+                      />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={gpuBoostEnabled}
-                    onClick={handleToggleGpuBoost}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${gpuBoostEnabled ? 'bg-amber-500' : 'bg-white/20'}`}
-                    title={gpuBoostEnabled ? 'Desactivar Mejora de Imagen' : 'Activar Mejora de Imagen (Reescalado 4K - AMD CAS)'}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${gpuBoostEnabled ? 'translate-x-4' : 'translate-x-0'}`}
-                    />
-                  </button>
+
+                  {gpuBoostEnabled && (
+                    <div className="mt-2 grid grid-cols-3 gap-1">
+                      {GPU_BOOST_MODES.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => handleChangeUpscalerMode(m.id)}
+                          className={`py-1 px-1.5 text-[10px] rounded-lg text-center transition ${
+                            upscalerMode === m.id
+                              ? 'bg-amber-500 text-black font-extrabold shadow-sm'
+                              : 'text-slate-300 bg-white/5 hover:bg-white/10 font-semibold'
+                          }`}
+                          title={m.description}
+                        >
+                          {m.label.split(' ')[0]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Ajuste de Auto-saltar Intro */}

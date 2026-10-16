@@ -4,7 +4,9 @@ import {
   isWebGL2Supported,
   createGpuBoostEngine,
   GPU_BOOST_SETTINGS,
+  GPU_BOOST_MODES,
   computeCASSample,
+  computeAnime4KSample,
 } from '../src/playback/gpuBoostEngine.js';
 
 test('isWebGL2Supported retorna false de forma segura si no hay document/window', () => {
@@ -296,4 +298,49 @@ test('Arquitectura no invasiva: el canvas nunca bloquea los eventos ni altera el
   delete globalThis.window;
   delete globalThis.requestAnimationFrame;
   delete globalThis.cancelAnimationFrame;
+});
+
+test('GPU_BOOST_MODES define perfiles equilibrado, ultra blu-ray y extremo', () => {
+  assert.ok(Array.isArray(GPU_BOOST_MODES));
+  assert.equal(GPU_BOOST_MODES.length, 3);
+  assert.ok(GPU_BOOST_MODES.some((m) => m.id === 'ultra' && m.sharpness === 1.0));
+  assert.ok(GPU_BOOST_MODES.some((m) => m.id === 'balanced' && m.sharpness < 1.0));
+  assert.ok(GPU_BOOST_MODES.some((m) => m.id === 'extreme' && m.sharpness > 1.0));
+});
+
+test('Anime4K Reescalado: afila trazos borrosos con reducción demostrada de grosor y oscurecimiento del núcleo', () => {
+  // Simular un trazo de anime desenfocado por compresión web 720p:
+  // Fondo claro (0.90) con trazo oscuro en el centro atenuado a gris (0.45)
+  const bg = [0.90, 0.90, 0.90];
+  const blurryStroke = [0.45, 0.45, 0.45];
+  const darkCore = [0.15, 0.15, 0.15];
+
+  const output = computeAnime4KSample({
+    c: blurryStroke,
+    tl: bg, tc: bg, tr: bg,
+    ml: darkCore, mr: bg,
+    bl: bg, bc: bg, br: bg,
+    sharpness: 1.0,
+  });
+
+  // El trazo borroso debe haberse oscurecido hacia el núcleo oscuro (mayor definición tipo Blu-ray)
+  assert.ok(output[0] < blurryStroke[0], `El trazo debe afilarse: ${output[0]} < ${blurryStroke[0]}`);
+  assert.ok(output[0] >= darkCore[0] * 0.80, 'No debe violar el límite anti-ringing');
+});
+
+test('Anime4K Reescalado: preserva cielos y fondos homogéneos con cero ruido agregado', () => {
+  const flatSky = [0.35, 0.65, 0.95];
+
+  const output = computeAnime4KSample({
+    c: flatSky,
+    tl: flatSky, tc: flatSky, tr: flatSky,
+    ml: flatSky, mr: flatSky,
+    bl: flatSky, bc: flatSky, br: flatSky,
+    sharpness: 1.0,
+  });
+
+  // En superficies planas de anime (cielo, paredes, piel lisa), no debe introducir grano
+  assert.ok(Math.abs(output[0] - flatSky[0]) < 0.03);
+  assert.ok(Math.abs(output[1] - flatSky[1]) < 0.03);
+  assert.ok(Math.abs(output[2] - flatSky[2]) < 0.03);
 });
