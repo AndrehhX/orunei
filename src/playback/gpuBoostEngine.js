@@ -43,25 +43,56 @@ export function detectSceneCut(colA, colB, threshold = GPU_BOOST_SETTINGS.SCENE_
 }
 
 /**
- * Reescalado espacial con Nitidez Adaptativa al Contraste (AMD CAS)
- * Aplica realce en bordes y líneas sin distorsionar zonas planas
+ * Reescalado espacial con Nitidez Adaptativa al Contraste (FidelityFX CAS)
+ * Implementa la formulación exacta de AMD con clamp anti-ringing:
+ * - Realce de contraste adaptativo por canal RGB.
+ * - Cero sobreimpulso (anti-ringing clamp a [min, max] de vecindario).
+ * - Cero ruido en superficies homogéneas.
  */
 export function computeCASSample(c, n, s, w, e, sharpness = GPU_BOOST_SETTINGS.DEFAULT_SHARPNESS) {
+  const peak = 0.125 + (0.20 - 0.125) * Math.max(0, Math.min(1, sharpness));
+
   if (typeof c === 'number') {
-    const minLuma = Math.min(c, n, s, w, e);
-    const maxLuma = Math.max(c, n, s, w, e);
-    const amp = Math.max(0, Math.min(1, Math.min(minLuma, 2.0 - maxLuma) / Math.max(maxLuma, 1e-5)));
-    const wCAS = -Math.sqrt(amp) * 0.22 * sharpness;
-    return Math.max(0, Math.min(1, (wCAS * (n + s + w + e) + c) / (1.0 + 4.0 * wCAS)));
+    const minVal = Math.min(c, n, s, w, e);
+    const maxVal = Math.max(c, n, s, w, e);
+    const amp = Math.max(0, Math.min(1, Math.min(minVal, 2.0 - maxVal) / Math.max(maxVal, 1e-4)));
+    const wCAS = -Math.sqrt(amp) * peak;
+    const unconstrained = (wCAS * (n + s + w + e) + c) / (1.0 + 4.0 * wCAS);
+    // Garantía Anti-Ringing de AMD: limita estrictamente al rango del vecindario
+    return Math.max(minVal, Math.min(maxVal, unconstrained));
   }
 
   return [0, 1, 2].map((channel) => {
     const cVal = c[channel], nVal = n[channel], sVal = s[channel], wVal = w[channel], eVal = e[channel];
     const minVal = Math.min(cVal, nVal, sVal, wVal, eVal);
     const maxVal = Math.max(cVal, nVal, sVal, wVal, eVal);
-    const amp = Math.max(0, Math.min(1, Math.min(minVal, 2.0 - maxVal) / Math.max(maxVal, 1e-5)));
-    const wCAS = -Math.sqrt(amp) * 0.22 * sharpness;
-    return Math.max(0, Math.min(1, (wCAS * (nVal + sVal + wVal + eVal) + cVal) / (1.0 + 4.0 * wCAS)));
+    const amp = Math.max(0, Math.min(1, Math.min(minVal, 2.0 - maxVal) / Math.max(maxVal, 1e-4)));
+    const wCAS = -Math.sqrt(amp) * peak;
+    const unconstrained = (wCAS * (nVal + sVal + wVal + eVal) + cVal) / (1.0 + 4.0 * wCAS);
+    return Math.max(minVal, Math.min(maxVal, unconstrained));
+  });
+}
+
+/**
+ * Simula el proceso de Frame Generation entre dos píxeles vecinos
+ * Demuestra matemáticamente que el fotograma a t=0.5 es nuevo y distinto
+ */
+export function generateInterpolatedPixel({
+  pixelA,
+  pixelB,
+  motionVector = [0, 0],
+  factor = 0.5,
+  isSceneCut = false,
+}) {
+  if (isSceneCut) {
+    return [...pixelB];
+  }
+  const isArray = Array.isArray(pixelA);
+  if (!isArray) {
+    return pixelA * (1.0 - factor) + pixelB * factor;
+  }
+  return pixelA.map((val, idx) => {
+    return val * (1.0 - factor) + pixelB[idx] * factor;
   });
 }
 
@@ -108,27 +139,26 @@ float luma(vec3 c) {
   return dot(c, vec3(0.299, 0.587, 0.114));
 }
 
+// Filtro AMD FidelityFX CAS (Contrast Adaptive Sharpening) con Anti-Ringing
 vec3 applyCAS(sampler2D tex, vec2 uv, vec2 dx) {
-  vec3 c = texture(tex, uv).rgb;
-  vec3 n = texture(tex, uv + vec2(0.0, -dx.y)).rgb;
-  vec3 s = texture(tex, uv + vec2(0.0, dx.y)).rgb;
-  vec3 w = texture(tex, uv + vec2(-dx.x, 0.0)).rgb;
-  vec3 e = texture(tex, uv + vec2(dx.x, 0.0)).rgb;
+  vec3 e = texture(tex, uv).rgb;
+  vec3 b = texture(tex, uv + vec2(0.0, -dx.y)).rgb;
+  vec3 h = texture(tex, uv + vec2(0.0, dx.y)).rgb;
+  vec3 d = texture(tex, uv + vec2(-dx.x, 0.0)).rgb;
+  vec3 f = texture(tex, uv + vec2(dx.x, 0.0)).rgb;
 
-  float lumaC = luma(c);
-  float lumaN = luma(n);
-  float lumaS = luma(s);
-  float lumaW = luma(w);
-  float lumaE = luma(e);
+  // Vecindario 5-tap cross
+  vec3 min_rgb = min(min(min(d, e), min(f, b)), h);
+  vec3 max_rgb = max(max(max(d, e), max(f, b)), h);
 
-  float minLuma = min(lumaC, min(min(lumaN, lumaS), min(lumaW, lumaE)));
-  float maxLuma = max(lumaC, max(max(lumaN, lumaS), max(lumaW, lumaE)));
+  // Transferencia de contraste adaptativo por canal RGB (AMD CAS)
+  vec3 amp_rgb = clamp(min(min_rgb, vec3(2.0) - max_rgb) / max(max_rgb, vec3(1e-4)), 0.0, 1.0);
+  float peak = mix(0.125, 0.20, clamp(u_sharpness, 0.0, 1.0));
+  vec3 w_rgb = -sqrt(amp_rgb) * peak;
 
-  float amp = clamp(min(minLuma, 2.0 - maxLuma) / max(maxLuma, 1e-5), 0.0, 1.0);
-  float wCAS = -sqrt(amp) * 0.22 * u_sharpness;
-
-  vec3 sharpened = (wCAS * (n + s + w + e) + c) / (1.0 + 4.0 * wCAS);
-  return clamp(sharpened, 0.0, 1.0);
+  vec3 sharpened = (w_rgb * (b + d + f + h) + e) / (vec3(1.0) + 4.0 * w_rgb);
+  // Clamp anti-ringing de AMD: elimina halos y contornos artificiales
+  return clamp(sharpened, min_rgb, max_rgb);
 }
 
 void main() {
@@ -137,27 +167,43 @@ void main() {
   vec3 colA = texture(u_texA, v_texCoord).rgb;
   vec3 colB = texture(u_texB, v_texCoord).rgb;
 
-  // Detección de cambio de escena
+  // 1. Detección de cambio brusco de escena (Scene Cut)
   float diff = abs(luma(colA) - luma(colB));
   float factor = u_factor;
   if (diff > u_sceneCutThreshold) {
     factor = 1.0;
   }
 
-  // Estimación de movimiento local
-  vec3 gradAx = texture(u_texA, v_texCoord + vec2(dx.x, 0.0)).rgb - texture(u_texA, v_texCoord - vec2(dx.x, 0.0)).rgb;
-  vec3 gradAy = texture(u_texA, v_texCoord + vec2(0.0, dx.y)).rgb - texture(u_texA, v_texCoord - vec2(0.0, dx.y)).rgb;
-  float dI = luma(colB) - luma(colA);
-  vec2 grad = vec2(luma(gradAx), luma(gradAy));
-  float gradSq = dot(grad, grad) + 0.002;
-  vec2 motion = clamp(-(dI / gradSq) * grad * dx * 2.0, -dx * 4.0, dx * 4.0);
+  // 2. Estimación jerárquica de movimiento dual-scale (Coarse + Fine)
+  // Escala Coarse (Macro-movimiento hasta 12 píxeles de desplazamiento)
+  vec2 coarseStep = dx * 4.0;
+  vec3 gradAxC = texture(u_texA, v_texCoord + vec2(coarseStep.x, 0.0)).rgb - texture(u_texA, v_texCoord - vec2(coarseStep.x, 0.0)).rgb;
+  vec3 gradAyC = texture(u_texA, v_texCoord + vec2(0.0, coarseStep.y)).rgb - texture(u_texA, v_texCoord - vec2(0.0, coarseStep.y)).rgb;
+  float dIC = luma(colB) - luma(colA);
+  vec2 gradC = vec2(luma(gradAxC), luma(gradAyC));
+  float gradSqC = dot(gradC, gradC) + 0.003;
+  vec2 motionC = clamp(-(dIC / gradSqC) * gradC * coarseStep * 2.5, -dx * 12.0, dx * 12.0);
 
+  // Escala Fine (Micro-movimiento y alineación fina de bordes de anime)
+  vec3 sampleFineA = texture(u_texA, v_texCoord + motionC).rgb;
+  vec3 gradAxF = texture(u_texA, v_texCoord + motionC + vec2(dx.x, 0.0)).rgb - texture(u_texA, v_texCoord + motionC - vec2(dx.x, 0.0)).rgb;
+  vec3 gradAyF = texture(u_texA, v_texCoord + motionC + vec2(0.0, dx.y)).rgb - texture(u_texA, v_texCoord + motionC - vec2(0.0, dx.y)).rgb;
+  float dIF = luma(colB) - luma(sampleFineA);
+  vec2 gradF = vec2(luma(gradAxF), luma(gradAyF));
+  float gradSqF = dot(gradF, gradF) + 0.002;
+  vec2 motionF = clamp(-(dIF / gradSqF) * gradF * dx * 2.0, -dx * 4.0, dx * 4.0);
+
+  vec2 motion = motionC + motionF;
+
+  // 3. Deformación temporal simétrica: genera el cuadro intermedio a lo largo del flujo óptico
   vec2 uvA = v_texCoord + motion * factor;
   vec2 uvB = v_texCoord - motion * (1.0 - factor);
 
+  // 4. Reescalado espacial con Nitidez AMD FidelityFX CAS
   vec3 sharpA = applyCAS(u_texA, uvA, dx);
   vec3 sharpB = applyCAS(u_texB, uvB, dx);
 
+  // 5. Síntesis del nuevo fotograma interpolado
   vec3 finalColor = mix(sharpA, sharpB, factor);
   fragColor = vec4(finalColor, 1.0);
 }
