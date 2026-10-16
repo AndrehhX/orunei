@@ -4,6 +4,7 @@ import {
   calculateNextEpisodeToWatch,
   formatContinueWatchingLabel,
   enrichContinueWatchingItem,
+  sortContinueWatchingList,
 } from '../src/playback/continueWatching.js';
 
 describe('Continue Watching Engine (Donde lo dejaste)', () => {
@@ -73,5 +74,25 @@ describe('Continue Watching Engine (Donde lo dejaste)', () => {
 
     assert.equal(result.isSeriesCompleted, true);
     assert.equal(result.episode, 1); // Permite reiniciar
+  });
+
+  it('sortContinueWatchingList ordena priorizando el anime reproducido más recientemente', () => {
+    // Simulamos que el anime '200' se vio más recientemente que el '100'
+    globalThis.localStorage.setItem('orunei_anime_last_watched', JSON.stringify({
+      '100': 1000,
+      '200': 5000,
+      '300': 2000,
+    }));
+
+    const items = [
+      { id: '100', t: 'Anime Antiguo', status: 'watching' },
+      { id: '200', t: 'Anime Reciente', status: 'watching' },
+      { id: '300', t: 'Anime Medio', status: 'watching' },
+    ];
+
+    const sorted = sortContinueWatchingList(items);
+    assert.equal(sorted[0].id, '200');
+    assert.equal(sorted[1].id, '300');
+    assert.equal(sorted[2].id, '100');
   });
 });

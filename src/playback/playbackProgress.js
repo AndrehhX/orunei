@@ -7,11 +7,31 @@
 
 const STORAGE_KEY = 'orunei_playback_progress';
 const WATCHED_STORAGE_KEY = 'orunei_watched_episodes';
+const ANIME_LAST_WATCHED_KEY = 'orunei_anime_last_watched';
 
 function getLocalStorage() {
   if (typeof globalThis.localStorage !== 'undefined') return globalThis.localStorage;
   if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
   return null;
+}
+
+/**
+ * Consulta el timestamp del momento más reciente en que se reprodujo un anime.
+ */
+export function getAnimeLastWatchedAt(animeId) {
+  if (!animeId) return 0;
+  const store = getStorage(ANIME_LAST_WATCHED_KEY);
+  return Number(store[String(animeId)]) || 0;
+}
+
+/**
+ * Registra o actualiza el timestamp de reproducción reciente de un anime.
+ */
+export function touchAnimeLastWatched(animeId, timestamp = Date.now()) {
+  if (!animeId) return;
+  const store = getStorage(ANIME_LAST_WATCHED_KEY);
+  store[String(animeId)] = Number(timestamp) || Date.now();
+  setStorage(ANIME_LAST_WATCHED_KEY, store);
 }
 
 function getStorage(key = STORAGE_KEY) {
@@ -72,6 +92,7 @@ export function markEpisodeWatched(animeId, episode) {
 
   // Al estar visto, limpiar prompt de reanudar
   clearPlaybackProgress(animeId, episode);
+  touchAnimeLastWatched(aId);
 }
 
 /**
@@ -169,6 +190,7 @@ export function savePlaybackProgress({ animeId, episode, currentTime, duration }
 
   store[key] = record;
   setStorage(STORAGE_KEY, store);
+  touchAnimeLastWatched(animeId, record.updatedAt);
   return record;
 }
 

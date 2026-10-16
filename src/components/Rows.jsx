@@ -5,7 +5,7 @@ import { useRec } from '../rec/rec'
 import Poster from './Poster'
 import { useNews, NewsLink } from '../news'
 import { useProfile } from '../profile/ProfileProvider'
-import { enrichContinueWatchingItem } from '../playback/continueWatching.js'
+import { enrichContinueWatchingItem, sortContinueWatchingList } from '../playback/continueWatching.js'
 
 export const Title = ({ children, onClick }) => (
   <div className="mb-3 flex items-center justify-between"><h3 onClick={onClick} className={`flex items-center gap-1 text-[17px] font-bold transition-colors ${onClick ? 'cursor-pointer hover:text-brand' : ''}`}>{children}<ChevronRight size={17} /></h3><ChevronRight size={15} className="text-slate-400" /></div>
@@ -18,10 +18,11 @@ export function Library({ query, onMore, onOpenAnime }) {
   const { profile } = useProfile()
   const source = Array.isArray(profile.animeList) ? profile.animeList : []
 
-  // Priorizar obras que el usuario está viendo actualmente o donde tiene progreso de episodios
+  // Priorizar obras que el usuario está viendo actualmente y ordenar por última reproducción real
   const inProgress = source.filter((a) => a.status === 'watching' || (Number(a.currentEpisode) > 0 && a.status !== 'completed'))
   const candidateList = inProgress.length > 0 ? inProgress : source
-  const list = candidateList.filter((a) => ok(a.t, query)).slice(0, 6)
+  const sortedCandidates = sortContinueWatchingList(candidateList)
+  const list = sortedCandidates.filter((a) => ok(a.t, query)).slice(0, 6)
 
   return (
     <section>

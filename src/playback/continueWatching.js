@@ -6,7 +6,7 @@
  * 3. Si la serie está terminada, permite repetir desde el episodio 1.
  */
 
-import { isEpisodeWatched, getPlaybackProgress, formatTime } from './playbackProgress.js';
+import { isEpisodeWatched, getPlaybackProgress, formatTime, getAnimeLastWatchedAt } from './playbackProgress.js';
 
 export function calculateNextEpisodeToWatch({
   animeId,
@@ -122,3 +122,29 @@ export function enrichContinueWatchingItem(anime) {
     displayLabel: formatContinueWatchingLabel(nextInfo),
   };
 }
+
+/**
+ * Ordena la lista de "Donde lo dejaste" por el timestamp de última reproducción real.
+ * De esta forma, el anime visto hace 5 minutos siempre lidera la fila.
+ */
+export function sortContinueWatchingList(items) {
+  if (!Array.isArray(items)) return [];
+  return [...items].sort((a, b) => {
+    const aId = a.id || a.animeId || a.q;
+    const bId = b.id || b.animeId || b.q;
+    const aTime = getAnimeLastWatchedAt(aId) || 0;
+    const bTime = getAnimeLastWatchedAt(bId) || 0;
+
+    if (aTime !== bTime) {
+      return bTime - aTime;
+    }
+
+    const aIsWatching = a.status === 'watching' || (Number(a.currentEpisode) > 0 && a.status !== 'completed');
+    const bIsWatching = b.status === 'watching' || (Number(b.currentEpisode) > 0 && b.status !== 'completed');
+    if (aIsWatching && !bIsWatching) return -1;
+    if (!aIsWatching && bIsWatching) return 1;
+
+    return 0;
+  });
+}
+
