@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getOfflinePlaybackSource, getDownload } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, formatTime } from '../playback/playbackProgress';
+import { fetchSkipTimes, getActiveSkipInterval } from '../playback/skipTimes';
 
 export default function AnimePlayer({
   animeId,
+  malId,
   animeTitle,
   miruroId,
   initialEpisode = 1,
@@ -44,6 +46,27 @@ export default function AnimePlayer({
   // Reanudación al segundo exacto (Resume Timestamp)
   const [resumePrompt, setResumePrompt] = useState(null);
   const lastSaveTimeRef = useRef(0);
+
+  // Saltar Intro / Ending (AniSkip)
+  const [skipIntervals, setSkipIntervals] = useState([]);
+  const [activeSkip, setActiveSkip] = useState(null);
+
+  // Cargar intervalos de skip desde AniSkip
+  useEffect(() => {
+    let isCancelled = false;
+    setSkipIntervals([]);
+    setActiveSkip(null);
+
+    const targetMalId = malId || animeId;
+    if (targetMalId && episode) {
+      fetchSkipTimes({ malId: targetMalId, episodeNumber: episode }).then((intervals) => {
+        if (!isCancelled && Array.isArray(intervals)) {
+          setSkipIntervals(intervals);
+        }
+      });
+    }
+    return () => { isCancelled = true; };
+  }, [malId, animeId, episode]);
 
   // Sincronizar número de episodio si cambia desde afuera
   useEffect(() => {
@@ -438,6 +461,15 @@ export default function AnimePlayer({
   const handleTimeUpdate = () => {
     const video = videoRef.current;
     if (!video) return;
+
+    // Detectar intervalo activo de intro o ending
+    if (skipIntervals.length > 0) {
+      const skip = getActiveSkipInterval(skipIntervals, video.currentTime);
+      setActiveSkip(skip);
+    } else if (activeSkip) {
+      setActiveSkip(null);
+    }
+
     const now = Date.now();
     if (now - lastSaveTimeRef.current >= 3000) {
       lastSaveTimeRef.current = now;
@@ -449,6 +481,13 @@ export default function AnimePlayer({
           duration: video.duration,
         });
       }
+    }
+  };
+
+  const handleTriggerSkip = () => {
+    if (videoRef.current && activeSkip) {
+      videoRef.current.currentTime = activeSkip.endTime + 0.5;
+      setActiveSkip(null);
     }
   };
 
@@ -591,6 +630,19 @@ export default function AnimePlayer({
               </button>
             </div>
           </div>
+        )}
+
+        {/* Botón flotante Saltar Intro / Saltar Ending */}
+        {activeSkip && (
+          <button
+            type="button"
+            onClick={handleTriggerSkip}
+            className="absolute bottom-16 right-4 sm:right-6 z-30 flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-black/85 hover:bg-brand text-white font-bold text-xs sm:text-sm backdrop-blur-md border border-white/20 shadow-2xl transition-all duration-200 active:scale-95 group animate-rise"
+            title={activeSkip.label}
+          >
+            <span>{activeSkip.label}</span>
+            <FastForward size={16} className="text-brand group-hover:text-white transition-colors" />
+          </button>
         )}
 
         <video

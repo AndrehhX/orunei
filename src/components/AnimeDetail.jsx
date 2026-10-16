@@ -528,6 +528,7 @@ export default function AnimeDetail({ id, onClose, onOpen }) {
         <div id="player-theater-top" className="animate-slideDown scroll-mt-4">
           <AnimePlayer
             animeId={m.id}
+            malId={m.idMal}
             animeTitle={title(m)}
             miruroId={miruroId}
             initialEpisode={playingEpisode}
