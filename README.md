@@ -11,11 +11,11 @@ Orunei es una plataforma social para descubrir anime, organizar un AnimeList y c
 - AnimeList privado con estados, favoritos, listas personalizadas y actividad.
 - Sección **Donde lo dejaste** organizada cronológicamente por última reproducción real con reanudación al segundo exacto y aviso flotante.
 - Reproductor web avanzado con streaming multi-servidor y subtítulos en español.
-- **Motor GPU Boost (60 FPS + Nitidez CAS)** exclusivo para la web:
-  - Generación de fotogramas intermedios (Frame Generation) en tiempo real mediante WebGL2.
-  - Reescalado espacial con Nitidez Adaptativa al Contraste (AMD CAS / Anime4K style) que profundiza líneas y texturas sin añadir ruido a fondos planos.
-  - Detector de cortes bruscos de escena para prevenir artefactos visuales.
-  - Arquitectura no invasiva mediante canvas fantasma con `pointer-events: none` y fallback de seguridad si la GPU cae de 45 FPS.
+- **Nitidez Anime (AMD FidelityFX CAS)** exclusiva para la web (opcional, apagada por defecto):
+  - Realce adaptativo de contraste espacial basado en la implementación matemática oficial de AMD FidelityFX CAS.
+  - Acentúa bordes y trazos oscuros de animación sin generar sobreimpulso (anti-ringing estricto) ni amplificar ruido en cielos o fondos planos.
+  - Arquitectura no invasiva mediante canvas fantasma WebGL2 con `pointer-events: none` que preserva el 100% de los controles y eventos del reproductor original.
+  - Sistema de seguridad y monitoreo de rendimiento con desconexión automática si la GPU cae por debajo de 45 FPS o la pestaña pasa a segundo plano.
 - **Modo Cine / Teatro** inmersivo para desktop y control profesional por teclado (`Espacio`/`K`, `F`, `T`, `M`, flechas, `J`/`L`, `N`, `P`, `S`, `B`).
 - Salto inteligente de intros y endings con integración AniSkip, fallback automático y opción de Auto-Skip.
 - Perfil privado editable con avatar, banner, biografía, identidad visual y privacidad por sección.

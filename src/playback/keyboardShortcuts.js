@@ -14,7 +14,7 @@ export const PLAYER_SHORTCUTS = [
   { key: 'N', description: 'Siguiente episodio' },
   { key: 'P', description: 'Picture-in-Picture (PiP)' },
   { key: 'S', description: 'Saltar Intro / Ending' },
-  { key: 'B', description: 'GPU Boost (60 FPS)' },
+  { key: 'B', description: 'Nitidez Anime (AMD CAS)' },
 ];
 
 export function handlePlayerKeydown({

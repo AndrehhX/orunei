@@ -1,46 +1,21 @@
 /**
  * gpuBoostEngine.js
  * 
- * Motor WebGL2 de Alto Rendimiento para Reproductor de Anime:
- * - Frame Generation / Interpolación suave (28/30 FPS a 60 FPS+)
- * - Reescalado espacial con Nitidez Adaptativa al Contraste (CAS / AMD style)
- * - Detector de cortes bruscos de escena para prevenir artefactos
+ * Motor WebGL2 de Nitidez y Reescalado Adaptativo al Contraste (AMD FidelityFX CAS)
+ * Diseñado específicamente para animación japonesa / Anime:
+ * - Filtro oficial AMD FidelityFX CAS con garantía Anti-Ringing
+ * - Realce de contraste adaptativo por canal RGB (profundiza el trazo sin halos)
+ * - Inmunidad a ruido en superficies planas y fondos
+ * - Cero artefactos de movimiento ni ghosting (procesamiento espacial directo)
  * - Arquitectura no invasiva: Canvas fantasma superpuesto con pointer-events: none
- * - Watchdog de seguridad: Auto-fallback a reproducción normal si la GPU cae de 45 FPS o hay error de CORS
+ * - Freno de seguridad: Pausa automática en segundo plano y watchdog de rendimiento
  */
 
 export const GPU_BOOST_SETTINGS = {
   MIN_ACCEPTABLE_FPS: 45,
   FPS_MONITOR_WINDOW_MS: 3000,
   DEFAULT_SHARPNESS: 0.65,
-  SCENE_CUT_THRESHOLD: 0.35,
 };
-
-/**
- * Calcula la luminancia percibida de un pixel RGB
- */
-export function calculateLuma(r, g, b) {
-  return 0.299 * r + 0.587 * g + 0.114 * b;
-}
-
-/**
- * Calcula el factor t de interpolación temporal entre cuadros
- * Genera el fotograma intermedio para alcanzar 60 FPS o más
- */
-export function computeInterpolationFactor(now, lastFrameTime, frameInterval) {
-  const safeInterval = Math.max(frameInterval, 16.0);
-  const elapsed = now - lastFrameTime;
-  return Math.max(0.0, Math.min(1.0, elapsed / safeInterval));
-}
-
-/**
- * Detección de cambio abrupto de escena para prevenir ghosting
- */
-export function detectSceneCut(colA, colB, threshold = GPU_BOOST_SETTINGS.SCENE_CUT_THRESHOLD) {
-  const lumaA = calculateLuma(colA[0], colA[1], colA[2]);
-  const lumaB = calculateLuma(colB[0], colB[1], colB[2]);
-  return Math.abs(lumaA - lumaB) > threshold;
-}
 
 /**
  * Reescalado espacial con Nitidez Adaptativa al Contraste (FidelityFX CAS)
@@ -58,7 +33,7 @@ export function computeCASSample(c, n, s, w, e, sharpness = GPU_BOOST_SETTINGS.D
     const amp = Math.max(0, Math.min(1, Math.min(minVal, 2.0 - maxVal) / Math.max(maxVal, 1e-4)));
     const wCAS = -Math.sqrt(amp) * peak;
     const unconstrained = (wCAS * (n + s + w + e) + c) / (1.0 + 4.0 * wCAS);
-    // Garantía Anti-Ringing de AMD: limita estrictamente al rango del vecindario
+    // Garantía Anti-Ringing de AMD: confina estrictamente al rango del vecindario
     return Math.max(minVal, Math.min(maxVal, unconstrained));
   }
 
@@ -70,29 +45,6 @@ export function computeCASSample(c, n, s, w, e, sharpness = GPU_BOOST_SETTINGS.D
     const wCAS = -Math.sqrt(amp) * peak;
     const unconstrained = (wCAS * (nVal + sVal + wVal + eVal) + cVal) / (1.0 + 4.0 * wCAS);
     return Math.max(minVal, Math.min(maxVal, unconstrained));
-  });
-}
-
-/**
- * Simula el proceso de Frame Generation entre dos píxeles vecinos
- * Demuestra matemáticamente que el fotograma a t=0.5 es nuevo y distinto
- */
-export function generateInterpolatedPixel({
-  pixelA,
-  pixelB,
-  motionVector = [0, 0],
-  factor = 0.5,
-  isSceneCut = false,
-}) {
-  if (isSceneCut) {
-    return [...pixelB];
-  }
-  const isArray = Array.isArray(pixelA);
-  if (!isArray) {
-    return pixelA * (1.0 - factor) + pixelB * factor;
-  }
-  return pixelA.map((val, idx) => {
-    return val * (1.0 - factor) + pixelB[idx] * factor;
   });
 }
 
@@ -127,19 +79,12 @@ void main() {
 const FRAGMENT_SHADER_SOURCE = `#version 300 es
 precision highp float;
 in vec2 v_texCoord;
-uniform sampler2D u_texA;
-uniform sampler2D u_texB;
-uniform float u_factor;
+uniform sampler2D u_tex;
 uniform vec2 u_resolution;
 uniform float u_sharpness;
-uniform float u_sceneCutThreshold;
 out vec4 fragColor;
 
-float luma(vec3 c) {
-  return dot(c, vec3(0.299, 0.587, 0.114));
-}
-
-// Filtro AMD FidelityFX CAS (Contrast Adaptive Sharpening) con Anti-Ringing
+// Filtro oficial AMD FidelityFX CAS (Contrast Adaptive Sharpening)
 vec3 applyCAS(sampler2D tex, vec2 uv, vec2 dx) {
   vec3 e = texture(tex, uv).rgb;
   vec3 b = texture(tex, uv + vec2(0.0, -dx.y)).rgb;
@@ -157,55 +102,14 @@ vec3 applyCAS(sampler2D tex, vec2 uv, vec2 dx) {
   vec3 w_rgb = -sqrt(amp_rgb) * peak;
 
   vec3 sharpened = (w_rgb * (b + d + f + h) + e) / (vec3(1.0) + 4.0 * w_rgb);
-  // Clamp anti-ringing de AMD: elimina halos y contornos artificiales
+  // Clamp anti-ringing oficial de AMD: elimina halos y contornos artificiales
   return clamp(sharpened, min_rgb, max_rgb);
 }
 
 void main() {
   vec2 dx = 1.0 / max(u_resolution, vec2(1.0));
-
-  vec3 colA = texture(u_texA, v_texCoord).rgb;
-  vec3 colB = texture(u_texB, v_texCoord).rgb;
-
-  // 1. Detección de cambio brusco de escena (Scene Cut)
-  float diff = abs(luma(colA) - luma(colB));
-  float factor = u_factor;
-  if (diff > u_sceneCutThreshold) {
-    factor = 1.0;
-  }
-
-  // 2. Estimación jerárquica de movimiento dual-scale (Coarse + Fine)
-  // Escala Coarse (Macro-movimiento hasta 12 píxeles de desplazamiento)
-  vec2 coarseStep = dx * 4.0;
-  vec3 gradAxC = texture(u_texA, v_texCoord + vec2(coarseStep.x, 0.0)).rgb - texture(u_texA, v_texCoord - vec2(coarseStep.x, 0.0)).rgb;
-  vec3 gradAyC = texture(u_texA, v_texCoord + vec2(0.0, coarseStep.y)).rgb - texture(u_texA, v_texCoord - vec2(0.0, coarseStep.y)).rgb;
-  float dIC = luma(colB) - luma(colA);
-  vec2 gradC = vec2(luma(gradAxC), luma(gradAyC));
-  float gradSqC = dot(gradC, gradC) + 0.003;
-  vec2 motionC = clamp(-(dIC / gradSqC) * gradC * coarseStep * 2.5, -dx * 12.0, dx * 12.0);
-
-  // Escala Fine (Micro-movimiento y alineación fina de bordes de anime)
-  vec3 sampleFineA = texture(u_texA, v_texCoord + motionC).rgb;
-  vec3 gradAxF = texture(u_texA, v_texCoord + motionC + vec2(dx.x, 0.0)).rgb - texture(u_texA, v_texCoord + motionC - vec2(dx.x, 0.0)).rgb;
-  vec3 gradAyF = texture(u_texA, v_texCoord + motionC + vec2(0.0, dx.y)).rgb - texture(u_texA, v_texCoord + motionC - vec2(0.0, dx.y)).rgb;
-  float dIF = luma(colB) - luma(sampleFineA);
-  vec2 gradF = vec2(luma(gradAxF), luma(gradAyF));
-  float gradSqF = dot(gradF, gradF) + 0.002;
-  vec2 motionF = clamp(-(dIF / gradSqF) * gradF * dx * 2.0, -dx * 4.0, dx * 4.0);
-
-  vec2 motion = motionC + motionF;
-
-  // 3. Deformación temporal simétrica: genera el cuadro intermedio a lo largo del flujo óptico
-  vec2 uvA = v_texCoord + motion * factor;
-  vec2 uvB = v_texCoord - motion * (1.0 - factor);
-
-  // 4. Reescalado espacial con Nitidez AMD FidelityFX CAS
-  vec3 sharpA = applyCAS(u_texA, uvA, dx);
-  vec3 sharpB = applyCAS(u_texB, uvB, dx);
-
-  // 5. Síntesis del nuevo fotograma interpolado
-  vec3 finalColor = mix(sharpA, sharpB, factor);
-  fragColor = vec4(finalColor, 1.0);
+  vec3 color = applyCAS(u_tex, v_texCoord, dx);
+  fragColor = vec4(color, 1.0);
 }
 `;
 
@@ -251,7 +155,7 @@ function createEmptyTexture(gl) {
 }
 
 /**
- * Inicializa y administra el ciclo de vida del acelerador GPU Boost
+ * Inicializa y administra el ciclo de vida del acelerador Nitidez Anime (AMD CAS)
  */
 export function createGpuBoostEngine({
   video,
@@ -270,14 +174,13 @@ export function createGpuBoostEngine({
     return null;
   }
 
-  // 1. Capa visual fantasma en el DOM con pointer-events: none
+  // Capa visual fantasma en el DOM con pointer-events: none
   let canvas = container.querySelector('#gpu-upscaler-layer');
   if (!canvas) {
     canvas = document.createElement('canvas');
     canvas.id = 'gpu-upscaler-layer';
     canvas.className = 'absolute inset-0 w-full h-full object-contain pointer-events-none z-10';
     canvas.style.display = 'block';
-    // Insertar justo después del elemento de video para mantener controles por encima
     if (video.nextSibling) {
       container.insertBefore(canvas, video.nextSibling);
     } else {
@@ -310,8 +213,7 @@ export function createGpuBoostEngine({
 
   let program = null;
   let quadBuffer = null;
-  let textureA = null;
-  let textureB = null;
+  let videoTexture = null;
 
   try {
     program = createProgram(gl, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
@@ -332,81 +234,27 @@ export function createGpuBoostEngine({
     gl.enableVertexAttribArray(posLoc);
     gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
-    textureA = createEmptyTexture(gl);
-    textureB = createEmptyTexture(gl);
+    videoTexture = createEmptyTexture(gl);
   } catch (err) {
     onError?.(err);
     canvas.style.display = 'none';
     return null;
   }
 
-  const uTexALoc = gl.getUniformLocation(program, 'u_texA');
-  const uTexBLoc = gl.getUniformLocation(program, 'u_texB');
-  const uFactorLoc = gl.getUniformLocation(program, 'u_factor');
+  const uTexLoc = gl.getUniformLocation(program, 'u_tex');
   const uResolutionLoc = gl.getUniformLocation(program, 'u_resolution');
   const uSharpnessLoc = gl.getUniformLocation(program, 'u_sharpness');
-  const uSceneCutLoc = gl.getUniformLocation(program, 'u_sceneCutThreshold');
 
-  gl.uniform1i(uTexALoc, 0);
-  gl.uniform1i(uTexBLoc, 1);
+  gl.uniform1i(uTexLoc, 0);
   gl.uniform1f(uSharpnessLoc, sharpness);
-  gl.uniform1f(uSceneCutLoc, GPU_BOOST_SETTINGS.SCENE_CUT_THRESHOLD);
 
-  // Variables de sincronización dual-clock
   let isDestroyed = false;
   let rafId = null;
-  let videoFrameCallbackId = null;
-  let lastVideoFrameTime = performance.now();
-  let prevVideoFrameTime = lastVideoFrameTime;
-  let frameInterval = 1000 / 30; // ~33ms inicial
-  let hasFirstFrame = false;
 
   // Medición de FPS y Watchdog de rendimiento
   let frameCount = 0;
   let lastFpsCheckTime = performance.now();
   let lowFpsDuration = 0;
-
-  function updateVideoTexture() {
-    if (isDestroyed || !gl) return;
-    try {
-      if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-        // Intercambiar texturas: Textura A = viejo cuadro, Textura B = nuevo cuadro
-        const temp = textureA;
-        textureA = textureB;
-        textureB = temp;
-
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, textureB);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
-
-        prevVideoFrameTime = lastVideoFrameTime;
-        lastVideoFrameTime = performance.now();
-        const measuredInterval = lastVideoFrameTime - prevVideoFrameTime;
-        if (measuredInterval > 10 && measuredInterval < 150) {
-          frameInterval = measuredInterval;
-        }
-        hasFirstFrame = true;
-      }
-    } catch (err) {
-      // Si ocurre error por CORS o seguridad, activar fallback seguro
-      onError?.(err);
-      destroy();
-      return;
-    }
-
-    if ('requestVideoFrameCallback' in video && !isDestroyed) {
-      videoFrameCallbackId = video.requestVideoFrameCallback(updateVideoTexture);
-    }
-  }
-
-  // Fallback si requestVideoFrameCallback no está disponible
-  let lastSeenCurrentTime = -1;
-  function checkFallbackVideoFrame() {
-    if (!('requestVideoFrameCallback' in video) && video.currentTime !== lastSeenCurrentTime) {
-      lastSeenCurrentTime = video.currentTime;
-      updateVideoTexture();
-    }
-  }
 
   function render(now) {
     if (isDestroyed || !gl) return;
@@ -416,8 +264,6 @@ export function createGpuBoostEngine({
       rafId = requestAnimationFrame(render);
       return;
     }
-
-    checkFallbackVideoFrame();
 
     // Sincronizar dimensiones del canvas con el video nativo
     const width = video.videoWidth || video.clientWidth || 1280;
@@ -429,18 +275,18 @@ export function createGpuBoostEngine({
       gl.uniform2f(uResolutionLoc, width, height);
     }
 
-    if (hasFirstFrame) {
-      // Calcular factor de interpolación t entre 0.0 y 1.0 (Frame Generation)
-      const factor = computeInterpolationFactor(now, lastVideoFrameTime, frameInterval);
-      gl.uniform1f(uFactorLoc, factor);
-
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, textureA);
-
-      gl.activeTexture(gl.TEXTURE1);
-      gl.bindTexture(gl.TEXTURE_2D, textureB);
-
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    try {
+      if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+    } catch (err) {
+      // Si ocurre error por CORS de video o seguridad, activar fallback seguro
+      onError?.(err);
+      destroy();
+      return;
     }
 
     // Monitoreo de FPS
@@ -453,7 +299,6 @@ export function createGpuBoostEngine({
       if (currentFps < GPU_BOOST_SETTINGS.MIN_ACCEPTABLE_FPS && !video.paused) {
         lowFpsDuration += timeSinceLastFps;
         if (lowFpsDuration >= GPU_BOOST_SETTINGS.FPS_MONITOR_WINDOW_MS) {
-          // La GPU del usuario no alcanza los 45 FPS -> Auto-apagado seguro
           onPerformanceDrop?.({ fps: currentFps });
           destroy();
           return;
@@ -469,13 +314,6 @@ export function createGpuBoostEngine({
     rafId = requestAnimationFrame(render);
   }
 
-  // Iniciar sincronización de cuadros
-  if ('requestVideoFrameCallback' in video) {
-    videoFrameCallbackId = video.requestVideoFrameCallback(updateVideoTexture);
-  } else {
-    video.addEventListener('timeupdate', updateVideoTexture);
-  }
-
   rafId = requestAnimationFrame(render);
 
   function destroy() {
@@ -487,13 +325,6 @@ export function createGpuBoostEngine({
       rafId = null;
     }
 
-    if (videoFrameCallbackId && 'cancelVideoFrameCallback' in video) {
-      video.cancelVideoFrameCallback(videoFrameCallbackId);
-      videoFrameCallbackId = null;
-    }
-
-    video.removeEventListener('timeupdate', updateVideoTexture);
-
     if (canvas) {
       canvas.style.display = 'none';
       if (canvas.parentNode) {
@@ -503,8 +334,7 @@ export function createGpuBoostEngine({
 
     if (gl) {
       try {
-        if (textureA) gl.deleteTexture(textureA);
-        if (textureB) gl.deleteTexture(textureB);
+        if (videoTexture) gl.deleteTexture(videoTexture);
         if (quadBuffer) gl.deleteBuffer(quadBuffer);
         if (program) gl.deleteProgram(program);
         const ext = gl.getExtension('WEBGL_lose_context');
