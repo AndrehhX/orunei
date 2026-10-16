@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { Search, Sparkles, Sun, Moon, Smartphone } from 'lucide-react'
+import { Search, Sparkles, Sun, Moon, Smartphone, WifiOff } from 'lucide-react'
 import { checkForUpdate } from './offline/appUpdater'
 import UpdateModal from './components/UpdateModal'
 import DownloadAppModal from './components/DownloadAppModal'
 import ActiveDownloadBar from './components/ActiveDownloadBar'
 import { isNativeApp } from './offline/platform'
+import { useNetworkStatus } from './offline/useNetworkStatus'
 import Login from './components/Login'
 import Sidebar from './components/Sidebar'
 import MobileNav from './components/MobileNav'
@@ -52,7 +53,7 @@ function GlobalTasteSync() {
 
 const tabs = ['Anime', 'Noticias']
 
-function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownloadApp }) {
+function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownloadApp, isOffline, onOpenOfflineDownloads }) {
   const { profile } = useProfile()
   return (
     <header className="flex items-center gap-2.5 sm:gap-4 animate-fade">
@@ -64,6 +65,17 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownlo
         <Search size={18} className="shrink-0" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-xs sm:text-sm outline-none" placeholder="Buscar anime, películas, series..." />
       </label>
+      {isOffline && (
+        <button
+          type="button"
+          onClick={onOpenOfflineDownloads}
+          title="Sin conexión a internet. Pulsa para ver tus descargas"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold transition active:scale-95 shrink-0"
+        >
+          <WifiOff size={14} />
+          <span className="hidden sm:inline">Modo Offline</span>
+        </button>
+      )}
       {onOpenDownloadApp && !isNativeApp() && (
         <button
           type="button"
@@ -100,6 +112,7 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownlo
 export default function App() {
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const { user, status: authStatus, error: authError, signIn, signUp, signOut } = useAuth()
+  const { isOnline, isOffline } = useNetworkStatus()
   const repository = useMemo(() => user?.id ? createProfileRepository(supabase) : null, [user?.id])
   const initialProfileUsername = getPublicProfileUsername(typeof window === 'undefined' ? '' : window.location.hash)
   const [page, setPage] = useState(initialProfileUsername ? 'public-profile' : 'home')
@@ -197,7 +210,26 @@ export default function App() {
             dark={dark}
             setDark={setDark}
             onOpenDownloadApp={() => setShowDownloadApp(true)}
+            isOffline={isOffline}
+            onOpenOfflineDownloads={() => navigatePage('library')}
           />
+          {isOffline && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs shadow-sm animate-rise">
+              <div className="flex items-center gap-2.5">
+                <WifiOff size={18} className="text-amber-500 shrink-0" />
+                <div>
+                  <p className="font-bold">Modo Sin Conexión activo</p>
+                  <p className="text-[11px] opacity-80">Estás navegando sin internet. Tus episodios descargados están listos para ver en tu Biblioteca.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigatePage('library')}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition active:scale-95 shadow-md shadow-amber-500/30"
+              >
+                Ver mis descargas offline ▸
+              </button>
+            </div>
+          )}
           <div key={page} className="animate-page-enter space-y-7">
             {page === 'anime' ? <AnimePage query={query} initialOpenId={selectedAnimeId} onCloseDetail={closeAnime} /> : page === 'library' ? <LibraryPage query={query} onDiscover={() => navigatePage('anime')} /> : page === 'profile' ? <ProfilePage onEdit={() => setEditingProfile(true)} /> : page === 'friends' ? <FriendsPage onOpenProfile={openPublicProfile} /> : page === 'public-profile' ? <PublicProfileRoute username={selectedUsername} onBack={() => navigatePage('friends')} /> : <>
             <div className="flex flex-wrap items-end justify-between gap-6 animate-rise">
