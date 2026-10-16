@@ -14,6 +14,7 @@ export const PLAYER_SHORTCUTS = [
   { key: 'N', description: 'Siguiente episodio' },
   { key: 'P', description: 'Picture-in-Picture (PiP)' },
   { key: 'S', description: 'Saltar Intro / Ending' },
+  { key: 'B', description: 'GPU Boost (60 FPS)' },
 ];
 
 export function handlePlayerKeydown({
@@ -26,6 +27,7 @@ export function handlePlayerKeydown({
   onToggleFullscreen,
   onToggleTheater,
   onTogglePiP,
+  onToggleGpuBoost,
   showFeedback,
 }) {
   if (!event) return false;
@@ -158,6 +160,13 @@ export function handlePlayerKeydown({
         return true;
       }
       break;
+    }
+
+    case 'b':
+    case 'B': {
+      event.preventDefault?.();
+      onToggleGpuBoost?.();
+      return true;
     }
 
     default:

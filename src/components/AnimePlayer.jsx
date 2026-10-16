@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Keyboard, Film } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Keyboard, Film, Zap } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, markEpisodeWatched, formatTime } from '../playback/playbackProgress';
@@ -9,6 +9,8 @@ import { useVideoGestures, togglePiP, isPiPSupported } from '../playback/useVide
 import { handlePlayerKeydown, PLAYER_SHORTCUTS } from '../playback/keyboardShortcuts';
 import { SUPPORTED_SPEEDS, getStoredPlaybackSpeed, setStoredPlaybackSpeed, applyPlaybackSpeed } from '../playback/playbackSpeed';
 import { shouldTriggerCountdown, COUNTDOWN_DURATION } from '../playback/nextEpisodeCountdown';
+import { createGpuBoostEngine, isWebGL2Supported } from '../playback/gpuBoostEngine';
+
 
 export default function AnimePlayer({
   animeId,
@@ -22,9 +24,11 @@ export default function AnimePlayer({
   onComplete,
 }) {
   const containerRef = useRef(null);
+  const videoWrapperRef = useRef(null);
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const offlineSourceRef = useRef(null);
+  const gpuEngineRef = useRef(null);
 
   const [episode, setEpisode] = useState(initialEpisode);
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,11 @@ export default function AnimePlayer({
     try { return localStorage.getItem('orunei_theater_mode') === 'true'; } catch { return false; }
   });
   const [playbackSpeed, setPlaybackSpeed] = useState(() => getStoredPlaybackSpeed());
+
+  // Modo GPU Boost (60 FPS + Reescalado CAS). Por defecto siempre Normal / Clásico (false)
+  const [gpuBoostEnabled, setGpuBoostEnabled] = useState(false);
+  const [gpuFps, setGpuFps] = useState(null);
+
 
   // Subtítulos
   const [subTracks, setSubTracks] = useState([]);
@@ -598,6 +607,21 @@ export default function AnimePlayer({
     });
   };
 
+  const handleToggleGpuBoost = () => {
+    if (!isWebGL2Supported()) {
+      showFeedback?.({ type: 'boost', text: 'WebGL2 no soportado en este dispositivo' });
+      return;
+    }
+    setGpuBoostEnabled((prev) => {
+      const next = !prev;
+      showFeedback?.({
+        type: 'boost',
+        text: next ? '⚡ GPU Boost (60 FPS) Activado' : 'Modo Normal (30 FPS)',
+      });
+      return next;
+    });
+  };
+
   // Gestos táctiles y Picture-in-Picture (PiP)
   const {
     brightness,
@@ -610,7 +634,57 @@ export default function AnimePlayer({
     videoRef,
   });
 
-  // Atajos de teclado profesionales (Espacio, F, T, M, Flechas, J/L, N, P, S)
+  // Ciclo de vida y sincronización del acelerador GPU Boost (60 FPS + CAS)
+  useEffect(() => {
+    if (!gpuBoostEnabled) {
+      if (gpuEngineRef.current) {
+        gpuEngineRef.current.destroy();
+        gpuEngineRef.current = null;
+      }
+      setGpuFps(null);
+      return;
+    }
+
+    const video = videoRef.current;
+    const wrapper = videoWrapperRef.current;
+    if (!video || !wrapper) return;
+
+    try {
+      const engine = createGpuBoostEngine({
+        video,
+        container: wrapper,
+        onFpsUpdate: (fps) => setGpuFps(fps),
+        onPerformanceDrop: ({ fps }) => {
+          setGpuBoostEnabled(false);
+          showFeedback?.({
+            type: 'boost',
+            text: `GPU Boost desactivado (${fps} FPS)`,
+          });
+        },
+        onError: () => {
+          setGpuBoostEnabled(false);
+          showFeedback?.({
+            type: 'boost',
+            text: 'GPU Boost no soportado en esta fuente',
+          });
+        },
+      });
+
+      gpuEngineRef.current = engine;
+    } catch {
+      setGpuBoostEnabled(false);
+    }
+
+    return () => {
+      if (gpuEngineRef.current) {
+        gpuEngineRef.current.destroy();
+        gpuEngineRef.current = null;
+      }
+      setGpuFps(null);
+    };
+  }, [gpuBoostEnabled, episode]);
+
+  // Atajos de teclado profesionales (Espacio, F, T, M, Flechas, J/L, N, P, S, B)
   useEffect(() => {
     const handleKeyDown = (e) => {
       handlePlayerKeydown({
@@ -623,12 +697,14 @@ export default function AnimePlayer({
         onToggleFullscreen: handleToggleFullscreen,
         onToggleTheater: handleToggleTheater,
         onTogglePiP: handleTogglePiP,
+        onToggleGpuBoost: handleToggleGpuBoost,
         showFeedback,
       });
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeSkip, episode, totalEpisodes, isTheaterMode]);
+  }, [activeSkip, episode, totalEpisodes, isTheaterMode, gpuBoostEnabled]);
+
 
   const handlePause = () => {
     const video = videoRef.current;
@@ -683,6 +759,14 @@ export default function AnimePlayer({
         </div>
 
         <div className="flex items-center gap-2.5">
+          {/* Badge GPU Boost activo */}
+          {gpuBoostEnabled && (
+            <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.25)] animate-fade">
+              <Zap size={12} className="fill-amber-400 text-amber-400" />
+              <span>{gpuFps ? `${gpuFps} FPS • Boost` : '60 FPS • Boost'}</span>
+            </span>
+          )}
+
           {/* Badge de subtítulos en español */}
           {playbackData && playbackData.hasSpanishSubtitles && (
             <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
@@ -724,6 +808,7 @@ export default function AnimePlayer({
 
       {/* Área del reproductor de video contenida en pantalla */}
       <div
+        ref={videoWrapperRef}
         className={`relative aspect-video w-full bg-black flex items-center justify-center overflow-hidden mx-auto select-none transition-all duration-300 ${
           isTheaterMode ? 'max-h-[78vh]' : 'max-h-[50vh]'
         }`}
@@ -770,7 +855,7 @@ export default function AnimePlayer({
                 <span>{gestureFeedback.text}</span>
               </div>
             )}
-            {(gestureFeedback.type === 'play' || gestureFeedback.type === 'pause' || gestureFeedback.type === 'theater') && (
+            {(gestureFeedback.type === 'play' || gestureFeedback.type === 'pause' || gestureFeedback.type === 'theater' || gestureFeedback.type === 'boost') && (
               <div className="px-5 py-3 rounded-2xl bg-black/85 backdrop-blur-md border border-white/20 text-white font-extrabold text-base flex items-center gap-2 shadow-2xl animate-scaleUp">
                 <span>{gestureFeedback.text}</span>
               </div>
@@ -1104,6 +1189,31 @@ export default function AnimePlayer({
                     </div>
                   </>
                 )}
+
+                {/* Ajuste de GPU Boost (60 FPS + Reescalado CAS) */}
+                <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between px-2.5 py-1">
+                  <div className="flex flex-col pr-2">
+                    <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
+                      <Zap size={13} className={gpuBoostEnabled ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
+                      GPU Boost (60 FPS)
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {gpuBoostEnabled ? (gpuFps ? `${gpuFps} FPS • Reescalado CAS` : 'Activo (60 FPS + CAS)') : 'Normal (30 FPS)'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={gpuBoostEnabled}
+                    onClick={handleToggleGpuBoost}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${gpuBoostEnabled ? 'bg-amber-500' : 'bg-white/20'}`}
+                    title={gpuBoostEnabled ? 'Desactivar GPU Boost' : 'Activar GPU Boost (60 FPS + Reescalado CAS)'}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${gpuBoostEnabled ? 'translate-x-4' : 'translate-x-0'}`}
+                    />
+                  </button>
+                </div>
 
                 {/* Ajuste de Auto-saltar Intro */}
                 <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between px-2.5 py-1">
