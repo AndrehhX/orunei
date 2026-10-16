@@ -8,7 +8,7 @@ import { createLibraryEntry, markAnimeWatched } from '../profile/model.js'
 import { buildEpisodeCards } from '../api/episodeData.js'
 import AnimePlayer from './AnimePlayer'
 import { getMiruroId, getEpisodePlayback } from '../api/streamAdapter'
-import { startEpisodeDownload, getDownload, cancelDownload, deleteDownload, subscribeDownloads } from '../offline/downloadEngine'
+import { startEpisodeDownload, getDownload, cancelDownload, deleteDownload, subscribeDownloads, isNativeApp } from '../offline/downloadEngine'
 
 const TABS = ['Resumen', 'Episodios', 'Comunidad']
 const SRC = { 'AniList': 'bg-sky-500', 'Foro AniList': 'bg-indigo-500', 'MyAnimeList': 'bg-blue-700', 'Reddit': 'bg-orange-500' }
@@ -300,38 +300,40 @@ function Episodes({ m, onPlayEpisode, currentEpisode, miruroId }) {
                         {isCurrent ? '▶ En reproducción' : 'Reproducir episodio ▸'}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDownload(epNum, epTitle)
-                      }}
-                      className={`p-2 rounded-xl transition shrink-0 ml-2 ${
-                        isDownloaded
-                          ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20'
-                          : isDownloading
-                          ? 'text-brand bg-brand/10'
-                          : 'text-slate-400 hover:text-brand hover:bg-slate-200/50 dark:hover:bg-white/10'
-                      }`}
-                      title={
-                        isDownloaded
-                          ? 'Descargado (Click para eliminar)'
-                          : isDownloading
-                          ? `Descargando: ${dl?.progress}% (Click para cancelar)`
-                          : 'Descargar para ver sin internet (Offline)'
-                      }
-                    >
-                      {isDownloaded ? (
-                        <CheckCircle2 size={16} className="text-emerald-500" />
-                      ) : isDownloading ? (
-                        <div className="flex items-center gap-1">
-                          <Loader2 size={13} className="animate-spin text-brand" />
-                          <span className="text-[10px] font-bold text-brand">{dl?.progress}%</span>
-                        </div>
-                      ) : (
-                        <Download size={15} />
-                      )}
-                    </button>
+                    {isNativeApp() && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDownload(epNum, epTitle)
+                        }}
+                        className={`p-2 rounded-xl transition shrink-0 ml-2 ${
+                          isDownloaded
+                            ? 'text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20'
+                            : isDownloading
+                            ? 'text-brand bg-brand/10'
+                            : 'text-slate-400 hover:text-brand hover:bg-slate-200/50 dark:hover:bg-white/10'
+                        }`}
+                        title={
+                          isDownloaded
+                            ? 'Descargado (Click para eliminar)'
+                            : isDownloading
+                            ? `Descargando: ${dl?.progress}% (Click para cancelar)`
+                            : 'Descargar para ver sin internet (Offline)'
+                        }
+                      >
+                        {isDownloaded ? (
+                          <CheckCircle2 size={16} className="text-emerald-500" />
+                        ) : isDownloading ? (
+                          <div className="flex items-center gap-1">
+                            <Loader2 size={13} className="animate-spin text-brand" />
+                            <span className="text-[10px] font-bold text-brand">{dl?.progress}%</span>
+                          </div>
+                        ) : (
+                          <Download size={15} />
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               )

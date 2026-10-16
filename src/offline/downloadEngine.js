@@ -1,5 +1,6 @@
 // Orunei Offline Download Engine
 // Permite descargar episodios de anime para verlos 100% offline (estilo Netflix / Crunchyroll)
+export { isNativeApp } from './platform.js';
 
 const DB_NAME = 'orunei_offline_v1';
 const DB_VERSION = 1;

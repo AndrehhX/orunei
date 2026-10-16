@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Download, X, ArrowRight } from 'lucide-react';
-import { getActiveDownloads, subscribeDownloads, cancelDownload } from '../offline/downloadEngine';
+import { getActiveDownloads, subscribeDownloads, cancelDownload, isNativeApp } from '../offline/downloadEngine';
 
 export default function ActiveDownloadBar({ onGoToDownloads }) {
   const [activeItems, setActiveItems] = useState([]);
 
   useEffect(() => {
+    if (!isNativeApp()) return;
     const update = () => {
       setActiveItems(getActiveDownloads());
     };
@@ -14,7 +15,7 @@ export default function ActiveDownloadBar({ onGoToDownloads }) {
     return () => unsub();
   }, []);
 
-  if (activeItems.length === 0) return null;
+  if (!isNativeApp() || activeItems.length === 0) return null;
 
   const current = activeItems[0];
 

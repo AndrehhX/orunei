@@ -4,6 +4,7 @@ import { checkForUpdate } from './offline/appUpdater'
 import UpdateModal from './components/UpdateModal'
 import DownloadAppModal from './components/DownloadAppModal'
 import ActiveDownloadBar from './components/ActiveDownloadBar'
+import { isNativeApp } from './offline/platform'
 import Login from './components/Login'
 import Sidebar from './components/Sidebar'
 import MobileNav from './components/MobileNav'
@@ -63,7 +64,7 @@ function AppHeader({ query, setQuery, onOpenProfile, dark, setDark, onOpenDownlo
         <Search size={18} className="shrink-0" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} className="w-full bg-transparent text-xs sm:text-sm outline-none" placeholder="Buscar anime, películas, series..." />
       </label>
-      {onOpenDownloadApp && (
+      {onOpenDownloadApp && !isNativeApp() && (
         <button
           type="button"
           onClick={onOpenDownloadApp}

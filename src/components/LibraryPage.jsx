@@ -4,10 +4,10 @@ import Poster from './Poster'
 import { useProfile } from '../profile/ProfileProvider'
 import { getAnime } from '../api/anime'
 import { markAnimeWatched } from '../profile/model.js'
-import { getAllDownloads, deleteDownload, clearAllDownloads, getTotalStorageUsed, subscribeDownloads } from '../offline/downloadEngine'
+import { getAllDownloads, deleteDownload, clearAllDownloads, getTotalStorageUsed, subscribeDownloads, isNativeApp } from '../offline/downloadEngine'
 import OfflinePlayerModal from './OfflinePlayerModal'
 
-const filters = [
+const allFilters = [
   ['all', 'Todo'],
   ['watching', 'Viendo'],
   ['planned', 'Planeo ver'],
@@ -41,6 +41,7 @@ function LibraryCard({ item, onStatusChange, onMarkWatched, onToggleFavorite, on
 
 export default function LibraryPage({ query = '', onDiscover }) {
   const { profile, profileStatus, updateAnimeList, recordActivity } = useProfile()
+  const filters = allFilters.filter(([id]) => id !== 'downloads' || isNativeApp())
   const [filter, setFilter] = useState('all')
   const [downloads, setDownloads] = useState([])
   const [storageStats, setStorageStats] = useState({ bytes: 0, formatted: '0 MB', count: 0 })

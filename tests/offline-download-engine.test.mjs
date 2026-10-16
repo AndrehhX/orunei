@@ -12,6 +12,7 @@ const capConfig = fs.readFileSync(new URL('../capacitor.config.json', import.met
 const downloadEngine = fs.readFileSync(new URL('../src/offline/downloadEngine.js', import.meta.url), 'utf8')
 const offlinePlayer = fs.readFileSync(new URL('../src/components/OfflinePlayerModal.jsx', import.meta.url), 'utf8')
 const animePlayer = fs.readFileSync(new URL('../src/components/AnimePlayer.jsx', import.meta.url), 'utf8')
+const platform = fs.readFileSync(new URL('../src/offline/platform.js', import.meta.url), 'utf8')
 
 test('formats bytes correctly into human readable units', () => {
   assert.equal(formatBytes(0), '0 MB')
@@ -27,15 +28,17 @@ test('app updater configuration is properly defined', () => {
   assert.match(LATEST_APK_URL, /orunei\.apk$/)
 })
 
-test('library page includes Descargas filter and offline storage controls', () => {
+test('library page includes Descargas filter and offline storage controls only for native app', () => {
   assert.match(libraryPage, /\['downloads', 'Descargas'\]/)
+  assert.match(libraryPage, /isNativeApp/)
   assert.match(libraryPage, /getAllDownloads/)
   assert.match(libraryPage, /OfflinePlayerModal/)
   assert.match(libraryPage, /Liberar espacio \(Borrar todo\)/)
   assert.match(libraryPage, /Reproducir offline/)
 })
 
-test('anime detail includes episode download controls and offline indicators', () => {
+test('anime detail includes episode download controls only for native app', () => {
+  assert.match(animeDetail, /isNativeApp/)
   assert.match(animeDetail, /startEpisodeDownload/)
   assert.match(animeDetail, /handleDownload/)
   assert.match(animeDetail, /subtitles:\s*playback\?\.subtitles\?\.tracks/)
@@ -43,8 +46,9 @@ test('anime detail includes episode download controls and offline indicators', (
   assert.match(animeDetail, /CheckCircle2/)
 })
 
-test('app header and sidebar include Android APK download actions', () => {
+test('app header and sidebar include Android APK download actions and platform isolation', () => {
   assert.match(app, /onOpenDownloadApp/)
+  assert.match(app, /isNativeApp/)
   assert.match(app, /DownloadAppModal/)
   assert.match(app, /ActiveDownloadBar/)
   assert.match(app, /UpdateModal/)
@@ -59,6 +63,7 @@ test('offline engine guarantees background downloads, persistent storage, and su
   assert.match(downloadEngine, /getActiveDownloads/)
   assert.match(downloadEngine, /getOfflinePlaybackSource/)
   assert.match(downloadEngine, /resolveHlsPlaylist/)
+  assert.match(platform, /Capacitor\.isNativePlatform/)
 })
 
 test('offline player and anime player support downloaded subtitles and zero backend playback', () => {

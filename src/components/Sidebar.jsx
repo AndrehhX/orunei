@@ -1,6 +1,7 @@
 import { Sparkles, Home, Library, User, Users, Film, MonitorPlay, Gamepad2, Sun, Moon, LogOut, Smartphone } from 'lucide-react'
 import { getMainDestination } from '../profile/navigation'
 import { useProfile } from '../profile/ProfileProvider'
+import { isNativeApp } from '../offline/platform'
 
 const main = [['Para ti', Home], ['Biblioteca', Library], ['Perfil', User], ['Amigos', Users]]
 const explore = [['Anime', Sparkles], ['Películas', Film], ['Series', MonitorPlay]]
@@ -28,7 +29,7 @@ export default function Sidebar({ dark, setDark, user, onLogout, page, setPage, 
           <span className="rounded-full bg-slate-200/80 dark:bg-white/10 px-2 py-0.5 text-[10px]">Próximamente</span></a>
       </nav>
       <div className="mt-auto space-y-4">
-        {onOpenDownloadApp && (
+        {onOpenDownloadApp && !isNativeApp() && (
           <button
             type="button"
             onClick={onOpenDownloadApp}
