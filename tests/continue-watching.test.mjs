@@ -5,6 +5,8 @@ import {
   formatContinueWatchingLabel,
   enrichContinueWatchingItem,
   sortContinueWatchingList,
+  isAnimeCompletedInLibrary,
+  filterContinueWatchingList,
 } from '../src/playback/continueWatching.js';
 
 describe('Continue Watching Engine (Donde lo dejaste)', () => {
@@ -95,4 +97,70 @@ describe('Continue Watching Engine (Donde lo dejaste)', () => {
     assert.equal(sorted[1].id, '300');
     assert.equal(sorted[2].id, '100');
   });
+
+  it('si el usuario vio los episodios 1 y 2, recomienda avanzar al episodio 3', () => {
+    globalThis.localStorage.setItem('orunei_watched_episodes', JSON.stringify({
+      '101': [1, 2],
+    }));
+
+    const result = calculateNextEpisodeToWatch({
+      animeId: '101',
+      savedEpisode: 1,
+      totalEpisodes: 12,
+    });
+
+    assert.equal(result.episode, 3);
+    assert.equal(result.isSeriesCompleted, false);
+  });
+
+  it('isAnimeCompletedInLibrary detecta correctamente obras marcadas como visto o terminado', () => {
+    assert.equal(isAnimeCompletedInLibrary({ status: 'completed' }), true);
+    assert.equal(isAnimeCompletedInLibrary({ s: 'Terminado' }), true);
+    assert.equal(isAnimeCompletedInLibrary({ s: 'Visto' }), true);
+    assert.equal(isAnimeCompletedInLibrary({ status: 'watching', s: 'Viendo · Ep. 5' }), false);
+    assert.equal(isAnimeCompletedInLibrary({ status: 'planned', s: 'Planeo ver' }), false);
+  });
+
+  it('filterContinueWatchingList excluye obras marcadas como visto en biblioteca', () => {
+    const libraryItems = [
+      { id: '1', t: 'Anime En Curso', status: 'watching', currentEpisode: 3, episodes: 12 },
+      { id: '2', t: 'Anime Terminado 1', status: 'completed', currentEpisode: 12, episodes: 12 },
+      { id: '3', t: 'Anime Terminado 2', s: 'Terminado', currentEpisode: 24, episodes: 24 },
+      { id: '4', t: 'Anime Visto 3', s: 'Visto', currentEpisode: 1, episodes: 1 },
+      { id: '5', t: 'Anime Planeado', status: 'planned', currentEpisode: 0, episodes: 12 },
+    ];
+
+    const filtered = filterContinueWatchingList(libraryItems);
+    assert.equal(filtered.length, 1);
+    assert.equal(filtered[0].id, '1');
+    assert.equal(filtered[0].t, 'Anime En Curso');
+  });
+
+  it('filterContinueWatchingList excluye series donde el usuario ya vio todos los episodios', () => {
+    // Marcamos los 3 episodios del anime 10 como vistos
+    globalThis.localStorage.setItem('orunei_watched_episodes', JSON.stringify({
+      '10': [1, 2, 3],
+      '20': [1],
+    }));
+
+    const libraryItems = [
+      { id: '10', t: 'Anime Todo Visto', status: 'watching', currentEpisode: 3, episodes: 3 },
+      { id: '20', t: 'Anime Con Caps Pendientes', status: 'watching', currentEpisode: 1, episodes: 12 },
+    ];
+
+    const filtered = filterContinueWatchingList(libraryItems);
+    assert.equal(filtered.length, 1);
+    assert.equal(filtered[0].id, '20');
+  });
+
+  it('filterContinueWatchingList devuelve vacio y no muestra nada si todas las obras estan terminadas', () => {
+    const libraryItems = [
+      { id: '1', t: 'Completado A', status: 'completed' },
+      { id: '2', t: 'Completado B', s: 'Terminado' },
+    ];
+
+    const filtered = filterContinueWatchingList(libraryItems);
+    assert.deepEqual(filtered, []);
+  });
 });
+

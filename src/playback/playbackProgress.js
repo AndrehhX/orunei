@@ -122,6 +122,17 @@ export function isEpisodeWatched(animeId, episode) {
 }
 
 /**
+ * Obtiene la lista completa de episodios vistos para un anime específico.
+ */
+export function getWatchedEpisodes(animeId) {
+  if (!animeId) return [];
+  const store = getStorage(WATCHED_STORAGE_KEY);
+  const aId = String(animeId);
+  return Array.isArray(store[aId]) ? store[aId] : [];
+}
+
+
+/**
  * Obtiene el progreso general de visualización para mostrar en la cuadrícula de episodios:
  * - watched: boolean
  * - percent: number (0 - 100)

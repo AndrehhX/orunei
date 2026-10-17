@@ -5,7 +5,7 @@ import { useRec } from '../rec/rec'
 import Poster from './Poster'
 import { useNews, NewsLink } from '../news'
 import { useProfile } from '../profile/ProfileProvider'
-import { enrichContinueWatchingItem, sortContinueWatchingList } from '../playback/continueWatching.js'
+import { enrichContinueWatchingItem, sortContinueWatchingList, filterContinueWatchingList } from '../playback/continueWatching.js'
 
 export const Title = ({ children, onClick }) => (
   <div className="mb-3 flex items-center justify-between"><h3 onClick={onClick} className={`flex items-center gap-1 text-[17px] font-bold transition-colors ${onClick ? 'cursor-pointer hover:text-brand' : ''}`}>{children}<ChevronRight size={17} /></h3><ChevronRight size={15} className="text-slate-400" /></div>
@@ -18,17 +18,22 @@ export function Library({ query, onMore, onOpenAnime }) {
   const { profile } = useProfile()
   const source = Array.isArray(profile.animeList) ? profile.animeList : []
 
-  // Priorizar obras que el usuario está viendo actualmente y ordenar por última reproducción real
-  const inProgress = source.filter((a) => a.status === 'watching' || (Number(a.currentEpisode) > 0 && a.status !== 'completed'))
-  const candidateList = inProgress.length > 0 ? inProgress : source
-  const sortedCandidates = sortContinueWatchingList(candidateList)
+  // Filtrar estrictamente solo obras en curso (excluyendo las marcadas como vistas o con todos los caps completados)
+  const inProgress = filterContinueWatchingList(source)
+  const sortedCandidates = sortContinueWatchingList(inProgress)
   const list = sortedCandidates.filter((a) => ok(a.t, query)).slice(0, 6)
+
+  const emptyMessage = query
+    ? undefined
+    : source.length > 0
+      ? 'No tienes episodios pendientes en reproducción. ¡Explora el catálogo o retoma una serie!'
+      : 'Tu biblioteca está vacía. Agrega obras a tu AnimeList para verlas aquí.'
 
   return (
     <section>
       <Title onClick={onMore}>Donde lo dejaste</Title>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:grid-cols-6">
-        {!list.length && <Empty q={query} message={query ? undefined : 'Tu biblioteca está vacía. Agrega obras a tu AnimeList para verlas aquí.'} />}
+        {!list.length && <Empty q={query} message={emptyMessage} />}
         {list.map((raw) => {
           const a = enrichContinueWatchingItem(raw)
           const totalEps = Number(a.episodes) || null
