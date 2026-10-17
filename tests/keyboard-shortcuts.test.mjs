@@ -121,14 +121,4 @@ test('Tecla T activa el modo cine / teatro', () => {
   assert.equal(theaterToggled, true);
 });
 
-test('Tecla B activa el callback onToggleGpuBoost', () => {
-  let boostToggled = false;
-  const handled = handlePlayerKeydown({
-    event: { key: 'b', target: { tagName: 'BODY' }, preventDefault: () => {} },
-    onToggleGpuBoost: () => { boostToggled = true; },
-  });
-  assert.equal(handled, true);
-  assert.equal(boostToggled, true);
-});
-
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Keyboard, Film, Zap } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Settings, Subtitles, AlertCircle, Check, Loader2, Server, WifiOff, FastForward, Tv, Sun, Volume2, Play, Gauge, Maximize, Film } from 'lucide-react';
 import { getEpisodePlayback } from '../api/streamAdapter';
 import { getOfflinePlaybackSource, getDownload, deleteDownload, isAutoDeleteWatchedEnabled } from '../offline/downloadEngine';
 import { savePlaybackProgress, getPlaybackProgress, clearPlaybackProgress, markEpisodeWatched, formatTime } from '../playback/playbackProgress';
@@ -9,8 +9,6 @@ import { useVideoGestures, togglePiP, isPiPSupported } from '../playback/useVide
 import { handlePlayerKeydown, PLAYER_SHORTCUTS } from '../playback/keyboardShortcuts';
 import { SUPPORTED_SPEEDS, getStoredPlaybackSpeed, setStoredPlaybackSpeed, applyPlaybackSpeed } from '../playback/playbackSpeed';
 import { shouldTriggerCountdown, COUNTDOWN_DURATION } from '../playback/nextEpisodeCountdown';
-import { createGpuBoostEngine, isWebGL2Supported, GPU_BOOST_MODES } from '../playback/gpuBoostEngine';
-
 
 export default function AnimePlayer({
   animeId,
@@ -28,7 +26,6 @@ export default function AnimePlayer({
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const offlineSourceRef = useRef(null);
-  const gpuEngineRef = useRef(null);
 
   const [episode, setEpisode] = useState(initialEpisode);
   const [loading, setLoading] = useState(true);
@@ -45,17 +42,10 @@ export default function AnimePlayer({
   const [qualities, setQualities] = useState([]);
   const [currentQuality, setCurrentQuality] = useState(-1); // -1 = Auto
   const [showSettings, setShowSettings] = useState(false);
-  const [showShortcutsList, setShowShortcutsList] = useState(false);
   const [isTheaterMode, setIsTheaterMode] = useState(() => {
     try { return localStorage.getItem('orunei_theater_mode') === 'true'; } catch { return false; }
   });
   const [playbackSpeed, setPlaybackSpeed] = useState(() => getStoredPlaybackSpeed());
-
-  const [gpuBoostEnabled, setGpuBoostEnabled] = useState(false);
-  const [gpuFps, setGpuFps] = useState(null);
-  const [upscalerMode, setUpscalerMode] = useState(() => {
-    try { return localStorage.getItem('orunei_upscaler_mode') || 'ultra'; } catch { return 'ultra'; }
-  });
 
 
   // Subtítulos
@@ -609,35 +599,6 @@ export default function AnimePlayer({
     });
   };
 
-  const handleToggleGpuBoost = () => {
-    if (!isWebGL2Supported()) {
-      showFeedback?.({ type: 'boost', text: 'WebGL2 no soportado en este dispositivo' });
-      return;
-    }
-    setGpuBoostEnabled((prev) => {
-      const next = !prev;
-      const currentMode = GPU_BOOST_MODES.find((m) => m.id === upscalerMode) || GPU_BOOST_MODES[1];
-      showFeedback?.({
-        type: 'boost',
-        text: next ? `✨ ${currentMode.label} Activado` : 'Modo Normal (Desactivado)',
-      });
-      return next;
-    });
-  };
-
-  const handleChangeUpscalerMode = (modeId) => {
-    setUpscalerMode(modeId);
-    try { localStorage.setItem('orunei_upscaler_mode', modeId); } catch {}
-    const mode = GPU_BOOST_MODES.find((m) => m.id === modeId);
-    if (mode && gpuEngineRef.current) {
-      gpuEngineRef.current.setSharpness(mode.sharpness);
-    }
-    showFeedback?.({
-      type: 'boost',
-      text: `✨ ${mode?.label || 'Modo'} activado`,
-    });
-  };
-
   // Gestos táctiles y Picture-in-Picture (PiP)
   const {
     brightness,
@@ -650,59 +611,7 @@ export default function AnimePlayer({
     videoRef,
   });
 
-  // Ciclo de vida y sincronización del acelerador Reescalado Anime 4K (Anime4K + AMD CAS)
-  useEffect(() => {
-    if (!gpuBoostEnabled) {
-      if (gpuEngineRef.current) {
-        gpuEngineRef.current.destroy();
-        gpuEngineRef.current = null;
-      }
-      setGpuFps(null);
-      return;
-    }
-
-    const video = videoRef.current;
-    const wrapper = videoWrapperRef.current;
-    if (!video || !wrapper) return;
-
-    try {
-      const activeMode = GPU_BOOST_MODES.find((m) => m.id === upscalerMode) || GPU_BOOST_MODES[1];
-      const engine = createGpuBoostEngine({
-        video,
-        container: wrapper,
-        sharpness: activeMode.sharpness,
-        onFpsUpdate: (fps) => setGpuFps(fps),
-        onPerformanceDrop: ({ fps }) => {
-          setGpuBoostEnabled(false);
-          showFeedback?.({
-            type: 'boost',
-            text: `Reescalado 4K desactivado por rendimiento (${fps} FPS)`,
-          });
-        },
-        onError: () => {
-          setGpuBoostEnabled(false);
-          showFeedback?.({
-            type: 'boost',
-            text: 'Reescalado 4K no disponible en esta fuente',
-          });
-        },
-      });
-
-      gpuEngineRef.current = engine;
-    } catch {
-      setGpuBoostEnabled(false);
-    }
-
-    return () => {
-      if (gpuEngineRef.current) {
-        gpuEngineRef.current.destroy();
-        gpuEngineRef.current = null;
-      }
-      setGpuFps(null);
-    };
-  }, [gpuBoostEnabled, upscalerMode, episode]);
-
-  // Atajos de teclado profesionales (Espacio, F, T, M, Flechas, J/L, N, P, S, B)
+  // Atajos de teclado profesionales (Espacio, F, T, M, Flechas, J/L, N, P, S)
   useEffect(() => {
     const handleKeyDown = (e) => {
       handlePlayerKeydown({
@@ -715,13 +624,12 @@ export default function AnimePlayer({
         onToggleFullscreen: handleToggleFullscreen,
         onToggleTheater: handleToggleTheater,
         onTogglePiP: handleTogglePiP,
-        onToggleGpuBoost: handleToggleGpuBoost,
         showFeedback,
       });
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeSkip, episode, totalEpisodes, isTheaterMode, gpuBoostEnabled]);
+  }, [activeSkip, episode, totalEpisodes, isTheaterMode]);
 
 
   const handlePause = () => {
@@ -777,14 +685,6 @@ export default function AnimePlayer({
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Badge Mejora de Imagen / Reescalado 4K activo */}
-          {gpuBoostEnabled && (
-            <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.25)] animate-fade">
-              <Zap size={12} className="fill-amber-400 text-amber-400" />
-              <span>{gpuFps ? `${gpuFps} FPS • ${GPU_BOOST_MODES.find((m) => m.id === upscalerMode)?.label || 'Ultra 4K'}` : `✨ ${GPU_BOOST_MODES.find((m) => m.id === upscalerMode)?.label || 'Ultra 4K'}`}</span>
-            </span>
-          )}
-
           {/* Badge de subtítulos en español */}
           {playbackData && playbackData.hasSpanishSubtitles && (
             <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
@@ -798,19 +698,6 @@ export default function AnimePlayer({
               <AlertCircle size={13} />
               Subtítulos en español no disponibles
             </span>
-          )}
-
-          {/* Botón Picture-in-Picture (PiP) */}
-          {isPiPSupported() && (
-            <button
-              type="button"
-              onClick={handleTogglePiP}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-all duration-200 active:scale-95 shadow-sm"
-              title="Modo Picture-in-Picture (Ventana flotante)"
-            >
-              <Tv size={14} className="text-brand shrink-0" />
-              <span className="hidden sm:inline">PiP</span>
-            </button>
           )}
 
           <button
@@ -1047,8 +934,20 @@ export default function AnimePlayer({
         </video>
       </div>
 
+      {/* Backdrop para cerrar menús desplegables al hacer clic en cualquier parte fuera o sobre el video */}
+      {(showSettings || showServerMenu || showSubMenu) && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity"
+          onClick={() => {
+            setShowSettings(false);
+            setShowServerMenu(false);
+            setShowSubMenu(false);
+          }}
+        />
+      )}
+
       {/* Barra de controles inferiores: Jerarquía limpia en 3 islas visuales */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-3 sm:px-6 py-2.5 sm:py-3 border-t border-white/10 bg-[#141724]/95 backdrop-blur-md text-sm text-white">
+      <div className="relative z-40 flex flex-col md:flex-row md:items-center justify-between gap-3 px-3 sm:px-6 py-2.5 sm:py-3 border-t border-white/10 bg-[#141724]/95 backdrop-blur-md text-sm text-white">
         {/* GRUPO 1: Navegación de Episodios (Isla encapsulada) */}
         <div className="flex items-center justify-between sm:justify-start gap-1 p-1 rounded-2xl bg-white/[0.04] border border-white/10 shadow-inner">
           <button
@@ -1094,7 +993,10 @@ export default function AnimePlayer({
               </button>
 
               {showServerMenu && (
-                <div className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
+                >
                   <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                     Servidores disponibles ({servers.length})
                   </div>
@@ -1128,7 +1030,10 @@ export default function AnimePlayer({
             </button>
 
             {showSubMenu && (
-              <div className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-30 animate-scaleUp">
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-1.5 z-50 animate-scaleUp"
+              >
                 <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
                   Pistas disponibles
                 </div>
@@ -1177,143 +1082,114 @@ export default function AnimePlayer({
             </button>
 
             {showSettings && (
-              <div className="absolute bottom-full right-0 mb-2 w-56 max-w-[calc(100vw-32px)] rounded-2xl bg-[#1b1f2e] border border-white/10 shadow-2xl p-2 z-30 animate-scaleUp">
-                {/* Sección de Velocidad */}
-                <div className="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5"><Gauge size={13} className="text-brand" /> Velocidad</span>
-                  <span className="text-brand font-extrabold">{playbackSpeed}x</span>
-                </div>
-                <div className="py-2 grid grid-cols-3 gap-1">
-                  {SUPPORTED_SPEEDS.map((spd) => (
-                    <button
-                      key={spd}
-                      onClick={() => handleChangeSpeed(spd)}
-                      className={`py-1.5 text-xs font-semibold rounded-lg text-center transition ${playbackSpeed === spd ? 'bg-brand text-white font-bold shadow-sm' : 'text-slate-300 hover:bg-white/5'}`}
-                    >
-                      {spd === 1 ? '1x Normal' : `${spd}x`}
-                    </button>
-                  ))}
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute bottom-full right-0 mb-3 w-72 max-w-[calc(100vw-24px)] rounded-2xl bg-[#131622]/98 border border-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-xl p-3.5 z-50 animate-scaleUp"
+              >
+                {/* Cabecera */}
+                <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <Settings size={15} className="text-brand" />
+                    <span className="text-xs font-bold text-white tracking-wide uppercase">Ajustes</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettings(false)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+                    title="Cerrar ajustes"
+                  >
+                    <X size={15} />
+                  </button>
                 </div>
 
-                {/* Sección de Calidad (si hay niveles disponibles) */}
-                {qualities.length > 0 && (
-                  <>
-                    <div className="mt-1 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10 border-t pt-2">
-                      Calidad de video
-                    </div>
-                    <div className="mt-1 flex flex-col gap-0.5 max-h-36 overflow-y-auto">
-                      <button
-                        onClick={() => changeQuality(-1)}
-                        className={`flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg transition ${currentQuality === -1 ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
-                      >
-                        <span>Automática (Adaptativa)</span>
-                        {currentQuality === -1 && <Check size={13} />}
-                      </button>
-
-                      {qualities.map((q) => (
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-0.5 custom-scrollbar">
+                  {/* Calidad de video */}
+                  {qualities.length > 0 && (
+                    <div>
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                        Calidad de video
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
                         <button
-                          key={q.index}
-                          onClick={() => changeQuality(q.index)}
-                          className={`flex items-center justify-between px-2.5 py-1.5 text-xs rounded-lg transition ${currentQuality === q.index ? 'bg-brand text-white font-bold' : 'text-slate-300 hover:bg-white/5'}`}
+                          type="button"
+                          onClick={() => changeQuality(-1)}
+                          className={`px-2.5 py-1 text-xs rounded-xl font-semibold transition ${
+                            currentQuality === -1
+                              ? 'bg-brand text-white font-bold shadow-md shadow-brand/30'
+                              : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                          }`}
                         >
-                          <span>{q.label}</span>
-                          {currentQuality === q.index && <Check size={13} />}
+                          Auto
+                        </button>
+                        {qualities.map((q) => (
+                          <button
+                            key={q.index}
+                            type="button"
+                            onClick={() => changeQuality(q.index)}
+                            className={`px-2.5 py-1 text-xs rounded-xl font-semibold transition ${
+                              currentQuality === q.index
+                                ? 'bg-brand text-white font-bold shadow-md shadow-brand/30'
+                                : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                            }`}
+                          >
+                            {q.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Velocidad de reproducción */}
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                      <span>Velocidad</span>
+                      <span className="text-brand font-extrabold">{playbackSpeed}x</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      {SUPPORTED_SPEEDS.map((spd) => (
+                        <button
+                          key={spd}
+                          type="button"
+                          onClick={() => handleChangeSpeed(spd)}
+                          className={`py-1 text-xs font-semibold rounded-xl text-center transition ${
+                            playbackSpeed === spd
+                              ? 'bg-brand text-white font-bold shadow-md shadow-brand/30'
+                              : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                          }`}
+                        >
+                          {spd === 1 ? '1x Normal' : `${spd}x`}
                         </button>
                       ))}
                     </div>
-                  </>
-                )}
+                  </div>
 
-                {/* Ajuste de Mejora de Imagen y Reescalado 4K (Anime4K + AMD FidelityFX CAS) */}
-                <div className="mt-2 pt-2 border-t border-white/10 flex flex-col px-2.5 py-1">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col pr-2">
-                      <span className="text-xs text-slate-200 font-semibold flex items-center gap-1.5">
-                        <Zap size={13} className={gpuBoostEnabled ? 'text-amber-400 fill-amber-400' : 'text-slate-400'} />
-                        Mejora de Imagen (Reescalado 4K)
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {gpuBoostEnabled ? (gpuFps ? `${gpuFps} FPS • ${GPU_BOOST_MODES.find((m) => m.id === upscalerMode)?.label || 'Ultra 4K'}` : 'Reescalado 4K Activo') : 'Modo Normal (Desactivado)'}
-                      </span>
+                  {/* Auto-saltar Intro */}
+                  <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-slate-200 font-semibold">Auto-saltar Intro</span>
+                      <span className="text-[10px] text-slate-400">Saltar intros automáticamente</span>
                     </div>
                     <button
                       type="button"
                       role="switch"
-                      aria-checked={gpuBoostEnabled}
-                      onClick={handleToggleGpuBoost}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${gpuBoostEnabled ? 'bg-amber-500' : 'bg-white/20'}`}
-                      title={gpuBoostEnabled ? 'Desactivar Mejora de Imagen' : 'Activar Mejora de Imagen (Reescalado 4K - Anime4K + AMD CAS)'}
+                      aria-checked={autoSkipIntro}
+                      onClick={() => {
+                        const next = !autoSkipIntro;
+                        setAutoSkipIntro(next);
+                        setAutoSkipEnabled(next);
+                      }}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        autoSkipIntro ? 'bg-brand shadow-sm shadow-brand/40' : 'bg-white/20'
+                      }`}
+                      title={autoSkipIntro ? 'Desactivar salto automático' : 'Activar salto automático'}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${gpuBoostEnabled ? 'translate-x-4' : 'translate-x-0'}`}
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          autoSkipIntro ? 'translate-x-4' : 'translate-x-0'
+                        }`}
                       />
                     </button>
                   </div>
-
-                  {gpuBoostEnabled && (
-                    <div className="mt-2 grid grid-cols-3 gap-1">
-                      {GPU_BOOST_MODES.map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => handleChangeUpscalerMode(m.id)}
-                          className={`py-1 px-1.5 text-[10px] rounded-lg text-center transition ${
-                            upscalerMode === m.id
-                              ? 'bg-amber-500 text-black font-extrabold shadow-sm'
-                              : 'text-slate-300 bg-white/5 hover:bg-white/10 font-semibold'
-                          }`}
-                          title={m.description}
-                        >
-                          {m.label.split(' ')[0]}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Ajuste de Auto-saltar Intro */}
-                <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between px-2.5 py-1">
-                  <span className="text-xs text-slate-300 font-medium">Auto-saltar Intro</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={autoSkipIntro}
-                    onClick={() => {
-                      const next = !autoSkipIntro;
-                      setAutoSkipIntro(next);
-                      setAutoSkipEnabled(next);
-                    }}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${autoSkipIntro ? 'bg-brand' : 'bg-white/20'}`}
-                    title={autoSkipIntro ? 'Desactivar salto automático de intro' : 'Activar salto automático de intro'}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${autoSkipIntro ? 'translate-x-4' : 'translate-x-0'}`}
-                    />
-                  </button>
-                </div>
-
-                {/* Atajos de teclado desplegables */}
-                <div className="mt-2 pt-2 border-t border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setShowShortcutsList(!showShortcutsList)}
-                    className="w-full flex items-center justify-between px-2.5 py-1 text-xs text-slate-300 hover:text-white rounded-lg transition"
-                  >
-                    <span className="font-medium flex items-center gap-1.5">
-                      <Keyboard size={13} className="text-brand" /> Atajos de teclado
-                    </span>
-                    <span className="text-[10px] text-brand font-semibold">{showShortcutsList ? 'Ocultar' : 'Ver'}</span>
-                  </button>
-                  {showShortcutsList && (
-                    <div className="mt-1.5 p-2 rounded-xl bg-black/40 border border-white/5 space-y-1.5 text-[11px] max-h-36 overflow-y-auto">
-                      {PLAYER_SHORTCUTS.map((s) => (
-                        <div key={s.key} className="flex items-center justify-between gap-2 text-slate-300">
-                          <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[10px] font-bold">{s.key}</kbd>
-                          <span className="text-right text-slate-400 text-[10px]">{s.description}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             )}
